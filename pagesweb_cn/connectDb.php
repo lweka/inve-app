@@ -12,10 +12,10 @@ if(session_status() === PHP_SESSION_NONE){
 date_default_timezone_set('Africa/Kinshasa');
 
 // Configuration de la base de données
-$host = 'localhost';
-$db   = 'inventeur_produits-App';
-$user = 'root';
-$pass = '';
+$host = 'srv996.hstgr.io';
+$db   = 'u424760992_inventeur_prod';
+$user = 'u424760992_inventeur_p_us';
+$pass = '0814926220@Kin243';
 $charset = 'utf8mb4'; // Recommandé pour une compatibilité complète
 
 // Options de PDO pour une connexion robuste
