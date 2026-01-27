@@ -46,7 +46,7 @@ function require_client_access() {
     
     if (!$client) {
         // Rediriger vers essai ou achat
-        header('Location: http://localhost/inve-app/pagesweb_cn/trial_form.php?message=access_expired');
+        header('Location: /inve-app/pagesweb_cn/trial_form?message=access_expired');
         exit;
     }
     

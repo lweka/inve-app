@@ -432,7 +432,7 @@ if ($subscription_info) {
                 </div>
             </div>
 
-            <a href="http://localhost/inve-app/" class="btn-redirect">
+            <a href="../" class="btn-redirect">
                 🚀 Accéder à l'Application
             </a>
         </div>
@@ -441,8 +441,8 @@ if ($subscription_info) {
     <?php endif; ?>
 
     <div class="footer-link">
-        <a href="subscription_buy.php">← Retour</a>
-        <a href="http://localhost/inve-app/" style="margin-left: 15px;">Accueil →</a>
+        <a href="subscription_buy">← Retour</a>
+        <a href="../" style="margin-left: 15px;">Accueil →</a>
     </div>
 
 </div>

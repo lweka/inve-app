@@ -411,8 +411,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <?php endif; ?>
 
     <div class="footer-links">
-        <a href="http://localhost/inve-app/">← Retour Accueil</a>
-        <a href="subscription_buy.php">💳 Acheter un Abonnement</a>
+        <a href="../">← Retour Accueil</a>
+        <a href="subscription_buy">💳 Acheter un Abonnement</a>
     </div>
 
 </div>

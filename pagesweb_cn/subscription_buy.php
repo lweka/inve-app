@@ -466,8 +466,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <?php endif; ?>
 
     <div class="footer-links">
-        <a href="trial_form.php">Essayer 7 jours</a>
-        <a href="http://localhost/inve-app/">← Accueil</a>
+        <a href="trial_form">Essayer 7 jours</a>
+        <a href="../">← Accueil</a>
     </div>
 
 </div>

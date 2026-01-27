@@ -415,7 +415,7 @@ if ($trial_code && !$error_message && !$success_message) {
                 Valid jusqu'au: <strong><?= date('d/m/Y', strtotime('+7 days')) ?></strong>
             </p>
 
-            <a href="http://localhost/inve-app/" class="btn-redirect">
+            <a href="../" class="btn-redirect">
                 🚀 Accéder à l'Application
             </a>
 
@@ -442,8 +442,8 @@ if ($trial_code && !$error_message && !$success_message) {
     <?php endif; ?>
 
     <div class="footer-link">
-        <a href="trial_form.php">← Retour Inscription</a>
-        <a href="http://localhost/inve-app/" style="margin-left: 15px;">Accueil →</a>
+        <a href="trial_form">← Retour Inscription</a>
+        <a href="../" style="margin-left: 15px;">Accueil →</a>
     </div>
 
 </div>
