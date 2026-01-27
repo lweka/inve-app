@@ -7,18 +7,21 @@
  * Gestion codes d'essai + codes d'abonnement
  */
 
+session_start();
+
+// Vérifier si l'utilisateur est connecté en tant qu'admin
+if (!isset($_SESSION['admin_logged_in']) || $_SESSION['admin_logged_in'] !== true) {
+    // Redirection vers le formulaire de connexion
+    header('Location: admin_login_form');
+    exit;
+}
+
 require_once __DIR__ . '/connectDb.php';
 
 // Vérifier si admin PRINCIPAL (vous)
 // À adapter selon votre système d'identification
 $admin_id = isset($_SESSION['admin_id']) ? $_SESSION['admin_id'] : null;
-$is_main_admin = $admin_id == 1; // À adapter à votre ID admin principal
-
-if (!$is_main_admin) {
-    http_response_code(403);
-    die('<h1 style="text-align: center; margin-top: 50px; color: red;">❌ Accès Refusé</h1>
-        <p style="text-align: center;">Seul l\'administrateur principal a accès à cette page.</p>');
-}
+$is_main_admin = true; // Vérification basée sur la session admin_logged_in
 
 /* ===============================
    ACTION : VALIDER CODE ABONNEMENT

@@ -443,6 +443,7 @@ $message = isset($_GET['message']) ? $_GET['message'] : '';
         <a href="#">Conditions d'Utilisation</a>
         <a href="#">Politique de Confidentialité</a>
         <a href="#">Support</a>
+        <a href="pagesweb_cn/admin_login_form">🔐 Admin</a>
     </div>
     <p>&copy; 2026 CartelPlus Congo. Tous droits réservés.</p>
 </footer>
