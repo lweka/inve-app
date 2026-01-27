@@ -361,11 +361,11 @@ $message = isset($_GET['message']) ? $_GET['message'] : '';
                 <p class="card-desc">Accès illimité pendant 1 mois</p>
                 <div class="card-features">
                     <li>Accès illimité 30 jours</li>
-                    <li>Tarif: 50 000 FC</li>
+                    <li>Tarif: 10 $ USD</li>
                     <li>Renouvellement flexible</li>
                     <li>Assistance prioritaire</li>
                 </div>
-                <a href="pagesweb_cn/subscription_buy.php" class="card-button">
+                <a href="pagesweb_cn/subscription_buy" class="card-button">
                     💰 Acheter Abonnement
                 </a>
             </div>

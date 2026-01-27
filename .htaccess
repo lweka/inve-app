@@ -4,17 +4,18 @@ Options -Indexes
 RewriteEngine On
 RewriteBase /inve-app/
 
-# 1️⃣ Laisser le dossier pagesweb_cn tranquille
-RewriteRule ^pagesweb_cn/ - [L]
+# 1️⃣ NE PAS réécrire les requêtes réelles (fichiers et dossiers existants)
+RewriteCond %{REQUEST_FILENAME} -f [OR]
+RewriteCond %{REQUEST_FILENAME} -d
+RewriteRule ^ - [L]
 
-# 2️⃣ NE PAS réécrire si fichier .php déjà demandé
+# 2️⃣ NE PAS réécrire si fichier .php déjà demandé explicitement
 RewriteCond %{REQUEST_URI} \.php$ [NC]
 RewriteRule ^ - [L]
 
-# 3️⃣ Ajouter .php uniquement si l’URL SANS extension existe réellement
-RewriteCond %{REQUEST_FILENAME} !-d
+# 3️⃣ Masquer les extensions .php - Ajouter .php si le fichier existe sans extension
 RewriteCond %{REQUEST_FILENAME}.php -f
-RewriteRule ^(.+)$ $1.php [L,QSA]
+RewriteRule ^(.+?)/?$ $1.php [L,QSA]
 
 # 4️⃣ Page 404
 ErrorDocument 404 /inve-app/pagesweb_cn/404.php

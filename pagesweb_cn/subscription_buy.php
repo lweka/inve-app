@@ -12,7 +12,7 @@ require_once __DIR__ . '/connectDb.php';
 $error_message = '';
 $success_message = '';
 $subscription_code = '';
-$payment_amount = 50000; // Montant par défaut: 50 000 FC
+$payment_amount = 10; // Montant par défaut: 10 USD
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $first_name = trim($_POST['first_name'] ?? '');
@@ -27,8 +27,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $error_message = '❌ Veuillez remplir tous les champs obligatoires';
     } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
         $error_message = '❌ Adresse email invalide';
-    } elseif ($payment_amount < 10) {
-        $error_message = '❌ Montant minimum: 10 FC';
+    } elseif ($payment_amount < 1) {
+        $error_message = '❌ Montant minimum: 1 USD';
     } else {
         // Générer code d'abonnement unique
         $subscription_code = 'SUB-' . strtoupper(uniqid());
@@ -368,7 +368,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         <div class="pricing-box">
             <div class="pricing-label">Tarif Standard</div>
-            <div class="pricing-amount">50 000 FC</div>
+            <div class="pricing-amount">10 $ USD</div>
             <div class="pricing-period">pour 1 mois complet</div>
         </div>
 
@@ -415,9 +415,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             </div>
 
             <div class="form-group">
-                <label class="form-label">Montant (FC) *</label>
+                <label class="form-label">Montant (USD) *</label>
                 <input type="number" name="payment_amount" class="form-control" 
-                    value="50000" min="10" step="100" required>
+                    value="10" min="1" step="0.01" required>
             </div>
 
             <button type="submit" class="btn-submit">💰 Générer Code Abonnement</button>
@@ -440,7 +440,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             
             <div class="step-desc" style="margin-bottom: 15px;">
                 <strong>1️⃣ Effectuer le paiement</strong><br>
-                Montant: <span style="color: var(--orange); font-weight: bold;">50 000 FC</span>
+                Montant: <span style="color: var(--orange); font-weight: bold;">10 $ USD</span>
             </div>
 
             <div class="step-desc" style="margin-bottom: 15px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 15px;">
