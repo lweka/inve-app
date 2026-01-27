@@ -1,0 +1,862 @@
+//Etape pour l'implementation des changements demandés par le client
+PROCHAINE ÉTAPE (très important)
+
+Je te propose ceci :
+
+👉 Étape 1 (maintenant)
+On implémente uniquement :
+
+Nouveau modèle prix (achat/vente)
+
+Historique produit PRO (filtres + marge)
+
+Alerte stock bas
+
+👉 Étape 2
+
+Rapports
+
+Taux versionné
+
+👉 Étape 3
+
+SaaS / abonnements
+
+Commençons par les changement demander par le client. 
+
+1. lorsque nous configuront un nouveau produit, nous devons ajouter les elements suivantes :
+  - le prix d'achat du produit en CDF. ()
+  - le prix de vente du produit en CDF.
+  - enlévé le stock initial du produit dans le formulaire de création du produit.
+
+2. une mise à jour pour l'historique du produit. 
+  - "product_history.php" doit afficher la colonne "Note" le ID du vendeur et son nom. (
+    Pour cela, il faut faire une jointure avec la table "agents" pour récupérer.) 
+  - dans l'historique du produit, ajoute un systeme qui permet de faire une comparaison entre le 
+  prix d'achat et le prix de vente. (
+    Afficher une colonne "Marge" qui calcule la différence entre le prix de vente et le prix 
+    d'achat pour chaque mouvement de type "vente" et une projetction de marge lorsqu'on configure
+    un stock du produit en entré.)
+  - dans l'historique du produit, ajouter un système de filtre par agent vendeur. (
+    Utiliser le paramètre GET "agent_id" pour filtrer les mouvements par agent vendeur.)
+  - dans l'historique du produit; ajouter un système de tri par type de mouvement. (
+    Utiliser les paramètres GET "movement_type" pour filtrer les mouvements par type, 
+    comme "achat", "vente", etc.)
+  - dans l'historique de produit, ajouter un système de filtre par date. (
+    Utiliser les paramètres GET "start_date" et "end_date" pour filtrer 
+    les mouvements entre deux dates spécifiques.)
+  - dans l'historique du produit, ajouter un système de pagination pour afficher 10 mouvements par page. ( 
+    Utiliser les paramètres GET "page" pour la page actuelle et "limit" pour le nombre d'éléments par page, 
+    avec une valeur par défaut de 10.)
+
+
+
+    3. tu fais également un système d'historique complet pour l'ensemble des produits.
+     en mettant en place un système de filtre très professionnel et de comparaison de benefice pour le produit 
+     vendu et la projection de benefice pour le stock configurée en entré pour chaque produit.
+
+
+    4. tu fais un système de produit en alerte de stock bas. 
+     - lorsque le stock d'un produit est inférieur à 5 unités, une alerte doit être affichée dans la page de gestion des produits.
+     - l'alerte doit indiquer le nom du produit et la quantité actuelle en stock.
+     - tu ajoute un bouton "produit en rupture de stock" dans le "products.php" qui permet de lister tous les produits dont le stock est inférieur à 5 unités.
+
+    5. tu séparer la configuration du taux pour la conversion USD/CDF de sorte que le taux ne puisse pas 
+    automatiquement modifier le prix des produits déjà configurés dans le système avec un  autre TAUX
+    - si par exemple le taux est de 2000 CDF pour 1 USD, et un produit est configuré à 4000 CDF,
+    - si le taux est modifié à 2500 CDF pour 1 USD, que cette modification n'impacte pas le prix du 
+    produit déjà configuré.
+    - mais que cela puisse impacter uniquement les nouveaux produits configurés après la modification du taux.
+
+
+
+
+    6. tu fais un système de rapport de vente par produit.
+     - le rapport doit afficher le total des ventes en CDF et en USD pour chaque produit sur une période donnée.
+     - le rapport doit permettre de filtrer par produit, par agent vendeur, et par période (date de début et date de fin).
+     - le rapport doit afficher également la marge totale réalisée pour chaque produit, en calculant la différence entre le prix de vente et le prix d'achat multiplié par la quantité vendue.
+
+     7. tu me fait un code vraiement professionnel, bien structurer et pas beaucoup trop commenter
+
+     je veux une precision pour des mises à jour car nous avons tellement avancer que le système de t'envoyer 
+     le code complet et que tu puisse retourner le code complet n'est plus une bonne methode.
+     mais par contre, je dois être en mesure de très bien comprendre chaque modification, dois ca 
+     doit être ajouter. 
+
+
+
+
+     8. l'application doit être sécurisée contre les injections SQL et autres vulnérabilités courantes.
+      tu dois utiliser des requêtes préparées pour toutes les interactions avec la base de données.
+      tu dois valider et assainir toutes les entrées utilisateur avant de les traiter ou de les stocker dans la base de données.
+
+    9. tu dois respecter les bonnes pratiques de codage en PHP, en utilisant des fonctions et des classes appropriées pour organiser le code.
+      tu dois également suivre les conventions de nommage standard pour les variables, les fonctions et les classes.
+
+    10. l'application doit être commercialiser par système d'abonnement mensuel avec différents niveaux d'accès en fonction du plan d'abonnement.
+      tu dois implémenter un système de gestion des utilisateurs avec des rôles et des permissions pour contrôler l'accès aux différentes fonctionnalités de l'application.
+      tu dois également mettre en place un système de facturation récurrente pour gérer les paiements des abonnements.
+
+      et nous prevoyons de faire en sorte qu'un abonner puisse faire un essai gratuit de 7 
+      jours avant de souscrire à un abonnement payant...... donc si après 7 jours il n'a pas souscrit
+      a un abonnement payant, son compte doit être automatiquement désactivé jusqu'à ce qu'il souscrive 
+      à un abonnement payant.
+
+      nous devons être en mesure d'avoir plusieurs client qui peuvent etre en train de faire leurs essaies 
+      gratuit en meme temps. et si l'un decide de s'abonner, cela ne doit pas impacter les 
+      autres clients qui sont en train de faire leurs essais gratuit. et le client doit automatiquement 
+      basculer vers un compte payant à la fin de son essai gratuit s'il n'a pas annulé son essai avant la fin des 7 jours.
+
+      et une fois abonnement, le système de facturation récurrente doit automatiquement débiter le client chaque mois
+      jusqu'à ce qu'il décide d'annuler son abonnement.
+
+      et après l'annulation de l'abonnement, le client doit toujours avoir accès à son 
+      compte jusqu'à la fin de la période de facturation en cours. qui est de 30 jours.
+
+
+      //
+      pour products
+
+j'ai ajouté ces colonnes :
+
+buy_price_cdf   DECIMAL(12,2) NOT NULL
+sell_price_cdf  DECIMAL(12,2) NOT NULL
+
+parce que ça n'existait pas avant.
+****
+
+Maintenant le code complet pour products.php est le suivant :
+
+***
+<?php
+// pagesweb_cn/products.php
+
+require_once __DIR__ . '/../configUrlcn.php';
+require_once __DIR__ . '/../defConstLiens.php';
+require_once __DIR__ . '/connectDb.php';
+
+if(!isset($_SESSION['user_role']) || $_SESSION['user_role']!=='admin'){
+    header("Location: ".PARSE_CONNECT."?role=admin");
+    exit;
+}
+
+$house_id = intval($_GET['house_id'] ?? 0);
+if($house_id <= 0){
+    header("Location: houses.php");
+    exit;
+}
+
+// fetch house
+$stmt = $pdo->prepare("SELECT * FROM houses WHERE id = ?");
+$stmt->execute([$house_id]);
+$house = $stmt->fetch();
+if(!$house) { header("Location: houses.php"); exit; }
+
+// fetch products + stock
+$sql = "SELECT p.*, IFNULL(hs.qty,0) AS stock_qty
+        FROM products p
+        LEFT JOIN house_stock hs ON hs.product_id = p.id AND hs.house_id = ?
+        WHERE p.house_id = ?
+        ORDER BY p.id DESC";
+$stmt = $pdo->prepare($sql);
+$stmt->execute([$house_id, $house_id]);
+$products = $stmt->fetchAll();
+
+// include header if exists
+if(isset($headerPath) && is_file($headerPath)) require_once $headerPath;
+
+// charger taux USD
+$usd_rate = $pdo->query("SELECT usd_rate FROM exchange_rate WHERE id = 1")->fetchColumn();
+if(!$usd_rate || $usd_rate <= 0){
+    $usd_rate = 1; // sécurité anti division par zéro
+}
+
+?>
+
+<div class="container">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+      <h4 class="mb-0">Produits — <?=htmlspecialchars($house['name'])?></h4>
+      <div class="small text-muted">Gestion des produits et du stock</div>
+    </div>
+    <div>
+      <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addProductModal">
+        <i class="fa fa-plus me-1"></i> Ajouter produit
+      </button>
+      <a href="<?=EXCHANGE_RATE_MANAGER?>" class="btn btn-secondary">TAUX USD</a>
+      <a href="<?=EXCHANGE_RATE_MANAGER?>" class="btn btn-primary">PRODUIT HISTORIQUE COMPLET</a>
+      <a href="<?=EXCHANGE_RATE_MANAGER?>" class="btn btn-primary">PRODUIT EN ALERTE</a>
+      <a href="<?=HOUSES_MANAGE?>" class="btn btn-secondary"> ← Retour aux maisons</a>
+    </div>
+  </div>
+
+  <div class="mb-3">
+    <input id="searchInput" class="form-control" placeholder="Rechercher un produit (nom) ...">
+  </div>
+
+  <div id="productsGrid" class="row">
+    <?php foreach($products as $p): ?>
+      <div class="col-md-4 mb-3 prod-row" data-name="<?=htmlspecialchars(strtolower($p['name']))?>">
+        <div class="card-prod">
+          <div class="d-flex justify-content-between">
+            <strong><?=htmlspecialchars($p['name'])?></strong>
+            <div>
+              <button class="btn btn-sm btn-outline-info"
+                onclick="location.href='./product_history.php?product_id=<?= $p['id'] ?>&house_id=<?= $house_id ?>'">
+                Historique
+              </button>
+              <button class="btn btn-sm btn-outline-secondary" onclick="openEditModal(<?= $p['id'] ?>)">
+                Modifier
+              </button>
+            </div>
+          </div>
+
+          <div class="small-muted">Prix unitaire: <strong><?=number_format($p['price_cdf'],0)?> CDF <br><small class="text-muted">≈ <?= number_format($p['price_cdf'] / $usd_rate,2) ?> USD</small></strong></div>
+          <div class="small-muted">Stock maison: <strong id="stock_<?=$p['id']?>"><?=intval($p['stock_qty'])?></strong></div>
+          <div class="mt-2 small-muted"><?=nl2br(htmlspecialchars($p['description']))?></div>
+
+          <div class="d-flex gap-2 mt-3">
+            <button class="btn btn-outline-success btn-sm w-50" onclick="openStockModal(<?= $p['id'] ?>,'in')">
+              <i class="fa fa-arrow-down"></i> Entrée
+            </button>
+            <button class="btn btn-outline-warning btn-sm w-50" onclick="openStockModal(<?= $p['id'] ?>,'out')">
+              <i class="fa fa-arrow-up"></i> Sortie
+            </button>
+          </div>
+
+          <div class="d-flex gap-2 mt-3">
+            <button class="btn btn-outline-secondary btn-sm w-50" onclick="toggleProduct(<?= $p['id'] ?>)">
+              <?= $p['is_active'] ? 'Désactiver' : 'Activer' ?>
+            </button>
+            <button class="btn btn-outline-danger btn-sm w-50"
+              onclick="deleteProduct(<?= $p['id'] ?>,'<?= addslashes(htmlspecialchars($p['name'])) ?>')">
+              Supprimer
+            </button>
+          </div>
+
+        </div>
+      </div>
+    <?php endforeach; ?>
+  </div>
+</div>
+
+<!-- Modal: add product -->
+<div class="modal fade" id="addProductModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <form id="addProductForm" method="POST" action="product_add.php">
+        <div class="modal-header"><h5 class="modal-title">Ajouter produit</h5></div>
+        <div class="modal-body">
+          <input type="hidden" name="house_id" value="<?= $house_id ?>">
+          <div class="mb-3"><label>Nom</label><input name="name" class="form-control" required></div>
+          <div class="mb-3"><label>Prix d’achat (CDF)</label><input name="price_cdf" class="form-control" required pattern="^\d+(\.\d{1,2})?$"></div>
+          <div class="mb-3"><label>Prix de vente (CDF)</label><input name="price_cdf" class="form-control" required pattern="^\d+(\.\d{1,2})?$"></div>
+          <div class="mb-3"><label>Description</label><textarea name="description" class="form-control"></textarea></div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-light" data-bs-dismiss="modal">Annuler</button>
+          <button class="btn btn-primary">Créer</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: edit product -->
+<!-- Modal: edit product -->
+<div class="modal fade" id="editProductModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+
+      <form id="editProductForm" method="POST" action="product_edit.php">
+
+        <div class="modal-header">
+          <h5 class="modal-title">Modifier produit</h5>
+          <button class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+
+        <div class="modal-body">
+
+          <input type="hidden" name="product_id" id="edit_product_id">
+
+          <div class="mb-3">
+            <label>Nom</label>
+            <input name="name" id="edit_name" class="form-control" required>
+          </div>
+
+          <div class="mb-3">
+            <label>Prix unitaire (CDF)</label>
+            <!-- ✅ ID OBLIGATOIRE -->
+            <input name="price_cdf" id="edit_price_cdf" class="form-control" required>
+          </div>
+
+          <div class="mb-3">
+            <label>Description</label>
+            <textarea name="description" id="edit_description" class="form-control"></textarea>
+          </div>
+
+        </div>
+
+        <div class="modal-footer">
+          <button class="btn btn-light" data-bs-dismiss="modal">Annuler</button>
+          <button class="btn btn-primary">Enregistrer</button>
+        </div>
+
+      </form>
+
+    </div>
+  </div>
+</div>
+
+
+<!-- Modal: stock update -->
+<div class="modal fade" id="stockModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <form id="stockForm">
+        <div class="modal-header">
+          <h5 class="modal-title" id="stockModalTitle">Mise à jour stock</h5>
+          <button class="btn-close" data-bs-dismiss="modal" type="button"></button>
+        </div>
+
+        <div class="modal-body">
+          <input type="hidden" name="product_id" id="stock_product_id">
+          <input type="hidden" name="house_id" value="<?= $house_id ?>">
+          <input type="hidden" name="type" id="stock_type">
+
+          <div class="mb-3">
+            <label>Quantité</label>
+            <input name="qty" id="stock_qty" type="number" class="form-control" min="1">
+          </div>
+
+          <div class="mb-3">
+            <label>Note (optionnel)</label>
+            <input name="note" id="stock_note" class="form-control">
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button class="btn btn-light" type="button" data-bs-dismiss="modal">Annuler</button>
+          <button class="btn btn-primary" type="submit">Valider</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+
+
+
+<script>
+function openEditModal(productId){
+
+  fetch('product_edit.php?get=1&product_id=' + productId)
+    .then(r => r.json())
+    .then(j => {
+
+      if(!j.ok){
+        alert(j.message || 'Erreur');
+        return;
+      }
+
+      // ✅ remplir TOUS les champs
+      document.getElementById('edit_product_id').value = j.product.id;
+      document.getElementById('edit_name').value       = j.product.name;
+      document.getElementById('edit_price_cdf').value = j.product.price_cdf; // 🔥 FIX
+      document.getElementById('edit_description').value = j.product.description || '';
+
+      new bootstrap.Modal(
+        document.getElementById('editProductModal')
+      ).show();
+    })
+    .catch(() => alert('Erreur réseau'));
+}
+</script>
+
+
+
+
+
+
+<script>
+// === Recherche produit ===
+document.getElementById('searchInput').addEventListener('input', function(){
+  const q = this.value.trim().toLowerCase();
+  document.querySelectorAll('.prod-row').forEach(el => {
+    const name = el.getAttribute('data-name') || '';
+    el.style.display = q === '' || name.indexOf(q) !== -1 ? '' : 'none';
+  });
+});
+
+// === Modale édition ===
+/* function openEditModal(id){
+  fetch('/inve-app/pagesweb_cn/product_edit.php?get=1&product_id=' + id)
+    .then(r => r.json())
+    .then(j => {
+      if(!j.ok) return alert(j.message || 'Erreur');
+      document.getElementById('edit_product_id').value = j.product.id;
+      document.getElementById('edit_name').value = j.product.name;
+      document.getElementById('edit_price').value = j.product.price;
+      document.getElementById('edit_description').value = j.product.description;
+      new bootstrap.Modal(document.getElementById('editProductModal')).show();
+    }).catch(()=> alert('Erreur réseau'));
+} */
+
+// === Activer / Désactiver produit ===
+function toggleProduct(id){
+  fetch('product_toggle_status.php', {
+    method:'POST',
+    body: new URLSearchParams({ id: id })
+  }).then(r => r.json()).then(j=>{
+    if(j.ok) location.reload();
+    else alert(j.message || 'Erreur');
+  }).catch(()=> alert('Erreur réseau'));
+}
+
+// === Supprimer produit ===
+function deleteProduct(id, name){
+  if(!confirm('Supprimer le produit: ' + name + ' ?')) return;
+  fetch('product_delete.php', {
+    method:'POST',
+    body: new URLSearchParams({ id: id })
+  }).then(r=>r.json()).then(j=>{
+    if(j.ok) location.reload();
+    else alert(j.message || 'Erreur');
+  }).catch(()=> alert('Erreur réseau'));
+}
+
+// === Modale stock ===
+function openStockModal(productId, type){
+  document.getElementById('stock_product_id').value = productId;
+  document.getElementById('stock_type').value = type;
+  document.getElementById('stock_qty').value = "";
+  document.getElementById('stock_note').value = "";
+
+  document.getElementById('stockModalTitle').textContent =
+    (type === 'in') ? "Ajouter au stock" : "Retirer du stock";
+
+  new bootstrap.Modal(document.getElementById('stockModal')).show();
+}
+
+// === Soumission stock (UNE seule version) ===
+let isSubmittingStock = false;
+
+document.getElementById('stockForm').addEventListener('submit', function(e){
+  e.preventDefault();
+
+  if(isSubmittingStock) return;
+  isSubmittingStock = true;
+
+  const data = new FormData(this);
+  const qty = parseInt(data.get('qty'));
+
+  if(isNaN(qty) || qty <= 0){
+    alert("Veuillez indiquer une quantité valide");
+    isSubmittingStock = false;
+    return;
+  }
+
+  fetch('product_stock_update.php', {
+    method:'POST',
+    body: data
+  })
+  .then(r => r.json())
+  .then(j => {
+    isSubmittingStock = false;
+
+    if(j.ok){
+      const pid = data.get('product_id');
+      document.getElementById('stock_' + pid).textContent = j.new_qty;
+
+      bootstrap.Modal.getInstance(document.getElementById('stockModal')).hide();
+      alert('Stock mis à jour.');
+    } else {
+      alert(j.message || 'Erreur');
+    }
+  })
+  .catch(() => {
+    isSubmittingStock = false;
+    alert('Erreur réseau');
+  });
+});
+</script>
+
+<?php 
+if(isset($footerPath) && is_file($footerPath)) require_once $footerPath;
+?>
+
+***
+
+tu bosse dessus pour que ce code puisses implémenter notre nouvelle mise à jour.
+
+ensuite tu, :
+
+🔹 Ajoute le formulaire de filtres visuel pour 'product_history.php'
+
+🔹 tu fais le code complet de la page historique global tous produits, qui sera fonctionnel avec un très bel
+design et le filtre qui fonctionne très bien.
+
+🔹 tu Implémente le code complet pour le fichier alerte stock bas
+
+
+tu renvoi directement toutes la demande de cette requettes, sans le divisé par étape.
+
+
+
+****
+
+Merci beaucoup pour le code généré, je viens de faire le premier test juste après la 
+création de la premier maison, et lorsque j'accède dans "gérer les produits", j'ai ce lien 
+"http://localhost/inve-app/pagesweb_cn/products?house_id=1" et quand je clique sur le 
+bouton "Ajouter produit", le formulaire s'ouvre bien, mais lorsque je remplis le formulaire
+et que je clique sur "Créer", rien ne se passe et sur le URL, j'ai ceci :
+"http://localhost/inve-app/pagesweb_cn/products.php?house_id=1&err=%5B%22Prix+CDF+invalide.%22%5D"
+
+et voici le code complet de product_add.php que j'utilise actuellement :
+
+***
+<?php
+// pagesweb_cn/product_add.php
+require_once __DIR__ . '/connectDb.php';
+
+if (!isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'admin') {
+    header("Location: connect-parse.php?role=admin");
+    exit;
+}
+
+function clean($v){
+    return trim(htmlspecialchars($v, ENT_QUOTES, 'UTF-8'));
+}
+
+/* =========================
+   RÉCUPÉRATION DES DONNÉES
+========================= */
+$house_id      = intval($_POST['house_id'] ?? 0);
+$name          = clean($_POST['name'] ?? '');
+$price_cdf     = floatval($_POST['price_cdf'] ?? 0);   // 🔥 PRIX EN CDF
+$description   = clean($_POST['description'] ?? '');
+$initial_stock = intval($_POST['initial_stock'] ?? 0);
+
+/* =========================
+   VALIDATION
+========================= */
+$errors = [];
+
+if ($house_id <= 0) $errors[] = "Maison invalide.";
+if ($name === '' || strlen($name) < 2) $errors[] = "Nom produit invalide.";
+if ($price_cdf <= 0) $errors[] = "Prix CDF invalide.";
+
+if ($errors) {
+    $err = urlencode(json_encode($errors));
+    header("Location: products.php?house_id=".$house_id."&err=".$err);
+    exit;
+}
+
+/* =========================
+   INSERT PRODUIT (UNE SEULE FOIS)
+========================= */
+$stmt = $pdo->prepare("
+    INSERT INTO products (house_id, name, price_cdf, description)
+    VALUES (?, ?, ?, ?)
+");
+$stmt->execute([
+    $house_id,
+    $name,
+    $price_cdf,
+    $description
+]);
+
+$product_id = (int)$pdo->lastInsertId();
+
+/* =========================
+   STOCK INITIAL (OPTIONNEL)
+========================= */
+if ($initial_stock > 0) {
+
+    // Vérifier si house_stock existe déjà
+    $stmt = $pdo->prepare("
+        SELECT id 
+        FROM house_stock 
+        WHERE house_id = ? AND product_id = ?
+        LIMIT 1
+    ");
+    $stmt->execute([$house_id, $product_id]);
+    $exists = $stmt->fetchColumn();
+
+    if ($exists) {
+        // UPDATE
+        $stmt = $pdo->prepare("
+            UPDATE house_stock 
+            SET qty = qty + ?
+            WHERE id = ?
+        ");
+        $stmt->execute([$initial_stock, $exists]);
+    } else {
+        // INSERT
+        $stmt = $pdo->prepare("
+            INSERT INTO house_stock (house_id, product_id, qty)
+            VALUES (?, ?, ?)
+        ");
+        $stmt->execute([$house_id, $product_id, $initial_stock]);
+    }
+
+    // Enregistrer mouvement "IN"
+    $stmt = $pdo->prepare("
+        INSERT INTO product_movements (house_id, product_id, qty, type, note)
+        VALUES (?, ?, ?, 'in', 'Stock initial')
+    ");
+    $stmt->execute([$house_id, $product_id, $initial_stock]);
+}
+
+/* =========================
+   REDIRECTION
+========================= */
+header("Location: products.php?house_id=".$house_id."&msg=created");
+exit;
+***
+
+
+nous parvenons maintenant à créer un produit,
+
+ on peut enchaîné sur le stock + historique marge en temps réel
+
+ ***
+ je mise en place le code correctif que tu viens de partager
+ maintenant, verifie si ce code de la page "product_stock_update.php" 
+ est correct pour la mise à jour.... si ce ne pas correct, envoi un code complet 
+ ***
+ <?php
+require_once __DIR__ . '/connectDb.php';
+header('Content-Type: application/json');
+
+$product_id = (int)($_POST['product_id'] ?? 0);
+$house_id   = (int)($_POST['house_id'] ?? 0);
+$type       = $_POST['type'] ?? '';
+$qty        = (int)($_POST['qty'] ?? 0);
+$note       = trim($_POST['note'] ?? '');
+
+if($product_id<=0 || $house_id<=0 || $qty<=0 || !in_array($type,['in','out'])){
+    echo json_encode(['ok'=>false,'message'=>'Paramètres invalides']); exit;
+}
+
+$pdo->beginTransaction();
+
+try {
+    // 🔒 verrou stock
+
+    // récupérer le produit
+    $stmt = $pdo->prepare("
+    SELECT buy_price_cdf, sell_price_cdf 
+    FROM products 
+    WHERE id = ?
+    ");
+    $stmt->execute([$product_id]);
+    $product = $stmt->fetch();
+
+
+    // enregistrer le mouvement
+    $stmt = $pdo->prepare("
+    INSERT INTO product_movements (
+        house_id,
+        product_id,
+        qty,
+        type,
+        unit_buy_price_cdf,
+        unit_sell_price_cdf,
+        note
+    ) VALUES (?, ?, ?, 'in', ?, ?, ?)
+    ");
+    $stmt->execute([
+    $house_id,
+    $product_id,
+    $qty,
+    $product['buy_price_cdf'],
+    $product['sell_price_cdf'],
+    $note
+    ]);
+
+    $stmt = $pdo->prepare("
+        SELECT id, qty 
+        FROM house_stock 
+        WHERE house_id=? AND product_id=?
+        FOR UPDATE
+    ");
+    $stmt->execute([$house_id,$product_id]);
+    $row = $stmt->fetch();
+
+    if(!$row){
+        if($type === 'out'){
+            throw new Exception('Stock inexistant');
+        }
+        // créer stock
+        $pdo->prepare("
+            INSERT INTO house_stock (house_id, product_id, qty)
+            VALUES (?,?,?)
+        ")->execute([$house_id,$product_id,$qty]);
+
+        $newQty = $qty;
+    } else {
+        $current = (int)$row['qty'];
+
+        if($type === 'out' && $current < $qty){
+            throw new Exception('Stock insuffisant');
+        }
+
+        $newQty = ($type === 'in')
+            ? $current + $qty
+            : $current - $qty;
+
+        $pdo->prepare("
+            UPDATE house_stock SET qty=?
+            WHERE id=?
+        ")->execute([$newQty,$row['id']]);
+    }
+
+    // historique
+    $pdo->prepare("
+        INSERT INTO product_movements (house_id, product_id, type, qty, note)
+        VALUES (?,?,?,?,?)
+    ")->execute([$house_id,$product_id,$type,$qty,$note]);
+
+    $pdo->commit();
+    echo json_encode(['ok'=>true,'new_qty'=>$newQty]);
+
+} catch(Exception $e){
+    $pdo->rollBack();
+    echo json_encode(['ok'=>false,'message'=>$e->getMessage()]);
+}
+
+***
+
+Fait d'abord "Correction finale de product_history.php (marges + filtres + pagination)"
+code complet
+
+****
+product_history.php, fonctionne très bien. 
+
+
+
+**** traitement en cours...
+modifions également le script pour la modification du produit. 
+ce code se trouve dans products.php 
+****
+function openEditModal(productId){
+
+  fetch('product_edit.php?get=1&product_id=' + productId)
+    .then(r => r.json())
+    .then(j => {
+
+      if(!j.ok){
+        alert(j.message || 'Erreur');
+        return;
+      }
+
+      // ✅ remplir TOUS les champs
+      document.getElementById('edit_product_id').value = j.product.id;
+      document.getElementById('edit_name').value       = j.product.name;
+      document.getElementById('edit_price_cdf').value = j.product.price_cdf; // 🔥 FIX
+      document.getElementById('edit_description').value = j.product.description || '';
+
+      new bootstrap.Modal(
+        document.getElementById('editProductModal')
+      ).show();
+    })
+    .catch(() => alert('Erreur réseau'));
+}
+</script>
+***
+et voici également le code complet de product_edit.php
+***
+<?php
+// pagesweb_cn/product_edit.php
+require_once __DIR__ . '/connectDb.php';
+
+if (ob_get_length()) ob_end_clean();
+
+/* ======================================================
+   GET : récupérer les infos du produit (AJAX)
+   ====================================================== */
+if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['get'])) {
+
+    header('Content-Type: application/json; charset=utf-8');
+
+    $product_id = (int)($_GET['product_id'] ?? 0);
+
+    if ($product_id <= 0) {
+        echo json_encode(['ok' => false, 'message' => 'ID produit invalide']);
+        exit;
+    }
+
+    $stmt = $pdo->prepare("
+        SELECT id, name, price_cdf, description
+        FROM products
+        WHERE id = ?
+    ");
+    $stmt->execute([$product_id]);
+    $product = $stmt->fetch();
+
+    if (!$product) {
+        echo json_encode(['ok' => false, 'message' => 'Produit introuvable']);
+        exit;
+    }
+
+    echo json_encode([
+        'ok' => true,
+        'product' => $product
+    ]);
+    exit;
+}
+
+
+/* ======================================================
+   POST : mise à jour du produit
+   ====================================================== */
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+
+    if (!isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'admin') {
+        header("Location: connect-parse.php?role=admin");
+        exit;
+    }
+
+    $product_id  = (int)($_POST['product_id'] ?? 0);
+    $name        = trim($_POST['name'] ?? '');
+    $price_cdf   = floatval($_POST['price_cdf'] ?? 0);
+    $description = trim($_POST['description'] ?? '');
+
+    if ($product_id <= 0 || $name === '' || $price_cdf <= 0) {
+        header("Location: products.php?msg=invalid");
+        exit;
+    }
+
+    // Mise à jour du produit (CDF = référence)
+    $stmt = $pdo->prepare("
+        UPDATE products
+        SET name = ?, price_cdf = ?, description = ?
+        WHERE id = ?
+    ");
+    $stmt->execute([
+        $name,
+        $price_cdf,
+        $description,
+        $product_id
+    ]);
+
+    // récupérer la maison pour redirection
+    $stmt = $pdo->prepare("SELECT house_id FROM products WHERE id = ?");
+    $stmt->execute([$product_id]);
+    $house_id = (int)$stmt->fetchColumn();
+
+    header("Location: products.php?house_id=".$house_id."&msg=updated");
+    exit;
+}
+***
+
+
+oui, mais dans le fichier products_low_stock.php, j'ai cette erreur "
+
+"
+
+
+
+
+

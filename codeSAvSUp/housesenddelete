@@ -1,0 +1,143 @@
+
+<?php
+// pagesweb_cn/send_house_delete_code.php
+require_once __DIR__ . '/connectDb.php';
+require_once __DIR__ . '/../vendor/autoload.php'; // PHPMailer
+
+
+if (ob_get_length()) ob_end_clean();
+header('Content-Type: application/json; charset=utf-8');
+
+// POST: house_id, email
+$house_id = intval($_POST['house_id'] ?? 0);
+$email = trim($_POST['email'] ?? '');
+
+if($house_id <= 0 || !filter_var($email, FILTER_VALIDATE_EMAIL)){
+    echo json_encode(['ok'=>false,'message'=>'Paramètres invalides']);
+    exit;
+}
+
+// check house exists
+$stmt = $pdo->prepare("SELECT id,name,code,address FROM houses WHERE id = ?");
+$stmt->execute([$house_id]);
+$house = $stmt->fetch();
+if(!$house){
+    echo json_encode(['ok'=>false,'message'=>'Maison introuvable']);
+    exit;
+}
+
+// generate 6-digit code and expiry (2 minutes)
+$code = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+$expires = time() + 5*60; // 5 minutes validity for deletion code
+
+// create table if not exists (safe)
+$pdo->exec("CREATE TABLE IF NOT EXISTS house_delete_requests (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    house_id INT NOT NULL,
+    email VARCHAR(255) NOT NULL,
+    code VARCHAR(10) NOT NULL,
+    expires_at INT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
+
+// insert request
+$ins = $pdo->prepare("INSERT INTO house_delete_requests (house_id,email,code,expires_at) VALUES (?,?,?,?)");
+$ins->execute([$house_id,$email,$code,$expires]);
+$request_id = $pdo->lastInsertId();
+
+// send email using PHPMailer (configure SMTP below)
+$mail = new \PHPMailer\PHPMailer\PHPMailer(true);
+try {
+
+ 
+
+    $mail->send();
+
+
+
+
+    // SMTP configuration 
+
+    //
+    $mail = new PHPMailer(true);
+    $mail->isSMTP();
+    $mail->Host       = 'smtp.titan.email';
+    $mail->SMTPAuth   = true;
+    $mail->Username   = 'cartelplus-congo@cartelplus.tech';
+    $mail->Password   = 'Jo@Kin243'; // ⚠️ Remplacer
+    $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
+    $mail->Port       = 587;
+
+   
+    $mail->setFrom('cartelplus-congo@cartelplus.tech', 'CartelPlus Congo - Inscriptions');
+    $mail->addAddress($email);
+
+    $mail->isHTML(true);
+    $mail->Subject = "Code de suppression pour la maison: ".htmlspecialchars($house['name']);
+    $mail->Body = "<p>Vous avez demandé la suppression de la maison <strong>".htmlspecialchars($house['name'])."</strong>.</p>
+                   <p>Code de suppression : <strong>$code</strong></p>
+                   <p>Ce code expire dans 5 minutes.</p>";
+
+    $mail->send();
+
+    // redirect to wait page with request id
+    echo json_encode(['ok'=>true,'request_id'=>$request_id]);
+    exit;
+} catch (\Exception $e){
+    echo json_encode(['ok'=>false,'message'=>'Erreur envoi mail: '.$e->getMessage()]);
+    exit;
+}
+
+
+
+
+
+
+
+# Interdire le listing de répertoires
+Options -Indexes
+
+# Activer mod_rewrite
+RewriteEngine On
+RewriteBase /cartelpluscn/
+
+# 1. Si on tape une URL sans extension (.php implicite)
+#    Exemple: /pagesweb_cn/formations/ => pagesweb_cn/formations.php
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteCond %{REQUEST_FILENAME}\.php -f
+RewriteRule ^(.+)/$ $1.php [L]
+
+# 2. Optionnel : enlever .php quand on tape avec extension
+#    Exemple: /pagesweb_cn/formations.php => /pagesweb_cn/formations/
+RewriteCond %{THE_REQUEST} ^[A-Z]{3,}\s([^.]+)\.php [NC]
+RewriteRule ^ %1/ [R=301,L]
+
+
+# 3. Page 404 personnalisée
+# -----------------------------------------------------
+ErrorDocument 404 /cartelpluscn/pagesweb_cn/404.php
+
+
+# Bloquer l’accès direct aux dossiers sans index
+
+
+********************************************************************************************************************
+# Interdire le listing
+Options -Indexes
+
+RewriteEngine On
+RewriteBase /inve-app/
+
+# --- NE PAS réécrire pagesweb_cn/ ---
+RewriteRule ^pagesweb_cn/ - [L]
+
+# --- UNIQUEMENT retirer .php si EXISTE ---
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteCond %{REQUEST_FILENAME}\.php -f
+RewriteRule ^(.+)$ $1.php [L,QSA]
+
+# Page 404 custom
+ErrorDocument 404 /inve-app/pagesweb_cn/404.php
+
+
+

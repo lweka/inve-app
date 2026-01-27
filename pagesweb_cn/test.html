@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <h1>Server test OK</h1>
+</body>
+</html>
+
+<?php
+require_once __DIR__ . '/public/index.php';
+
+*************script bdd muya ****
+
+
+<?php
+if (!defined('DB_HOST')) define('DB_HOST', 'srv996.hstgr.io');
+if (!defined('DB_NAME')) define('DB_NAME', 'u424760992_kmservices');
+if (!defined('DB_USER')) define('DB_USER', 'u424760992_kmservices_use');
+if (!defined('DB_PASS')) define('DB_PASS', 'Kmservices@@Kin243');
+
+// Détection précise des chemins
+$protocol = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http';
+$host = $_SERVER['HTTP_HOST'] ?? 'localhost';
+$scriptName = str_replace('\\', '/', $_SERVER['SCRIPT_NAME']); // ex: /kmservices/public/index.php ou /index.php
+
+if (str_contains($scriptName, '/public/')) {
+    // Cas WAMP : dossier /public/ visible dans l'URL du script
+    $baseDir = str_replace('/public', '', dirname($scriptName));
+    $assetDir = dirname($scriptName);
+} else {
+    // Cas Serveur PHP intégré (-t public) ou VirtualHost vers public/
+    $baseDir = dirname($scriptName);
+    $assetDir = dirname($scriptName);
+}
+
+$baseDir = rtrim($baseDir, '/') . '/';
+$assetDir = rtrim($assetDir, '/') . '/';
+
+if (!defined('APP_URL')) define('APP_URL', $protocol . '://' . $host . $baseDir);
+if (!defined('ASSET_URL')) define('ASSET_URL', $protocol . '://' . $host . $assetDir);
+
+if (!defined('APP_NAME')) define('APP_NAME', 'KM Services');
+if (!defined('UPLOAD_DIR')) define('UPLOAD_DIR', __DIR__ . '/../public/uploads/');
+
+****
+
+  <div id="loginMsg" style="display:none;"></div>
+
+        <div id="loginMsg" style="display:none; margin-top:1rem; padding:0.75rem; border-radius:4px; border-left:4px solid;"></div>
+
+        **
+
+

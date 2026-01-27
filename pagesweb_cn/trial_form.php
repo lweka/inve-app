@@ -1,0 +1,430 @@
+<?php
+/**
+ * ===================================
+ * FORMULAIRE D'ESSAI GRATUIT (7 jours)
+ * ===================================
+ * Les utilisateurs remplissent ce formulaire
+ * et reçoivent un code pour tester 7 jours
+ */
+
+require_once __DIR__ . '/connectDb.php';
+
+$error_message = '';
+$success_message = '';
+$trial_code = '';
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $first_name = trim($_POST['first_name'] ?? '');
+    $last_name = trim($_POST['last_name'] ?? '');
+    $email = trim($_POST['email'] ?? '');
+    $phone = trim($_POST['phone'] ?? '');
+    $company_name = trim($_POST['company_name'] ?? '');
+
+    // Validation
+    if (!$first_name || !$last_name || !$email) {
+        $error_message = '❌ Veuillez remplir tous les champs obligatoires';
+    } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        $error_message = '❌ Adresse email invalide';
+    } else {
+        // Générer code d'essai unique
+        $trial_code = 'TRIAL-' . strtoupper(uniqid());
+        
+        try {
+            $stmt = $pdo->prepare("
+                INSERT INTO trial_codes (code, first_name, last_name, email, phone, company_name, status)
+                VALUES (?, ?, ?, ?, ?, ?, 'unused')
+            ");
+            $stmt->execute([$trial_code, $first_name, $last_name, $email, $phone, $company_name]);
+            
+            $success_message = "✅ Code d'essai généré avec succès !";
+        } catch (PDOException $e) {
+            if (strpos($e->getMessage(), 'Duplicate entry') !== false) {
+                $error_message = '❌ Cette adresse email est déjà enregistrée';
+            } else {
+                $error_message = '❌ Erreur lors de l\'enregistrement';
+            }
+        }
+    }
+}
+?>
+
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Essai Gratuit 7 Jours | CartelPlus Congo</title>
+    <link href="../css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --blue: #0A6FB7;
+            --orange: #F25C2A;
+            --dark: #0B0E14;
+            --white: #ffffff;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: linear-gradient(135deg, #0B0E14 0%, #1a1f2e 100%);
+            color: var(--white);
+            font-family: "Segoe UI", system-ui, sans-serif;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container-trial {
+            width: 100%;
+            max-width: 550px;
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(10, 111, 183, 0.3);
+            border-radius: 20px;
+            padding: 50px;
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.5);
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .logo {
+            font-size: 36px;
+            margin-bottom: 10px;
+        }
+
+        .title {
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--white);
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        .benefits {
+            background: rgba(10, 111, 183, 0.1);
+            border-left: 4px solid var(--orange);
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+        }
+
+        .benefits-title {
+            font-size: 13px;
+            font-weight: 600;
+            text-transform: uppercase;
+            color: var(--orange);
+            margin-bottom: 8px;
+        }
+
+        .benefit-item {
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.8);
+            margin-bottom: 5px;
+            padding-left: 20px;
+            position: relative;
+        }
+
+        .benefit-item:before {
+            content: '✓';
+            position: absolute;
+            left: 0;
+            color: var(--orange);
+            font-weight: bold;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            text-transform: uppercase;
+            color: rgba(255, 255, 255, 0.8);
+            margin-bottom: 8px;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 12px 15px;
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(10, 111, 183, 0.3);
+            border-radius: 8px;
+            color: var(--white);
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: var(--orange);
+            background: rgba(255, 255, 255, 0.12);
+            box-shadow: 0 0 10px rgba(242, 92, 42, 0.2);
+        }
+
+        .form-control::placeholder {
+            color: rgba(255, 255, 255, 0.4);
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+
+        .btn-submit {
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(135deg, var(--orange) 0%, #E84A1F 100%);
+            border: none;
+            border-radius: 8px;
+            color: white;
+            font-weight: 700;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .btn-submit:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(242, 92, 42, 0.3);
+        }
+
+        .btn-submit:active {
+            transform: translateY(0);
+        }
+
+        .alert {
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            font-size: 13px;
+        }
+
+        .alert-error {
+            background: rgba(220, 53, 69, 0.2);
+            border-left: 4px solid #dc3545;
+            color: #ff6b6b;
+        }
+
+        .alert-success {
+            background: rgba(40, 167, 69, 0.2);
+            border-left: 4px solid #28a745;
+            color: #90EE90;
+        }
+
+        .code-box {
+            background: rgba(10, 111, 183, 0.2);
+            border: 1px dashed var(--blue);
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        .code-label {
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.6);
+            text-transform: uppercase;
+            margin-bottom: 10px;
+        }
+
+        .code-display {
+            font-family: 'Courier New', monospace;
+            font-size: 24px;
+            font-weight: bold;
+            color: var(--orange);
+            letter-spacing: 2px;
+            word-break: break-all;
+            margin-bottom: 15px;
+        }
+
+        .next-step {
+            background: rgba(242, 92, 42, 0.15);
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 20px;
+        }
+
+        .next-step-title {
+            font-weight: 700;
+            color: var(--orange);
+            margin-bottom: 10px;
+        }
+
+        .next-step-desc {
+            font-size: 13px;
+            color: rgba(255, 255, 255, 0.8);
+            line-height: 1.6;
+            margin-bottom: 15px;
+        }
+
+        .btn-validate {
+            width: 100%;
+            padding: 10px;
+            background: var(--blue);
+            border: none;
+            border-radius: 8px;
+            color: white;
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+            text-align: center;
+            display: inline-block;
+        }
+
+        .btn-validate:hover {
+            opacity: 0.9;
+        }
+
+        .footer-links {
+            text-align: center;
+            margin-top: 30px;
+            font-size: 12px;
+        }
+
+        .footer-links a {
+            color: var(--orange);
+            text-decoration: none;
+            margin: 0 10px;
+        }
+
+        .footer-links a:hover {
+            text-decoration: underline;
+        }
+
+        @media (max-width: 600px) {
+            .container-trial {
+                padding: 30px 20px;
+            }
+
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+
+            .title {
+                font-size: 22px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="container-trial">
+
+    <div class="header">
+        <div class="logo">🚀</div>
+        <div class="title">Essai Gratuit</div>
+        <div class="subtitle">7 jours complets - Accès illimité au système</div>
+    </div>
+
+    <?php if (!$success_message): ?>
+
+        <div class="benefits">
+            <div class="benefits-title">Inclus dans votre essai</div>
+            <div class="benefit-item">Gestion complète des ventes POS</div>
+            <div class="benefit-item">Dashboard administrateur</div>
+            <div class="benefit-item">Rapports journaliers & marges</div>
+            <div class="benefit-item">Génération tickets PDF</div>
+            <div class="benefit-item">Gestion des utilisateurs</div>
+        </div>
+
+        <?php if ($error_message): ?>
+        <div class="alert alert-error"><?= $error_message ?></div>
+        <?php endif; ?>
+
+        <form method="POST">
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">Prénom *</label>
+                    <input type="text" name="first_name" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Nom *</label>
+                    <input type="text" name="last_name" class="form-control" required>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Email *</label>
+                <input type="email" name="email" class="form-control" required>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">Téléphone</label>
+                    <input type="tel" name="phone" class="form-control">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Entreprise</label>
+                    <input type="text" name="company_name" class="form-control">
+                </div>
+            </div>
+
+            <button type="submit" class="btn-submit">🎯 Commencer Mon Essai</button>
+        </form>
+
+    <?php else: ?>
+
+        <div class="alert alert-success"><?= $success_message ?></div>
+
+        <div class="code-box">
+            <div class="code-label">Votre Code d'Essai</div>
+            <div class="code-display"><?= htmlspecialchars($trial_code) ?></div>
+            <button onclick="copyCode()" class="btn-validate" style="background: var(--orange); margin-bottom: 10px;">
+                📋 Copier le Code
+            </button>
+        </div>
+
+        <div class="next-step">
+            <div class="next-step-title">🎯 Prochaine Étape</div>
+            <div class="next-step-desc">
+                Cliquez sur le bouton ci-dessous pour entrer en contact avec nous et activer votre essai. 
+                Nous allons créer votre compte d'accès immédiatement.
+            </div>
+            <a href="trial_verify.php?code=<?= urlencode($trial_code) ?>" class="btn-validate">
+                ✅ Valider Mon Essai →
+            </a>
+        </div>
+
+        <div style="text-align: center; margin-top: 20px; font-size: 12px; color: rgba(255, 255, 255, 0.6);">
+            <p>Votre essai expire automatiquement après 7 jours</p>
+        </div>
+
+    <?php endif; ?>
+
+    <div class="footer-links">
+        <a href="http://localhost/inve-app/">← Retour Accueil</a>
+        <a href="subscription_buy.php">💳 Acheter un Abonnement</a>
+    </div>
+
+</div>
+
+<script>
+function copyCode() {
+    const code = '<?= htmlspecialchars($trial_code) ?>';
+    navigator.clipboard.writeText(code).then(() => {
+        alert('✅ Code copié !');
+    });
+}
+</script>
+
+</body>
+</html>

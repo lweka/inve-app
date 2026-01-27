@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Invitations Numériques - Service Professionnel</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header>
+        <div class="container">
+            <h1>Invitations Élégantes</h1>
+            <p>Créez des invitations numériques avec QR codes pour vos événements</p>
+        </div>
+    </header>
+
+    <section class="hero">
+        <div class="container">
+            <h2>Des invitations modernes et élégantes pour tous vos événements</h2>
+            <p>Mariages, conférences, cérémonies - Simplifiez votre processus d'invitation</p>
+            <a href="#form-section" class="cta-button">Créer une invitation</a>
+        </div>
+    </section>
+
+    <section class="process">
+        <div class="container">
+            <h2>Comment ça marche</h2>
+            <div class="steps">
+                <div class="step">
+                    <div class="step-number">1</div>
+                    <h3>Soumission</h3>
+                    <p>Remplissez notre formulaire simple avec les détails de votre événement</p>
+                </div>
+                <div class="step">
+                    <div class="step-number">2</div>
+                    <h3>Paiement</h3>
+                    <p>Effectuez le paiement via mobile money ou virement bancaire</p>
+                </div>
+                <div class="step">
+                    <div class="step-number">3</div>
+                    <h3>Réception</h3>
+                    <p>Recevez vos invitations avec QR codes dans les 24h après confirmation de paiement</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="form-section" class="request-form">
+        <div class="container">
+            <h2>Demander une invitation</h2>
+            <form id="invitation-form" action="process.php" method="POST" enctype="multipart/form-data">
+                <div class="form-group">
+                    <label for="nom">Nom complet *</label>
+                    <input type="text" id="nom" name="nom" required>
+                    <span class="error-message"></span>
+                </div>
+
+                <div class="form-group">
+                    <label for="email">Email *</label>
+                    <input type="email" id="email" name="email" required>
+                    <span class="error-message"></span>
+                </div>
+
+                <div class="form-group">
+                    <label for="telephone">Téléphone *</label>
+                    <input type="tel" id="telephone" name="telephone" required>
+                    <span class="error-message"></span>
+                </div>
+
+                <div class="form-group">
+                    <label for="type_evenement">Type d'événement *</label>
+                    <select id="type_evenement" name="type_evenement" required>
+                        <option value="">Sélectionnez...</option>
+                        <option value="mariage">Mariage</option>
+                        <option value="conference">Conférence</option>
+                        <option value="ceremonie">Cérémonie</option>
+                        <option value="anniversaire">Anniversaire</option>
+                        <option value="autre">Autre</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="date_evenement">Date de l'événement *</label>
+                    <input type="date" id="date_evenement" name="date_evenement" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="lieu">Lieu *</label>
+                    <input type="text" id="lieu" name="lieu" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="nombre_participants">Nombre de participants *</label>
+                    <input type="number" id="nombre_participants" name="nombre_participants" min="1" required>
+                    <div class="price-preview">
+                        <p>Prix estimé: <span id="price-display">0</span> $</p>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="design_preferences">Préférences de design</label>
+                    <textarea id="design_preferences" name="design_preferences" rows="4"></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label for="design_file">Télécharger un design existant (optionnel)</label>
+                    <input type="file" id="design_file" name="design_file" accept="image/*,.pdf,.doc,.docx">
+                </div>
+
+                <button type="submit" class="submit-btn">Soumettre la demande</button>
+            </form>
+        </div>
+    </section>
+
+    <footer>
+        <div class="container">
+            <p>&copy; 2023 Invitations Élégantes. Tous droits réservés.</p>
+        </div>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+</html>
