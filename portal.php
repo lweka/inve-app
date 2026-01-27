@@ -68,10 +68,26 @@ $message = isset($_GET['message']) ? $_GET['message'] : '';
             font-size: 24px;
             font-weight: 700;
             color: var(--white);
+            display: flex;
+            align-items: center;
+            gap: 15px;
         }
 
-        .navbar-brand strong {
-            color: var(--orange);
+        .navbar-logo {
+            height: 45px;
+            max-width: 200px;
+            object-fit: contain;
+            transition: all 0.3s ease;
+        }
+
+        .navbar-logo:hover {
+            transform: scale(1.05);
+        }
+
+        @media (max-width: 768px) {
+            .navbar-logo {
+                height: 35px;
+            }
         }
 
         /* MAIN CONTENT */
@@ -309,7 +325,7 @@ $message = isset($_GET['message']) ? $_GET['message'] : '';
 <nav class="navbar-custom">
     <div class="container-fluid">
         <div class="navbar-brand">
-            🚀 <strong>CartelPlus</strong> Congo
+            <img src="images/LogoCartelplusCongo.png" alt="CartelPlus Congo" class="navbar-logo">
         </div>
     </div>
 </nav>
