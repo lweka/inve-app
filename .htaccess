@@ -8,7 +8,7 @@
 Options -Indexes
 
 RewriteEngine On
-RewriteBase /
+RewriteBase /inve-app/
 
 # 1️⃣ NE PAS réécrire les requêtes réelles (fichiers et dossiers existants)
 RewriteCond %{REQUEST_FILENAME} -f [OR]
@@ -24,4 +24,4 @@ RewriteCond %{REQUEST_FILENAME}.php -f
 RewriteRule ^(.+?)/?$ $1.php [L,QSA]
 
 # 4️⃣ Page 404
-ErrorDocument 404 /pagesweb_cn/404.php
+ErrorDocument 404 /inve-app/pagesweb_cn/404.php
