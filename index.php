@@ -345,7 +345,7 @@ $message = isset($_GET['message']) ? $_GET['message'] : '';
     <div class="container-fluid">
         <div class="navbar-brand">
             <img src="images/LogoCartelplusCongo.png" alt="CartelPlus Congo" class="navbar-logo">
-            <span class="navbar-text"><strong>CartelPlus</strong> Congo</span>
+            <span class="navbar-text"><strong>CartelPlus</strong> Congo test</span>
         </div>
     </div>
 </nav>
