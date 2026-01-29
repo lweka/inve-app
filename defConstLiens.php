@@ -33,5 +33,9 @@
     if (!file_exists($page404)) {die("Erreur : footer introuvable : $page404");}
 
 // Constantes pour l'authentification admin/seller
-define('AUTHENTIFICATION', '/inve-app/pagesweb_cn/auth.php');
-define('PARSE_CONNECT', '/inve-app/pagesweb_cn/connect-parse.php');
+if (!defined('AUTHENTIFICATION')) {
+    define('AUTHENTIFICATION', '/inve-app/pagesweb_cn/auth.php');
+}
+if (!defined('PARSE_CONNECT')) {
+    define('PARSE_CONNECT', '/inve-app/pagesweb_cn/connect-parse.php');
+}
