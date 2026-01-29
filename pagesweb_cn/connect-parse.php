@@ -87,7 +87,7 @@
         <div class="card-body">
             <?php if($role === 'admin'): ?>
                 <h5 class="login-title">Connexion Administrateur</h5>
-                <form id="adminLogin" method="POST" action="<?= AUTHENTIFICATION ?>">
+                <form id="adminLogin" method="POST" action="/pagesweb_cn/auth.php">
                     <input type="hidden" name="role" value="admin">
                     <div class="mb-3">
                         <label>Nom d'utilisateur</label>
