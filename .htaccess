@@ -1,27 +1,20 @@
-
-
-
-
-
-
 # Désactiver l’indexation
 Options -Indexes
 
 RewriteEngine On
-RewriteBase /inve-app/
 
-# 1️⃣ NE PAS réécrire les requêtes réelles (fichiers et dossiers existants)
+# 1️⃣ Ne pas réécrire les fichiers et dossiers existants
 RewriteCond %{REQUEST_FILENAME} -f [OR]
 RewriteCond %{REQUEST_FILENAME} -d
 RewriteRule ^ - [L]
 
-# 2️⃣ NE PAS réécrire si fichier .php déjà demandé explicitement
+# 2️⃣ Ne pas toucher aux fichiers .php appelés directement
 RewriteCond %{REQUEST_URI} \.php$ [NC]
 RewriteRule ^ - [L]
 
-# 3️⃣ Masquer les extensions .php - Ajouter .php si le fichier existe sans extension
+# 3️⃣ Masquer .php (URL propre)
 RewriteCond %{REQUEST_FILENAME}.php -f
 RewriteRule ^(.+?)/?$ $1.php [L,QSA]
 
-# 4️⃣ Page 404
-ErrorDocument 404 /inve-app/pagesweb_cn/404.php
+# 4️⃣ Page 404 personnalisée
+ErrorDocument 404 /pagesweb_cn/404.php
