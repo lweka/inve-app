@@ -301,7 +301,7 @@ $active_clients = $stmt_clients->fetchAll(PDO::FETCH_ASSOC);
     <div class="container-fluid">
         <div class="d-flex justify-content-between align-items-center">
             <h2 class="mb-0">⚙️ Gestion des Abonnements</h2>
-            <a href="dashboard.php" class="btn btn-outline-light">← Retour Dashboard</a>
+            <a href="admin_logout.php" class="btn btn-danger">Déconnexion</a>
         </div>
     </div>
 </div>
