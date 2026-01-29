@@ -74,7 +74,7 @@ if($role === 'admin') {
         initialize_client_data($admin['client_code'], $pdo);
 
         // Rediriger vers le dashboard (chemin absolu)
-        header("Location: /inve-app/pagesweb_cn/dashboard/");
+        header("Location: /inve-app/pagesweb_cn/dashboard.php");
         exit;
 
     } catch (PDOException $e) {

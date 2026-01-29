@@ -421,10 +421,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 function copyCode() {
     const code = '<?= htmlspecialchars($trial_code) ?>';
     navigator.clipboard.writeText(code).then(() => {
-        alert('✅ Code copié !');
+        const modal = document.getElementById('copyModal');
+        const bsModal = new bootstrap.Modal(modal);
+        bsModal.show();
     });
 }
 </script>
+
+<!-- Modal Bootstrap pour confirmation de copie -->
+<div class="modal fade" id="copyModal" tabindex="-1" aria-labelledby="copyModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title" id="copyModalLabel">Code copié !</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+            </div>
+            <div class="modal-body text-center">
+                <div style="font-size:2rem;">✅</div>
+                <p class="mt-2 mb-0">Le code d'essai a bien été copié dans le presse-papiers.<br>Vous pouvez le coller où vous le souhaitez.</p>
+            </div>
+        </div>
+    </div>
+</div>
 
 </body>
 </html>
