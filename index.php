@@ -33,10 +33,13 @@ $message = isset($_GET['message']) ? $_GET['message'] : '';
     <link href="css/bootstrap.min.css" rel="stylesheet">
     <style>
         :root {
-            --blue: #0A6FB7;
-            --orange: #F25C2A;
-            --dark: #0B0E14;
-            --white: #ffffff;
+            --blue: #0070ba;
+            --blue-dark: #003087;
+            --yellow: #ffc439;
+            --gray-bg: #f7fafd;
+            --gray-border: #e5e7eb;
+            --white: #fff;
+            --text: #222;
         }
 
         * {
@@ -50,8 +53,8 @@ $message = isset($_GET['message']) ? $_GET['message'] : '';
         }
 
         body {
-            background: linear-gradient(135deg, #0B0E14 0%, #1a1f2e 50%, #0B0E14 100%);
-            color: var(--white);
+            background: var(--gray-bg);
+            color: var(--text);
             font-family: "Segoe UI", system-ui, sans-serif;
             min-height: 100vh;
             display: flex;
@@ -60,40 +63,36 @@ $message = isset($_GET['message']) ? $_GET['message'] : '';
 
         /* NAVBAR */
         .navbar-custom {
-            background: rgba(10, 111, 183, 0.1);
-            border-bottom: 1px solid rgba(10, 111, 183, 0.3);
+            background: var(--white);
+            border-bottom: 1px solid var(--gray-border);
             padding: 15px 0;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
         }
-
         .navbar-brand {
-            font-size: 24px;
+            font-size: 2rem;
             font-weight: 700;
-            color: var(--white);
+            color: var(--blue-dark);
             display: flex;
             align-items: center;
             gap: 12px;
         }
-
         .navbar-logo {
             height: 45px;
             max-width: 200px;
             object-fit: contain;
             transition: all 0.3s ease;
         }
-
         .navbar-logo:hover {
             transform: scale(1.05);
         }
-
         .navbar-text {
-            color: var(--white);
+            color: var(--blue-dark);
             font-size: 20px;
             font-weight: 700;
             white-space: nowrap;
         }
-
         .navbar-text strong {
-            color: var(--orange);
+            color: var(--yellow);
         }
 
         @media (max-width: 768px) {
@@ -118,41 +117,32 @@ $message = isset($_GET['message']) ? $_GET['message'] : '';
             justify-content: center;
             padding: 40px 20px;
         }
-
         .hero-container {
             width: 100%;
             max-width: 1200px;
         }
-
         .hero-header {
             text-align: center;
             margin-bottom: 60px;
         }
-
         .hero-icon {
             font-size: 72px;
             margin-bottom: 20px;
         }
-
         .hero-title {
             font-size: 48px;
             font-weight: 700;
             margin-bottom: 15px;
-            background: linear-gradient(135deg, var(--orange) 0%, var(--white) 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
+            color: var(--blue-dark);
         }
-
         .hero-subtitle {
             font-size: 18px;
-            color: rgba(255, 255, 255, 0.7);
+            color: var(--blue);
             margin-bottom: 10px;
         }
-
         .hero-desc {
-            font-size: 14px;
-            color: rgba(255, 255, 255, 0.6);
+            font-size: 15px;
+            color: #555;
             max-width: 600px;
             margin: 0 auto;
             line-height: 1.6;
@@ -165,152 +155,123 @@ $message = isset($_GET['message']) ? $_GET['message'] : '';
             gap: 30px;
             margin-bottom: 60px;
         }
-
         .card-option {
-            background: rgba(255, 255, 255, 0.08);
-            backdrop-filter: blur(20px);
-            border: 1px solid rgba(10, 111, 183, 0.3);
+            background: var(--white);
+            border: 1px solid var(--gray-border);
             border-radius: 15px;
             padding: 40px 30px;
             text-align: center;
-            transition: all 0.3s;
+            transition: box-shadow 0.3s, border 0.3s;
             cursor: pointer;
             position: relative;
             overflow: hidden;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.06);
         }
-
-        .card-option::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 3px;
-            background: linear-gradient(90deg, var(--orange) 0%, transparent 100%);
-            opacity: 0;
-            transition: opacity 0.3s;
-        }
-
         .card-option:hover {
-            border-color: var(--orange);
-            background: rgba(255, 255, 255, 0.12);
-            transform: translateY(-5px);
-            box-shadow: 0 20px 40px rgba(242, 92, 42, 0.2);
+            border-color: var(--blue);
+            box-shadow: 0 8px 32px rgba(0,112,186,0.10);
         }
-
-        .card-option:hover::before {
-            opacity: 1;
-        }
-
         .card-icon {
             font-size: 48px;
             margin-bottom: 15px;
+            color: var(--blue);
         }
-
         .card-title {
             font-size: 22px;
             font-weight: 700;
-            color: var(--white);
+            color: var(--blue-dark);
             margin-bottom: 10px;
         }
-
         .card-desc {
-            font-size: 13px;
-            color: rgba(255, 255, 255, 0.7);
+            font-size: 14px;
+            color: #555;
             line-height: 1.6;
             margin-bottom: 25px;
         }
-
         .card-features {
             text-align: left;
-            background: rgba(10, 111, 183, 0.1);
+            background: #f1f5f9;
             padding: 15px;
             border-radius: 8px;
             margin-bottom: 20px;
             font-size: 12px;
-            color: rgba(255, 255, 255, 0.7);
+            color: #333;
         }
-
         .card-features li {
             list-style: none;
             margin-bottom: 6px;
             padding-left: 20px;
             position: relative;
         }
-
         .card-features li:before {
             content: '✓';
             position: absolute;
             left: 0;
-            color: var(--orange);
+            color: var(--yellow);
             font-weight: bold;
         }
-
         .card-button {
             display: inline-block;
             padding: 12px 30px;
-            background: linear-gradient(135deg, var(--orange) 0%, #E84A1F 100%);
-            color: white;
+            background: linear-gradient(90deg, var(--blue) 0%, var(--blue-dark) 100%);
+            color: var(--white);
             text-decoration: none;
             border-radius: 8px;
             font-weight: 700;
             font-size: 13px;
             text-transform: uppercase;
-            transition: all 0.3s;
+            transition: background 0.3s, box-shadow 0.3s;
             border: none;
             cursor: pointer;
         }
-
         .card-button:hover {
-            transform: scale(1.05);
-            box-shadow: 0 10px 30px rgba(242, 92, 42, 0.3);
+            background: var(--yellow);
+            color: var(--blue-dark);
+            box-shadow: 0 10px 30px rgba(0,112,186,0.10);
         }
-
         .card-button:active {
-            transform: scale(0.95);
+            transform: scale(0.97);
         }
-
         .card-secondary {
-            background: rgba(10, 111, 183, 0.15);
-            border-color: rgba(10, 111, 183, 0.5);
+            background: #eaf6fb;
+            border-color: var(--blue);
         }
-
         .card-secondary .card-button {
-            background: var(--blue);
+            background: var(--blue-dark);
+            color: var(--white);
         }
 
         /* ALERT */
         .alert-custom {
-            background: rgba(220, 53, 69, 0.15);
-            border-left: 4px solid #dc3545;
+            background: #fffbe6;
+            border-left: 4px solid #ffc439;
             padding: 15px;
             border-radius: 8px;
             margin-bottom: 30px;
-            color: #ff6b6b;
+            color: #b38f00;
             font-size: 13px;
         }
 
         /* FOOTER */
         footer {
-            background: rgba(10, 111, 183, 0.1);
-            border-top: 1px solid rgba(10, 111, 183, 0.3);
+            background: var(--white);
+            border-top: 1px solid var(--gray-border);
             padding: 30px 0;
             text-align: center;
-            color: rgba(255, 255, 255, 0.6);
+            color: #888;
             font-size: 12px;
         }
-
         .footer-links {
             margin-bottom: 10px;
         }
-
         .footer-links a {
-            color: var(--orange);
+            color: var(--blue);
             text-decoration: none;
             margin: 0 15px;
+            font-weight: 500;
         }
-
         .footer-links a:hover {
+            color: var(--blue-dark);
             text-decoration: underline;
         }
 
