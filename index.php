@@ -347,7 +347,7 @@ $message = isset($_GET['message']) ? $_GET['message'] : '';
                     <li>Support technique inclus</li>
                     <li>Durée: 7 jours</li>
                 </div>
-                <a href="pagesweb_cn/trial_form.php" class="card-button">
+                <a href="pagesweb_cn/trial_form" class="card-button">
                     🚀 Commencer Essai
                 </a>
             </div>
@@ -378,7 +378,7 @@ $message = isset($_GET['message']) ? $_GET['message'] : '';
                     <li>Code d'abonnement (SUB-...)</li>
                     <li>Activation instantanée</li>
                 </div>
-                <a href="pagesweb_cn/trial_verify.php" class="card-button">
+                <a href="pagesweb_cn/trial_verify" class="card-button">
                     🔑 Valider Mon Code
                 </a>
             </div>
@@ -388,7 +388,7 @@ $message = isset($_GET['message']) ? $_GET['message'] : '';
         <!-- INFO SUPPLÉMENTAIRE -->
         <div style="text-align: center; margin-top: 60px; padding: 40px; background: rgba(10, 111, 183, 0.1); border-radius: 15px; border: 1px solid rgba(10, 111, 183, 0.3);">
             <h3 style="margin-bottom: 15px; font-size: 18px;">❓ Questions ?</h3>
-            <p style="color: rgba(255, 255, 255, 0.8); margin-bottom: 10px;">Contactez-nous pour plus d'informations</p>
+            <p style="color: rgba(16, 14, 14, 0.8); margin-bottom: 10px;">Contactez-nous pour plus d'informations</p>
             <p style="font-size: 12px; color: rgba(255, 255, 255, 0.6);">
                 📧 Email: <strong>admin@cartelplus.cd</strong><br>
                 📱 WhatsApp: <strong>+243 123 456 789</strong><br>
