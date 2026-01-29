@@ -10,27 +10,24 @@
 $error = '';
 $message = '';
 
+require_once __DIR__ . '/connectDb.php';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $username = trim($_POST['username'] ?? '');
     $password = trim($_POST['password'] ?? '');
 
-    // Validation basique
     if (!$username || !$password) {
         $error = '❌ Veuillez entrer le nom d\'utilisateur et le mot de passe';
     } else {
-        // Identifiants administrateur (sécurisés - à modifier)
-        $admin_username = 'admin';
-        $admin_password_hash = '$2y$10$YvXCpHrUGzqGCEz1vhLlKe6h4OlLQWCpL7V1QmKL8dD6P8FzCOyVq'; // hash de "admin123"
-
-        // Vérifier les identifiants
-        if ($username === $admin_username && password_verify($password, $admin_password_hash)) {
-            // Connexion réussie
+        // Vérification en base de données
+        $stmt = $pdo->prepare('SELECT * FROM admins WHERE username = ? LIMIT 1');
+        $stmt->execute([$username]);
+        $admin = $stmt->fetch();
+        if ($admin && password_verify($password, $admin['password_hash'])) {
             session_start();
             $_SESSION['admin_logged_in'] = true;
-            $_SESSION['admin_username'] = $username;
+            $_SESSION['admin_username'] = $admin['username'];
+            $_SESSION['admin_id'] = $admin['id'];
             $_SESSION['login_time'] = time();
-            
-            // Redirection vers le tableau de bord d'administration
             header('Location: admin_subscription_manager');
             exit;
         } else {
