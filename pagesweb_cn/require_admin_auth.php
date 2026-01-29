@@ -13,7 +13,7 @@ if (session_status() === PHP_SESSION_NONE) {
 
 // Vérifier que l'utilisateur est connecté comme admin
 if (empty($_SESSION['admin_id']) || $_SESSION['user_role'] !== 'admin') {
-    header('Location: /inve-app/pagesweb_cn/connect-parse.php?role=admin&message=not_logged_in');
+    header('Location: /pagesweb_cn/connect-parse.php?role=admin&message=not_logged_in');
     exit;
 }
 
@@ -35,7 +35,7 @@ if (!$client_code) {
 
 // Vérifier que le client_code est valide et actif
 if (!$client_code) {
-    header('Location: /inve-app/pagesweb_cn/connect-parse.php?role=admin&message=invalid_client');
+    header('Location: /pagesweb_cn/connect-parse.php?role=admin&message=invalid_client');
     exit;
 }
 
@@ -46,13 +46,13 @@ $client = $stmt->fetch(PDO::FETCH_ASSOC);
 
 if (!$client) {
     session_destroy();
-    header('Location: /inve-app/pagesweb_cn/connect-parse.php?role=admin&message=client_inactive');
+    header('Location: /pagesweb_cn/connect-parse.php?role=admin&message=client_inactive');
     exit;
 }
 
 if (strtotime($client['expires_at']) < time()) {
     session_destroy();
-    header('Location: /inve-app/pagesweb_cn/connect-parse.php?role=admin&message=subscription_expired');
+    header('Location: /pagesweb_cn/connect-parse.php?role=admin&message=subscription_expired');
     exit;
 }
 

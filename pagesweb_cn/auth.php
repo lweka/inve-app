@@ -74,7 +74,7 @@ if($role === 'admin') {
         initialize_client_data($admin['client_code'], $pdo);
 
         // Rediriger vers le dashboard (chemin absolu)
-        header("Location: /inve-app/pagesweb_cn/dashboard.php");
+        header("Location: /pagesweb_cn/dashboard.php");
         exit;
 
     } catch (PDOException $e) {
@@ -118,7 +118,7 @@ if($role === 'seller') {
     $_SESSION['house_name'] = $house_name;
 
     //header("Location: seller_dashboard.php");
-    header("Location: /inve-app/pagesweb_cn/seller_dashboard.php");
+    header("Location: /pagesweb_cn/seller_dashboard.php");
 
     exit;
 }
