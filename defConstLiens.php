@@ -31,3 +31,7 @@
 
     $page404 = __DIR__ . '/pagesweb_cn/readdetail.php'; // chemin correct
     if (!file_exists($page404)) {die("Erreur : footer introuvable : $page404");}
+
+// Constantes pour l'authentification admin/seller
+define('AUTHENTIFICATION', '/inve-app/pagesweb_cn/auth.php');
+define('PARSE_CONNECT', '/inve-app/pagesweb_cn/connect-parse.php');
