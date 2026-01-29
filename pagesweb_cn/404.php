@@ -1,10 +1,10 @@
 <?php
+ini_set('display_errors', 1);
+error_reporting(E_ALL);
 http_response_code(404);
 
 require_once __DIR__ . '../../configUrlcn.php'; // __DIR__ = dossier racine
 require_once __DIR__ . '../../defConstLiens.php'; // __DIR__ = dossier racine
- 
-
 ?>
 <!DOCTYPE html>
 <html lang="fr">
