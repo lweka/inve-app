@@ -105,9 +105,11 @@ body {
   <div class="page-hero">
     <h3><i class="fa-solid fa-triangle-exclamation"></i> Produits en stock bas</h3>
   </div>
-  <?php foreach($houses as $h): ?>
-    <a href="<?=PRODUCTS_MANAGE?>?house_id=<?= $h['id']?>" class="btn-pp btn-pp-secondary mb-3"><i class="fa-solid fa-arrow-left"></i> Retour</a>
-  <?php endforeach; ?>
+  
+  <a href="<?= DASHBOARD_ADMIN ?>" class="btn-pp btn-pp-secondary mb-3">
+    <i class="fa-solid fa-arrow-left"></i> Retour au Dashboard
+  </a>
+
 <?php if(!$rows): ?>
   <div class="alert alert-success">
     Aucun produit en rupture ou stock bas.
