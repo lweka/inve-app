@@ -403,7 +403,7 @@ body {
             $convert   = number_format($p['sell_price'] / $rate, 2) . ' USD';
         }
     ?>
-      <div class="prod-row" data-name="<?=htmlspecialchars(strtolower($p['name']))?>" style="animation-delay: 0.<?= array_search($p, $products) * 3 ?>s;">
+      <div class="prod-row" id="prod-row-<?= $p['id'] ?>" data-name="<?=htmlspecialchars(strtolower($p['name']))?>" style="animation-delay: 0.<?= array_search($p, $products) * 3 ?>s;">
         <div class="card-prod <?= $stockLow ? 'stock-low' : '' ?>">
           <div class="d-flex justify-content-between align-items-start mb-2">
             <h5><?=htmlspecialchars($p['name'])?></h5>
@@ -896,6 +896,15 @@ document.getElementById('stockForm').addEventListener('submit', function(e){
     if(j.ok){
       const pid = data.get('product_id');
       document.getElementById('stock_' + pid).textContent = j.new_qty;
+
+      // Masquer le badge "Stock bas" si le stock est > 5
+      if(j.new_qty > 5){
+        const prodRow = document.getElementById('prod-row-' + pid);
+        if(prodRow){
+          const badge = prodRow.querySelector('.badge-danger');
+          if(badge) badge.remove();
+        }
+      }
 
       bootstrap.Modal.getInstance(document.getElementById('stockModal')).hide();
       showAlert('Stock mis à jour avec succès !', 'success');

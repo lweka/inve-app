@@ -349,6 +349,7 @@ $message = isset($_GET['message']) ? $_GET['message'] : '';
         </div>
         <div class="navbar-actions">
             <a class="btn-account" href="https://inve-app.cartelplus.site/pagesweb_cn/connect-parse.php?role=admin">Mon compte</a>
+            <a class="btn-account" href="https://inve-app.cartelplus.site/pagesweb_cn/connect-parse.php?role=seller">Espace vendeur</a>
         </div>
     </div>
 </nav>
