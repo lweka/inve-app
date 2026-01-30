@@ -68,6 +68,13 @@ $message = isset($_GET['message']) ? $_GET['message'] : '';
             padding: 15px 0;
             box-shadow: 0 2px 8px rgba(0,0,0,0.04);
         }
+        .navbar-custom .container-fluid {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            padding: 0 20px;
+        }
         .navbar-brand {
             font-size: 2rem;
             font-weight: 700;
@@ -75,6 +82,31 @@ $message = isset($_GET['message']) ? $_GET['message'] : '';
             display: flex;
             align-items: center;
             gap: 12px;
+        }
+        .navbar-actions {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .btn-account {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 10px 22px;
+            border-radius: 999px;
+            font-weight: 700;
+            font-size: 14px;
+            color: var(--white);
+            background: linear-gradient(135deg, var(--blue) 0%, var(--blue-dark) 100%);
+            border: 1px solid transparent;
+            text-decoration: none;
+            box-shadow: 0 6px 16px rgba(0,112,186,0.25);
+            transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+        }
+        .btn-account:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 10px 24px rgba(0,112,186,0.28);
+            opacity: 0.95;
         }
         .navbar-logo {
             height: 45px;
@@ -96,6 +128,12 @@ $message = isset($_GET['message']) ? $_GET['message'] : '';
         }
 
         @media (max-width: 768px) {
+            .navbar-custom .container-fluid {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
+            }
+
             .navbar-logo {
                 height: 35px;
             }
@@ -308,6 +346,9 @@ $message = isset($_GET['message']) ? $_GET['message'] : '';
         <div class="navbar-brand">
             <img src="images/LogoCartelplusCongo.png" alt="CartelPlus Congo" class="navbar-logo">
             <span class="navbar-text"><strong>CartelPlus</strong> Congo</span>
+        </div>
+        <div class="navbar-actions">
+            <a class="btn-account" href="https://inve-app.cartelplus.site/pagesweb_cn/connect-parse.php?role=admin">Mon compte</a>
         </div>
     </div>
 </nav>
