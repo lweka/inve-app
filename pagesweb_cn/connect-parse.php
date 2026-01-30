@@ -128,9 +128,6 @@
                 </form>
             <?php endif; ?>
 
-            <div class="mt-4 text-center back-link">
-                <a href="<?=URL_ACCUEIL ?>">← Retour à l’accueil gr</a>
-            </div>
         </div>
     </div>
 </div>
