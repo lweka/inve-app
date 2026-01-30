@@ -4,12 +4,7 @@
 require_once __DIR__ . '/../configUrlcn.php';
 require_once __DIR__ . '/../defConstLiens.php';
 require_once __DIR__ . '/connectDb.php';
-
-//verifier si admin
-if(!isset($_SESSION['user_role']) || $_SESSION['user_role']!=='admin'){
-    header("Location: ".PARSE_CONNECT."?role=admin");
-    exit;
-}
+require_once __DIR__ . '/require_admin_auth.php'; // charge $client_code
 
 $house_id = (int)($_GET['house_id'] ?? 0);
 if($house_id <= 0){
@@ -49,9 +44,9 @@ if($house_id <= 0){
 
 /* ===== Maison ===== */
 
-// fetch house
-$stmt = $pdo->prepare("SELECT * FROM houses WHERE id = ?");
-$stmt->execute([$house_id]);
+// fetch house (sécurisé par client_code)
+$stmt = $pdo->prepare("SELECT * FROM houses WHERE id = ? AND client_code = ?");
+$stmt->execute([$house_id, $client_code]);
 $house = $stmt->fetch();
 if(!$house) { header("Location: houses.php"); exit; }
 
@@ -75,10 +70,11 @@ FROM products p
 LEFT JOIN house_stock hs 
     ON hs.product_id = p.id AND hs.house_id = ?
 WHERE p.house_id = ?
+  AND p.client_code = ?
 GROUP BY p.id
 ORDER BY p.name ASC
 ");
-$stmt->execute([$house_id, $house_id]);
+$stmt->execute([$house_id, $house_id, $client_code]);
 $products = $stmt->fetchAll();
 
 // include header if exists

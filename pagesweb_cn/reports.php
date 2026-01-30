@@ -8,12 +8,7 @@
  */
 
 require_once __DIR__ . '/connectDb.php';
-
-// Vérifier si admin
-if(!isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'admin'){
-    header("Location: admin_login.php");
-    exit;
-}
+require_once __DIR__ . '/require_admin_auth.php'; // charge $client_code
 
 /* ===============================
    RÉCUPÉRATION DES PARAMÈTRES FILTRE
@@ -45,11 +40,12 @@ LEFT JOIN products p ON p.id = pm.product_id
 LEFT JOIN agents a ON a.id = pm.agent_id
 LEFT JOIN houses h ON h.id = pm.house_id
 WHERE pm.type = 'sale'
+    AND pm.client_code = ?
     AND DATE(pm.created_at) >= ?
     AND DATE(pm.created_at) <= ?
 ";
 
-$params = [$filter_date_from, $filter_date_to];
+$params = [$client_code, $filter_date_from, $filter_date_to];
 
 if ($filter_house) {
     $sql .= " AND pm.house_id = ? ";
@@ -98,10 +94,12 @@ foreach ($sales as $sale) {
 /* ===============================
    LISTES POUR FILTRES
    =============================== */
-$stmt_houses = $pdo->query("SELECT id, name FROM houses ORDER BY name");
+$stmt_houses = $pdo->prepare("SELECT id, name FROM houses WHERE client_code = ? ORDER BY name");
+$stmt_houses->execute([$client_code]);
 $houses = $stmt_houses->fetchAll(PDO::FETCH_ASSOC);
 
-$stmt_agents = $pdo->query("SELECT id, fullname FROM agents ORDER BY fullname");
+$stmt_agents = $pdo->prepare("SELECT id, fullname FROM agents WHERE client_code = ? ORDER BY fullname");
+$stmt_agents->execute([$client_code]);
 $agents = $stmt_agents->fetchAll(PDO::FETCH_ASSOC);
 
 /* ===============================
@@ -116,8 +114,8 @@ if (isset($_GET['export_pdf'])) {
     // Récupérer le nom de la maison si filtrée
     $house_name = 'RAPPORT JOURNALIER';
     if ($filter_house) {
-        $stmt_house = $pdo->prepare("SELECT name FROM houses WHERE id = ?");
-        $stmt_house->execute([$filter_house]);
+        $stmt_house = $pdo->prepare("SELECT name FROM houses WHERE id = ? AND client_code = ?");
+        $stmt_house->execute([$filter_house, $client_code]);
         $house = $stmt_house->fetch(PDO::FETCH_ASSOC);
         if ($house) {
             $house_name = 'RAPPORT JOURNALIER - ' . strtoupper($house['name']);

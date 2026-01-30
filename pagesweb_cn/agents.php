@@ -3,18 +3,14 @@
 require_once __DIR__ . '/../configUrlcn.php';
 require_once __DIR__ . '/../defConstLiens.php';
 require_once __DIR__ . '/connectDb.php';
-
-if(!isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'admin'){
-    header("Location: ".PARSE_CONNECT."?role=admin");
-    exit;
-}
+require_once __DIR__ . '/require_admin_auth.php'; // charge $client_code
 
 $house_id = intval($_GET['house_id'] ?? 0);
 if($house_id <= 0){ header("Location: houses.php"); exit; }
 
-// fetch house
-$stmt = $pdo->prepare("SELECT * FROM houses WHERE id = ?");
-$stmt->execute([$house_id]);
+// fetch house (sécurisé par client_code)
+$stmt = $pdo->prepare("SELECT * FROM houses WHERE id = ? AND client_code = ?");
+$stmt->execute([$house_id, $client_code]);
 $house = $stmt->fetch();
 
 if(!$house){
@@ -22,9 +18,9 @@ if(!$house){
     exit;
 }
 
-// fetch agents
-$stmt = $pdo->prepare("SELECT * FROM agents WHERE house_id = ? ORDER BY id DESC");
-$stmt->execute([$house_id]);
+// fetch agents (client connecté uniquement)
+$stmt = $pdo->prepare("SELECT * FROM agents WHERE house_id = ? AND client_code = ? ORDER BY id DESC");
+$stmt->execute([$house_id, $client_code]);
 $agents = $stmt->fetchAll();
 
 // Header

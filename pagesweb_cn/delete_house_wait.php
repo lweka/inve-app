@@ -3,6 +3,7 @@
 require_once __DIR__ . '/../configUrlcn.php';
 require_once __DIR__ . '/../defConstLiens.php';
 require_once __DIR__ . '/connectDb.php';
+require_once __DIR__ . '/require_admin_auth.php'; // charge $client_code
 
 
 
@@ -25,9 +26,9 @@ if(!$req){
     echo "Demande introuvable."; exit;
 }
 
-// load house
-$stmt = $pdo->prepare("SELECT * FROM houses WHERE id = ?");
-$stmt->execute([$req['house_id']]);
+// load house (sécurisé par client_code)
+$stmt = $pdo->prepare("SELECT * FROM houses WHERE id = ? AND client_code = ?");
+$stmt->execute([$req['house_id'], $client_code]);
 $house = $stmt->fetch();
 if(!$house){
     echo "Maison introuvable."; exit;

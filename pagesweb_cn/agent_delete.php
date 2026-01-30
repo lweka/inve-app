@@ -1,6 +1,7 @@
 <?php
 // pagesweb_cn/agent_delete.php
 require_once __DIR__ . '/connectDb.php';
+require_once __DIR__ . '/require_admin_auth.php'; // charge $client_code
 
 if (ob_get_length()) ob_end_clean();
 
@@ -14,9 +15,9 @@ if($id <= 0){
     exit;
 }
 
-// check vendeur
-$stmt = $pdo->prepare("SELECT house_id FROM agents WHERE id = ?");
-$stmt->execute([$id]);
+// check vendeur (sécurisé par client_code)
+$stmt = $pdo->prepare("SELECT a.house_id FROM agents a JOIN houses h ON h.id = a.house_id WHERE a.id = ? AND h.client_code = ?");
+$stmt->execute([$id, $client_code]);
 $a = $stmt->fetch();
 
 if(!$a){
@@ -25,8 +26,8 @@ if(!$a){
 }
 
 // suppression
-$del = $pdo->prepare("DELETE FROM agents WHERE id = ?");
-$del->execute([$id]);
+$del = $pdo->prepare("DELETE a FROM agents a JOIN houses h ON h.id = a.house_id WHERE a.id = ? AND h.client_code = ?");
+$del->execute([$id, $client_code]);
 
 echo json_encode(['ok'=>true], JSON_UNESCAPED_UNICODE);
 exit;

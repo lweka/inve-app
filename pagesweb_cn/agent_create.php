@@ -3,11 +3,7 @@
 require_once __DIR__ . '/../configUrlcn.php';
 require_once __DIR__ . '/../defConstLiens.php';
 require_once __DIR__ . '/connectDb.php';
-
-if(!isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'admin'){
-    header("Location: ".PARSE_CONNECT."?role=admin");
-    exit;
-}
+require_once __DIR__ . '/require_admin_auth.php'; // charge $client_code
 
 function clean($v){ return trim(htmlspecialchars($v, ENT_QUOTES, 'UTF-8')); }
 
@@ -29,6 +25,15 @@ if(!empty($errors)){
     exit;
 }
 
+// vérifier que la maison appartient bien au client connecté
+$stmt = $pdo->prepare("SELECT id FROM houses WHERE id = ? AND client_code = ?");
+$stmt->execute([$house_id, $client_code]);
+if (!$stmt->fetch()) {
+    $err = urlencode(json_encode(["Maison non autorisée."]));
+    header("Location:" .AGENTS_MANAGE."?house_id=$house_id&err=$err");
+    exit;
+}
+
 /* Génération code vendeur unique */
 function generateSellerCode(){
     return "AG" . strtoupper(bin2hex(random_bytes(2))); // Exemple: AG9F3A
@@ -43,10 +48,10 @@ do {
 
 /* Insert */
 $stmt = $pdo->prepare("
-    INSERT INTO agents (house_id, fullname, phone, address, seller_code)
-    VALUES (?, ?, ?, ?, ?)
+    INSERT INTO agents (client_code, house_id, fullname, phone, address, seller_code)
+    VALUES (?, ?, ?, ?, ?, ?)
 ");
-$stmt->execute([$house_id, $fullname, $phone, $address, $seller_code]);
+$stmt->execute([$client_code, $house_id, $fullname, $phone, $address, $seller_code]);
 
 header("Location:".AGENTS_MANAGE."?house_id=$house_id&msg=agent_created");
 exit;

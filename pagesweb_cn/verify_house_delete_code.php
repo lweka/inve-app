@@ -1,6 +1,7 @@
 <?php
 // pagesweb_cn/verify_house_delete_code.php
 require_once __DIR__ . '/connectDb.php';
+require_once __DIR__ . '/require_admin_auth.php'; // charge $client_code
 
 
 if (ob_get_length()) ob_end_clean();
@@ -26,6 +27,14 @@ if($req['code'] !== $code){ echo json_encode(['ok'=>false,'message'=>'Code incor
 
 // ready to delete house
 $house_id = intval($req['house_id']);
+
+// vérifier que la maison appartient au client connecté
+$stmt = $pdo->prepare("SELECT id FROM houses WHERE id = ? AND client_code = ?");
+$stmt->execute([$house_id, $client_code]);
+if(!$stmt->fetch()){
+    echo json_encode(['ok'=>false,'message'=>'Maison non autorisée']);
+    exit;
+}
 
 try {
     $pdo->beginTransaction();

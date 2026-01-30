@@ -2,6 +2,7 @@
 // pagesweb_cn/send_house_delete_code.php
 session_start();
 require_once __DIR__ . '/connectDb.php';
+require_once __DIR__ . '/require_admin_auth.php'; // charge $client_code
 require_once __DIR__ . '/../vendor/autoload.php';
 
 use PHPMailer\PHPMailer\PHPMailer;
@@ -28,9 +29,9 @@ if($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)){
     exit;
 }
 
-/* Vérification existence maison */
-$stmt = $pdo->prepare("SELECT id, name, code, address FROM houses WHERE id = ?");
-$stmt->execute([$house_id]);
+/* Vérification existence maison (client connecté) */
+$stmt = $pdo->prepare("SELECT id, name, code, address FROM houses WHERE id = ? AND client_code = ?");
+$stmt->execute([$house_id, $client_code]);
 $house = $stmt->fetch();
 
 if(!$house){

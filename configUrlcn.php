@@ -1,10 +1,9 @@
 <?php
-// Racine du projet (en local '/cartelpluscn/', en prod '/')
+// Racine du projet (en local '/inve-app/', en prod '/')
 $isLocal = in_array($_SERVER['SERVER_NAME'], ['localhost', '127.0.0.1']);
 
-
 if (!defined('PROJECT_ROOT_URL')) {
-    define('PROJECT_ROOT_URL', '/inve-app/');
+    define('PROJECT_ROOT_URL', $isLocal ? '/inve-app/' : '/');
 }
 
 // URL de base

@@ -2,6 +2,7 @@
 require_once __DIR__ . '/../configUrlcn.php';
 require_once __DIR__ . '/../defConstLiens.php';
 require_once __DIR__ . '/connectDb.php';
+require_once __DIR__ . '/require_admin_auth.php'; // charge $client_code
 
 if(!isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'admin'){
     header("Location: ".PARSE_CONNECT."?role=admin");
@@ -14,6 +15,13 @@ if(!isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'admin'){
 $house_id = (int)($_GET['house_id'] ?? 0);
 if ($house_id <= 0) {
     die('Maison invalide');
+}
+
+// vérifier que la maison appartient au client connecté
+$stmt = $pdo->prepare("SELECT id FROM houses WHERE id = ? AND client_code = ?");
+$stmt->execute([$house_id, $client_code]);
+if (!$stmt->fetch()) {
+  die('Maison non autorisée');
 }
 
 /* =========================

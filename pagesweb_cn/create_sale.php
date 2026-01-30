@@ -22,6 +22,21 @@ if ($house_id <= 0 || empty($items) || !is_array($items)) {
     exit;
 }
 
+$session_house_id = (int)($_SESSION['house_id'] ?? 0);
+if ($session_house_id <= 0 || $house_id !== $session_house_id) {
+    echo json_encode(['ok' => false, 'message' => 'Maison non autorisée']);
+    exit;
+}
+
+// récupérer client_code de la maison
+$stmt = $pdo->prepare("SELECT client_code FROM houses WHERE id = ?");
+$stmt->execute([$house_id]);
+$client_code = $stmt->fetchColumn();
+if (!$client_code) {
+    echo json_encode(['ok' => false, 'message' => 'Client invalide']);
+    exit;
+}
+
 try {
     $pdo->beginTransaction();
 
@@ -72,6 +87,7 @@ try {
             $stmt = $pdo->prepare("
                 INSERT INTO product_movements
                 (
+                    client_code,
                     house_id,
                     agent_id,
                     type,
@@ -84,9 +100,10 @@ try {
                     receipt_id,
                     created_at
                 )
-                VALUES (?,?,?,?,?,?,?,?,1,?,NOW())
+                VALUES (?,?,?,?,?,?,?,?,?,1,?,NOW())
             ");
             $stmt->execute([
+                $client_code,
                 $house_id,
                 $agent_id,
                 'sale',
@@ -121,6 +138,7 @@ try {
                 $pdo->prepare("
                     INSERT INTO product_movements
                     (
+                        client_code,
                         product_id,
                         house_id,
                         agent_id,
@@ -131,8 +149,9 @@ try {
                         receipt_id,
                         created_at
                     )
-                    VALUES (?,?,?,?,?,?,?,?,NOW())
+                    VALUES (?,?,?,?,?,?,?,?,?,NOW())
                 ")->execute([
+                    $client_code,
                     $pid,
                     $house_id,
                     $agent_id,
@@ -188,6 +207,7 @@ try {
         $pdo->prepare("
             INSERT INTO product_movements
             (
+                client_code,
                 product_id,
                 house_id,
                 agent_id,
@@ -201,8 +221,9 @@ try {
                 receipt_id,
                 created_at
             )
-            VALUES (?,?,?,?,?,?,?,?,?,0,?,NOW())
+            VALUES (?,?,?,?,?,?,?,?,?,?,0,?,NOW())
         ")->execute([
+            $client_code,
             $product_id,
             $house_id,
             $agent_id,

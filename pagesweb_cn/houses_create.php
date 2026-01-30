@@ -3,11 +3,7 @@
 require_once __DIR__ . '/../configUrlcn.php';
 require_once __DIR__ . '/../defConstLiens.php';
 require_once __DIR__ . '/connectDb.php';
-
-if(!isset($_SESSION['user_role']) || $_SESSION['user_role']!=='admin'){
-    header("Location: ".PARSE_CONNECT."?role=admin");
-    exit;
-}
+require_once __DIR__ . '/require_admin_auth.php'; // charge $client_code
 
 function clean($v){ return trim(htmlspecialchars($v, ENT_QUOTES, 'UTF-8')); }
 
@@ -35,9 +31,9 @@ if(!preg_match('/^[A-Za-z0-9_\-]+$/', $code)){
     $errors[] = "Le code maison ne doit contenir que des lettres, chiffres, tirets (-) ou underscores (_).";
 }
 
-/* Unicité */
-$stmt = $pdo->prepare("SELECT id FROM houses WHERE code = ?");
-$stmt->execute([$code]);
+/* Unicité (par client) */
+$stmt = $pdo->prepare("SELECT id FROM houses WHERE code = ? AND client_code = ?");
+$stmt->execute([$code, $client_code]);
 if($stmt->fetch()) $errors[] = "Ce code maison existe déjà.";
 
 if(!empty($errors)){
@@ -48,8 +44,8 @@ if(!empty($errors)){
 }
 
 /* Insert */
-$stmt = $pdo->prepare("INSERT INTO houses (name, code, type, address) VALUES (?,?,?,?)");
-$stmt->execute([$name, $code, $type, $address]);
+$stmt = $pdo->prepare("INSERT INTO houses (client_code, name, code, type, address, created_at) VALUES (?,?,?,?,?, NOW())");
+$stmt->execute([$client_code, $name, $code, $type, $address]);
 
 $target = (defined('HOUSES_MANAGE') ? HOUSES_MANAGE : HOUSES_MANAGE);
 header("Location: ".$target."?msg=created");

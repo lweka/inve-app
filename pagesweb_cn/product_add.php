@@ -1,6 +1,7 @@
 <?php
 // pagesweb_cn/product_add.php
 require_once __DIR__ . '/connectDb.php';
+require_once __DIR__ . '/require_admin_auth.php'; // charge $client_code
 
 if (!isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'admin') {
     header("Location: connect-parse.php?role=admin");
@@ -59,6 +60,15 @@ if ($errors) {
     exit;
 }
 
+// vérifier que la maison appartient au client connecté
+$stmt = $pdo->prepare("SELECT id FROM houses WHERE id = ? AND client_code = ?");
+$stmt->execute([$house_id, $client_code]);
+if (!$stmt->fetch()) {
+    $err = urlencode(json_encode(["Maison non autorisée."]));
+    header("Location: products.php?house_id={$house_id}&err={$err}");
+    exit;
+}
+
 /* =========================
    TAUX USD DE LA MAISON
 ========================= */
@@ -89,6 +99,7 @@ $sell_price_cdf = $currency === 'USD' ? $sell_price * $usd_rate : $sell_price;
 ========================= */
 $stmt = $pdo->prepare("
 INSERT INTO products (
+    client_code,
     house_id,
     name,
     buy_price,
@@ -99,10 +110,11 @@ INSERT INTO products (
     usd_rate_at_creation,
     description,
     is_active
-) VALUES (?,?,?,?,?,?,?,?,?,1)
+ ) VALUES (?,?,?,?,?,?,?,?,?,?,1)
 ");
 
 $stmt->execute([
+    $client_code,
     $house_id,
     $name,
     $buy_price,

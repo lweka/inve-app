@@ -57,5 +57,5 @@ if (strtotime($client['expires_at']) < time()) {
 }
 
 // Maintenant on peut utiliser $client_code dans les requêtes
-// Exemple : SELECT * FROM houses WHERE client_code = ? OR client_code IS NULL
+// Exemple : SELECT * FROM houses WHERE client_code = ?
 ?>

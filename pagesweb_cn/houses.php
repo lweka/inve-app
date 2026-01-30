@@ -3,14 +3,12 @@
 require_once __DIR__ . '/../configUrlcn.php';
 require_once __DIR__ . '/../defConstLiens.php';
 require_once __DIR__ . '/connectDb.php'; // fournit $pdo
+require_once __DIR__ . '/require_admin_auth.php'; // charge $client_code
 
-if(!isset($_SESSION['user_role']) || $_SESSION['user_role']!=='admin'){
-    header("Location: ".PARSE_CONNECT."?role=admin");
-    exit;
-}
-
-// récupération des maisons
-$houses = $pdo->query("SELECT * FROM houses ORDER BY id DESC")->fetchAll();
+// récupération des maisons du client connecté
+$stmt = $pdo->prepare("SELECT * FROM houses WHERE client_code = ? ORDER BY id DESC");
+$stmt->execute([$client_code]);
+$houses = $stmt->fetchAll();
 
 // optional header include
 if(isset($headerPath) && is_file($headerPath)){

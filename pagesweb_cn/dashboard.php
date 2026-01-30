@@ -7,17 +7,17 @@
     // Maintenant on a $client_code qui identifie le client connecté
 
     // Compter les maisons du client
-    $stmt = $pdo->prepare("SELECT COUNT(*) FROM houses WHERE client_code = ? OR client_code IS NULL");
+    $stmt = $pdo->prepare("SELECT COUNT(*) FROM houses WHERE client_code = ?");
     $stmt->execute([$client_code]);
     $housesCount = (int)$stmt->fetchColumn();
 
     // Compter les vendeurs du client
-    $stmt = $pdo->prepare("SELECT COUNT(*) FROM agents WHERE client_code = ? OR client_code IS NULL");
+    $stmt = $pdo->prepare("SELECT COUNT(*) FROM agents WHERE client_code = ?");
     $stmt->execute([$client_code]);
     $agentsCount = (int)$stmt->fetchColumn();
 
     // Compter les produits du client
-    $stmt = $pdo->prepare("SELECT COUNT(*) FROM products WHERE client_code = ? OR client_code IS NULL");
+    $stmt = $pdo->prepare("SELECT COUNT(*) FROM products WHERE client_code = ?");
     $stmt->execute([$client_code]);
     $productsCount = (int)$stmt->fetchColumn();
 
@@ -27,7 +27,7 @@
         SUM((pm.unit_sell_price_cdf - pm.unit_buy_price_cdf) * pm.qty) AS marge_cdf
         FROM product_movements pm
         JOIN products p ON p.id = pm.product_id
-        WHERE pm.type = 'sale' AND (pm.client_code = ? OR pm.client_code IS NULL)
+        WHERE pm.type = 'sale' AND pm.client_code = ?
         GROUP BY pm.product_id
         ORDER BY marge_cdf DESC
     ");
@@ -38,7 +38,7 @@
     $stmt = $pdo->prepare("
         SELECT SUM((unit_sell_price_cdf - unit_buy_price_cdf) * qty)
         FROM product_movements
-        WHERE type = 'sale' AND DATE(created_at) = CURDATE() AND (client_code = ? OR client_code IS NULL)
+        WHERE type = 'sale' AND DATE(created_at) = CURDATE() AND client_code = ?
     ");
     $stmt->execute([$client_code]);
     $todayProfit = (float)($stmt->fetchColumn() ?? 0);
@@ -47,7 +47,7 @@
     $stmt = $pdo->prepare("
         SELECT SUM((unit_sell_price_cdf - unit_buy_price_cdf) * qty)
         FROM product_movements
-        WHERE type = 'sale' AND (client_code = ? OR client_code IS NULL)
+        WHERE type = 'sale' AND client_code = ?
     ");
     $stmt->execute([$client_code]);
     $global = (float)($stmt->fetchColumn() ?? 0);

@@ -6,6 +6,7 @@
 //code check_house_code | API
 
 require_once __DIR__ . '/connectDb.php';
+require_once __DIR__ . '/require_admin_auth.php'; // charge $client_code
 
 if (ob_get_length()) ob_end_clean();
 header('Content-Type: application/json; charset=utf-8');
@@ -21,8 +22,8 @@ if(!preg_match('/^[A-Za-z0-9_\-]+$/', $code)){
 }
 
 try {
-    $stmt = $pdo->prepare("SELECT id FROM houses WHERE code = ?");
-    $stmt->execute([$code]);
+    $stmt = $pdo->prepare("SELECT id FROM houses WHERE code = ? AND client_code = ?");
+    $stmt->execute([$code, $client_code]);
     $exists = (bool)$stmt->fetch();
     echo json_encode(['ok'=>true,'exists'=>$exists]);
     exit;

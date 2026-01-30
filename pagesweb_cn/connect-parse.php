@@ -4,6 +4,16 @@
     require_once __DIR__ . '/connectDb.php'; // connexion PDO
 
     $role = $_GET['role'] ?? 'seller';
+    $err = $_GET['err'] ?? '';
+
+    $errorMessages = [
+        '1' => "Identifiant et mot de passe incorrect.",
+        '2' => "Compte inactif. Veuillez contacter le support.",
+        '3' => "Accès client inactif. Veuillez vérifier votre abonnement.",
+        '4' => "Abonnement expiré. Veuillez renouveler votre accès.",
+        '99' => "Erreur technique. Veuillez réessayer plus tard."
+    ];
+    $errorMessage = $errorMessages[$err] ?? '';
 ?>
 
 <?php require_once $headerPath; ?>
@@ -85,6 +95,13 @@
         </div>
 
         <div class="card-body">
+            <?php if ($errorMessage): ?>
+                <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                    <strong>Erreur :</strong> <?= htmlspecialchars($errorMessage) ?>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            <?php endif; ?>
+
             <?php if($role === 'admin'): ?>
                 <h5 class="login-title">Connexion Administrateur</h5>
                 <form id="adminLogin" method="POST" action="/pagesweb_cn/auth.php">

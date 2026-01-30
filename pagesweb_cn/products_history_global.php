@@ -2,14 +2,17 @@
 require_once __DIR__ . '/../configUrlcn.php';
 require_once __DIR__ . '/../defConstLiens.php';
 require_once __DIR__ . '/connectDb.php';
+require_once __DIR__ . '/require_admin_auth.php'; // charge $client_code
 
 if(!isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'admin'){
     header("Location: connect-parse.php?role=admin");
     exit;
 }
 
-// récupération des maisons
-$houses = $pdo->query("SELECT * FROM houses ORDER BY id DESC")->fetchAll();
+// récupération des maisons du client connecté
+$stmt = $pdo->prepare("SELECT * FROM houses WHERE client_code = ? ORDER BY id DESC");
+$stmt->execute([$client_code]);
+$houses = $stmt->fetchAll();
 
 if($_SERVER['REQUEST_METHOD']==='POST'){
     $rate = floatval($_POST['usd_rate']);
@@ -41,8 +44,8 @@ $end_date   = $_GET['end_date'] ?? '';
 /* =========================
    FILTRES
 ========================= */
-$where = " WHERE 1=1 ";
-$params = [];
+$where = " WHERE pm.client_code = ? ";
+$params = [$client_code];
 
 if($product_id > 0){
     $where .= " AND pm.product_id = ? ";
@@ -113,8 +116,13 @@ $rows = $stmt->fetchAll();
 /* =========================
    DONNÉES FILTRES
 ========================= */
-$products = $pdo->query("SELECT id, name FROM products ORDER BY name")->fetchAll();
-$agents   = $pdo->query("SELECT id, fullname FROM agents ORDER BY fullname")->fetchAll();
+$stmt = $pdo->prepare("SELECT id, name FROM products WHERE client_code = ? ORDER BY name");
+$stmt->execute([$client_code]);
+$products = $stmt->fetchAll();
+
+$stmt = $pdo->prepare("SELECT id, fullname FROM agents WHERE client_code = ? ORDER BY fullname");
+$stmt->execute([$client_code]);
+$agents = $stmt->fetchAll();
 
 
 

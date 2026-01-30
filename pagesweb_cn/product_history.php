@@ -1,10 +1,6 @@
 <?php
 require_once __DIR__ . '/connectDb.php';
-
-if(!isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'admin'){
-    header("Location: connect-parse.php?role=admin");
-    exit;
-}
+require_once __DIR__ . '/require_admin_auth.php'; // charge $client_code
 
 $product_id = (int)($_GET['product_id'] ?? 0);
 $house_id   = (int)($_GET['house_id'] ?? 0);
@@ -17,11 +13,12 @@ if($product_id <= 0 || $house_id <= 0){
    PRODUIT
 ========================= */
 $stmt = $pdo->prepare("
-    SELECT id, name, sell_currency
-    FROM products
-    WHERE id = ? AND house_id = ?
+  SELECT p.id, p.name, p.sell_currency
+  FROM products p
+  JOIN houses h ON h.id = p.house_id
+  WHERE p.id = ? AND p.house_id = ? AND h.client_code = ?
 ");
-$stmt->execute([$product_id, $house_id]);
+$stmt->execute([$product_id, $house_id, $client_code]);
 $product = $stmt->fetch();
 
 if(!$product){
@@ -32,18 +29,18 @@ if(!$product){
    MOUVEMENTS
 ========================= */
 $stmt = $pdo->prepare("
-    SELECT
-        pm.created_at,
-        pm.type,
-        pm.qty,
-        pm.unit_buy_price,
-        pm.unit_sell_price,
-        (pm.unit_sell_price - pm.unit_buy_price) * pm.qty AS marge
-    FROM product_movements pm
-    WHERE pm.product_id = ? AND pm.house_id = ?
-    ORDER BY pm.created_at DESC
+  SELECT
+    pm.created_at,
+    pm.type,
+    pm.qty,
+    pm.unit_buy_price,
+    pm.unit_sell_price,
+    (pm.unit_sell_price - pm.unit_buy_price) * pm.qty AS marge
+  FROM product_movements pm
+  WHERE pm.product_id = ? AND pm.house_id = ? AND pm.client_code = ?
+  ORDER BY pm.created_at DESC
 ");
-$stmt->execute([$product_id, $house_id]);
+$stmt->execute([$product_id, $house_id, $client_code]);
 $rows = $stmt->fetchAll();
 ?>
 
