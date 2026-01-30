@@ -126,67 +126,80 @@ $agents = $stmt_agents->fetchAll(PDO::FETCH_ASSOC);
     <link href="../css/bootstrap.min.css" rel="stylesheet">
     <style>
         :root {
-            --blue: #0A6FB7;
-            --orange: #F25C2A;
-            --dark: #0B0E14;
-            --white: #ffffff;
-            --success: #28a745;
+            --pp-blue: #0070e0;
+            --pp-blue-dark: #003087;
+            --pp-cyan: #00a8ff;
+            --pp-bg: #f5f7fb;
+            --pp-text: #0b1f3a;
+            --pp-muted: #6b7a90;
+            --pp-card: #ffffff;
+            --pp-border: #e5e9f2;
+            --pp-shadow: 0 12px 30px rgba(0, 48, 135, 0.08);
+            --pp-success: #1f8f6a;
         }
 
         body {
-            background: linear-gradient(180deg, #0B0E14, #05070B);
-            color: var(--white);
-            font-family: "Segoe UI", system-ui, sans-serif;
+            background: radial-gradient(1200px 600px at 10% -10%, rgba(0,112,224,0.12), transparent 60%),
+                        radial-gradient(1200px 600px at 110% 10%, rgba(0,48,135,0.10), transparent 60%),
+                        var(--pp-bg);
+            color: var(--pp-text);
             min-height: 100vh;
+            font-family: "Segoe UI", system-ui, sans-serif;
         }
 
-        .page-header {
-            background: rgba(10, 111, 183, 0.1);
-            border-bottom: 2px solid var(--blue);
-            padding: 20px 0;
-            margin-bottom: 30px;
+        .page-wrap {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 32px 16px 60px;
+        }
+
+        .page-hero {
+            background: linear-gradient(135deg, var(--pp-blue), var(--pp-blue-dark));
+            color: #fff;
+            border-radius: 20px;
+            padding: 28px;
+            box-shadow: 0 18px 36px rgba(0, 48, 135, 0.2);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            margin-bottom: 26px;
+            animation: fadeSlide 0.7s ease both;
+        }
+
+        .page-hero h2 {
+            font-size: 26px;
+            font-weight: 700;
+            margin: 0;
         }
 
         .filter-card {
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(10, 111, 183, 0.3);
-            border-radius: 10px;
+            background: var(--pp-card);
+            border: 1px solid var(--pp-border);
+            border-radius: 16px;
             padding: 20px;
-            margin-bottom: 30px;
+            box-shadow: var(--pp-shadow);
+            margin-bottom: 26px;
+            animation: fadeUp 0.6s ease both;
         }
 
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 15px;
-            margin-bottom: 30px;
-        }
-
-        .stat-card {
-            background: rgba(10, 111, 183, 0.1);
-            border-left: 4px solid var(--orange);
-            padding: 15px;
-            border-radius: 5px;
-        }
-
-        .stat-label {
-            font-size: 12px;
-            color: rgba(255, 255, 255, 0.6);
-            text-transform: uppercase;
-            margin-bottom: 5px;
-        }
-
-        .stat-value {
-            font-size: 24px;
-            font-weight: bold;
-            color: var(--orange);
+        .section-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--pp-blue-dark);
+            margin-bottom: 16px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid var(--pp-border);
         }
 
         .table-container {
-            background: rgba(255, 255, 255, 0.03);
-            border-radius: 10px;
+            background: var(--pp-card);
+            border: 1px solid var(--pp-border);
+            border-radius: 16px;
             overflow: hidden;
-            margin-bottom: 40px;
+            margin-bottom: 30px;
+            box-shadow: var(--pp-shadow);
+            animation: fadeUp 0.7s ease both;
         }
 
         .table {
@@ -194,84 +207,87 @@ $agents = $stmt_agents->fetchAll(PDO::FETCH_ASSOC);
         }
 
         .table thead th {
-            background: var(--blue);
+            background: linear-gradient(135deg, var(--pp-blue), var(--pp-blue-dark));
+            color: #fff;
             border: none;
-            padding: 15px;
+            padding: 14px;
             font-weight: 600;
         }
 
         .table tbody td {
-            padding: 12px 15px;
-            border-color: rgba(255, 255, 255, 0.1);
+            padding: 12px 14px;
+            border-color: var(--pp-border);
         }
 
         .table-striped tbody tr:nth-of-type(odd) {
-            background: rgba(255, 255, 255, 0.02);
+            background: rgba(0,112,224,0.02);
         }
 
         .table-hover tbody tr:hover {
-            background: rgba(242, 92, 42, 0.1);
+            background: rgba(0,112,224,0.06);
         }
 
         .badge-marge {
-            background: var(--success);
+            background: var(--pp-success);
             color: white;
             padding: 5px 10px;
-            border-radius: 5px;
+            border-radius: 999px;
             font-size: 12px;
-        }
-
-        .section-title {
-            font-size: 18px;
-            font-weight: 700;
-            color: var(--white);
-            margin-bottom: 20px;
-            padding-bottom: 10px;
-            border-bottom: 2px solid var(--orange);
-        }
-
-        .btn-filter {
-            background: var(--blue);
-            color: white;
-            border: none;
-            padding: 8px 20px;
-            border-radius: 5px;
-            cursor: pointer;
             font-weight: 600;
         }
 
-        .btn-filter:hover {
-            background: var(--orange);
+        .btn-pp {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 18px;
+            border-radius: 999px;
+            border: 1px solid transparent;
+            font-weight: 600;
+            font-size: 14px;
+            text-decoration: none;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
         }
 
-        .btn-reset {
-            background: rgba(255, 255, 255, 0.1);
-            color: white;
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            padding: 8px 20px;
-            border-radius: 5px;
-            cursor: pointer;
-            margin-left: 10px;
+        .btn-pp-primary {
+            background: linear-gradient(135deg, var(--pp-blue), var(--pp-blue-dark));
+            color: #fff;
+            box-shadow: 0 10px 24px rgba(0, 112, 224, 0.25);
         }
 
-        .btn-reset:hover {
-            background: rgba(255, 255, 255, 0.2);
+        .btn-pp-secondary {
+            background: #fff;
+            color: var(--pp-blue-dark);
+            border-color: var(--pp-border);
+        }
+
+        .btn-pp:hover {
+            transform: translateY(-1px);
+            opacity: 0.95;
+        }
+
+        @keyframes fadeSlide {
+            from { opacity: 0; transform: translateY(12px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes fadeUp {
+            from { opacity: 0; transform: translateY(14px); }
+            to { opacity: 1; transform: translateY(0); }
         }
     </style>
 </head>
 
 <body>
 
-<div class="page-header">
-    <div class="container-fluid">
-        <div class="d-flex justify-content-between align-items-center">
-            <h2 class="mb-0">📊 Dashboard Marges - Maison vs Vendeur</h2>
-            <a href="dashboard.php" class="btn btn-outline-light">← Retour Admin</a>
-        </div>
-    </div>
-</div>
+<div class="page-wrap">
 
-<div class="container-fluid p-4">
+    <div class="page-hero">
+        <h2>📊 Dashboard Marges - Maison vs Vendeur</h2>
+        <a href="dashboard.php" class="btn-pp btn-pp-secondary">← Retour Admin</a>
+    </div>
+
+<div class="page-wrap">
 
     <!-- FILTRES -->
     <div class="filter-card">
@@ -314,8 +330,8 @@ $agents = $stmt_agents->fetchAll(PDO::FETCH_ASSOC);
             </div>
 
             <div class="col-md-2" style="display: flex; align-items: flex-end; gap: 5px;">
-                <button type="submit" class="btn-filter w-100">Filtrer</button>
-                <a href="house_marge.php" class="btn-reset" style="text-decoration: none; text-align: center;">Réinitialiser</a>
+                <button type="submit" class="btn-pp btn-pp-primary w-100">Filtrer</button>
+                <a href="house_marge.php" class="btn-pp btn-pp-secondary" style="text-decoration: none; text-align: center;">Réinitialiser</a>
             </div>
         </form>
     </div>
