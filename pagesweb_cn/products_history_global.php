@@ -129,16 +129,79 @@ $agents = $stmt->fetchAll();
 // include header if exists
 if(isset($headerPath) && is_file($headerPath)) require_once $headerPath;
 ?>
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Historique Global – Cartelplus Congo</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
+<style>
+:root {
+    --pp-blue: #0070e0;
+    --pp-blue-dark: #003087;
+    --pp-bg: #f5f7fb;
+    --pp-text: #0b1f3a;
+    --pp-muted: #6b7a90;
+    --pp-card: #ffffff;
+    --pp-border: #e5e9f2;
+    --pp-shadow: 0 12px 30px rgba(0, 48, 135, 0.08);
+}
+body {
+    background: radial-gradient(1200px 600px at 10% -10%, rgba(0,112,224,0.12), transparent 60%),
+                radial-gradient(1200px 600px at 110% 10%, rgba(0,48,135,0.10), transparent 60%),
+                var(--pp-bg);
+    color: var(--pp-text);
+    min-height: 100vh;
+    font-family: "Segoe UI", system-ui, sans-serif;
+}
+.page-wrap { max-width: 1400px; margin: 0 auto; padding: 32px 16px 60px; }
+.page-hero {
+    background: linear-gradient(135deg, var(--pp-blue), var(--pp-blue-dark));
+    color: #fff; border-radius: 20px; padding: 28px;
+    box-shadow: 0 18px 36px rgba(0, 48, 135, 0.2);
+    margin-bottom: 26px; animation: fadeSlide 0.7s ease both;
+}
+.page-hero h3 { font-size: 26px; font-weight: 700; margin: 0; }
+.filter-card { background: var(--pp-card); border: 1px solid var(--pp-border);
+    border-radius: 16px; padding: 20px; box-shadow: var(--pp-shadow);
+    margin-bottom: 20px; animation: fadeUp 0.6s ease both; }
+.table-container { background: var(--pp-card); border: 1px solid var(--pp-border);
+    border-radius: 16px; overflow: hidden; box-shadow: var(--pp-shadow);
+    animation: fadeUp 0.7s ease both; }
+.table thead th { background: linear-gradient(135deg, var(--pp-blue), var(--pp-blue-dark));
+    color: #fff; border: none; padding: 14px; font-weight: 600; }
+.table tbody td { padding: 12px 14px; border-color: var(--pp-border); }
+.table-striped tbody tr:nth-of-type(odd) { background: rgba(0,112,224,0.02); }
+.table-hover tbody tr:hover { background: rgba(0,112,224,0.06); }
+.btn-pp { display: inline-flex; align-items: center; gap: 8px;
+    padding: 10px 18px; border-radius: 999px; border: 1px solid transparent;
+    font-weight: 600; font-size: 14px; text-decoration: none;
+    transition: transform 0.2s ease; cursor: pointer; }
+.btn-pp-primary { background: linear-gradient(135deg, var(--pp-blue), var(--pp-blue-dark));
+    color: #fff; box-shadow: 0 10px 24px rgba(0, 112, 224, 0.25); }
+.btn-pp-secondary { background: #fff; color: var(--pp-blue-dark); border-color: var(--pp-border); }
+.btn-pp:hover { transform: translateY(-1px); opacity: 0.95; }
+.form-control, .form-select { border-radius: 8px; border: 1px solid var(--pp-border); padding: 10px 14px; }
+.form-control:focus, .form-select:focus { border-color: var(--pp-blue); box-shadow: 0 0 0 3px rgba(0,112,224,0.1); }
+.pagination .page-link { border-radius: 8px; margin: 0 3px; border-color: var(--pp-border); color: var(--pp-blue-dark); }
+.pagination .page-item.active .page-link { background: var(--pp-blue); border-color: var(--pp-blue); }
+@keyframes fadeSlide { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes fadeUp { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
+</style>
+</head>
+<body>
 
+<div class="page-wrap">
+  <div class="page-hero">
+    <h3><i class="fa-solid fa-clock-rotate-left"></i> Historique global des produits</h3>
+  </div>
+  <?php foreach($houses as $h): ?>
+    <a href="<?=PRODUCTS_MANAGE?>?house_id=<?= $h['id']?>" class="btn-pp btn-pp-secondary mb-3"><i class="fa-solid fa-arrow-left"></i> Retour</a>
+  <?php endforeach; ?>
 
-
-<div class="container" style="max-width:1400px">
-<h4>Historique global des produits</h4>
-<?php foreach($houses as $h): ?>
-  <a href="<?=PRODUCTS_MANAGE?>?house_id=<?= $h['id']?>" class="btn btn-light ">← Retour</a>
-<?php endforeach; ?>
-
-<form method="GET" class="row g-2 mb-3">
+<div class="filter-card">
+<form method="GET" class="row g-3">
 <div class="col-md-2">
 <select name="product_id" class="form-select">
 <option value="">Tous produits</option>
@@ -172,10 +235,12 @@ if(isset($headerPath) && is_file($headerPath)) require_once $headerPath;
 
 <div class="col-md-2"><input type="date" name="start_date" class="form-control"></div>
 <div class="col-md-2"><input type="date" name="end_date" class="form-control"></div>
-<div class="col-md-2"><button class="btn btn-primary w-100">Filtrer</button></div>
+<div class="col-md-2"><button class="btn-pp btn-pp-primary w-100" style="justify-content: center;"><i class="fa-solid fa-filter"></i> Filtrer</button></div>
 </form>
+</div>
 
-<table class="table table-sm table-striped">
+<div class="table-container">
+<table class="table table-sm table-striped table-hover mb-0">
 <thead>
 <tr>
 <th>Date</th>
@@ -211,8 +276,9 @@ if(isset($headerPath) && is_file($headerPath)) require_once $headerPath;
 
 </tbody>
 </table>
+</div>
 
-<nav>
+<nav class="mt-4">
 <ul class="pagination">
 <?php for($i=1;$i<=$totalPages;$i++): ?>
 <li class="page-item <?= $i==$page?'active':'' ?>">
@@ -223,6 +289,10 @@ if(isset($headerPath) && is_file($headerPath)) require_once $headerPath;
 </nav>
 
 </div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
 
 <?php 
 if(isset($footerPath) && is_file($footerPath)) require_once $footerPath;
