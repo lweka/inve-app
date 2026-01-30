@@ -351,27 +351,27 @@ body {
 <body>
 
 <div class="page-wrap">
-  <div class="d-flex justify-content-between align-items-center mb-3">
+  <div class="page-hero">
     <div>
-      <h4 class="mb-0">Produits — <?=htmlspecialchars($house['name'])?></h4>
-      <div class="small text-muted">Gestion des produits et du stock</div>
+      <h3>📦 Produits — <?=htmlspecialchars($house['name'])?></h3>
+      <div class="subtitle">Gestion des produits et du stock</div>
     </div>
-    <div>
-      <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addProductModal">
-        <i class="fa fa-plus me-1"></i> Ajouter produit
+    <div class="hero-actions">
+      <button class="btn-pp btn-pp-primary" data-bs-toggle="modal" data-bs-target="#addProductModal">
+        <i class="fa fa-plus"></i> Ajouter produit
       </button>
-      <a href="<?= EXCHANGE_RATE_MANAGER ?>?house_id=<?= (int)$house_id ?>" class="btn btn-secondary">TAUX USD</a>
-      <a href="<?=PRODUCTS_ALL_STORY?>" class="btn btn-primary">PRODUIT HISTORIQUE COMPLET</a>
-      <a href="<?=PRODUCTS_LOW_STOCK?>" class="btn btn-primary">PRODUIT EN ALERTE</a>
-      <a href="<?=HOUSES_MANAGE?>" class="btn btn-secondary"> ← Retour aux maisons</a>
+      <a href="<?= EXCHANGE_RATE_MANAGER ?>?house_id=<?= (int)$house_id ?>" class="btn-pp btn-pp-secondary"><i class="fa-solid fa-dollar-sign"></i> TAUX USD</a>
+      <a href="<?=PRODUCTS_ALL_STORY?>" class="btn-pp btn-pp-secondary"><i class="fa-solid fa-history"></i> HISTORIQUE</a>
+      <a href="<?=PRODUCTS_LOW_STOCK?>" class="btn-pp btn-pp-warning"><i class="fa-solid fa-exclamation-triangle"></i> ALERTE</a>
+      <a href="<?=HOUSES_MANAGE?>" class="btn-pp btn-pp-secondary">← Retour</a>
     </div>
   </div>
 
-  <div class="mb-3">
-    <input id="searchInput" class="form-control" placeholder="Rechercher un produit (nom) ...">
+  <div class="search-box">
+    <input id="searchInput" class="form-control" placeholder="🔍 Rechercher un produit (nom) ...">
   </div>
 
-  <div id="productsGrid" class="row">
+  <div id="productsGrid" class="products-grid">
     <?php foreach ($products as $p):
 
         $rate = max(1, (float)$p['usd_rate_at_creation']);
