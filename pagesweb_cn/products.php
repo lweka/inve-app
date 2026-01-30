@@ -328,12 +328,26 @@ body {
     border-radius: 12px;
     padding: 14px 18px;
     animation: fadeSlide 0.5s ease both;
+    border-left: 4px solid transparent;
+}
+
+.alert-success {
+    background: rgba(31, 143, 106, 0.15);
+    border-left-color: var(--pp-success);
+    color: var(--pp-success);
+}
+
+.alert-danger {
+    background: rgba(220, 38, 38, 0.15);
+    border-left-color: #dc2626;
+    color: #dc2626;
 }
 
 .alert-info {
     background: rgba(0, 168, 255, 0.1);
     border: 1px solid rgba(0, 168, 255, 0.3);
     color: var(--pp-blue-dark);
+    border-left: 4px solid var(--pp-cyan);
 }
 
 @keyframes fadeSlide {
@@ -349,6 +363,8 @@ body {
 </head>
 
 <body>
+
+<div id="alerts-container" style="position: fixed; top: 20px; right: 20px; z-index: 9999; max-width: 400px; width: 90%;"></div>
 
 <div class="page-wrap">
   <div class="page-hero">
@@ -864,7 +880,7 @@ document.getElementById('stockForm').addEventListener('submit', function(e){
   const qty = parseInt(data.get('qty'));
 
   if(isNaN(qty) || qty <= 0){
-    alert("Veuillez indiquer une quantité valide");
+    showAlert('Veuillez indiquer une quantité valide', 'danger');
     isSubmittingStock = false;
     return;
   }
@@ -882,14 +898,14 @@ document.getElementById('stockForm').addEventListener('submit', function(e){
       document.getElementById('stock_' + pid).textContent = j.new_qty;
 
       bootstrap.Modal.getInstance(document.getElementById('stockModal')).hide();
-      alert('Stock mis à jour.');
+      showAlert('Stock mis à jour avec succès !', 'success');
     } else {
-      alert(j.message || 'Erreur');
+      showAlert(j.message || 'Erreur lors de la mise à jour du stock', 'danger');
     }
   })
   .catch(() => {
     isSubmittingStock = false;
-    alert('Erreur réseau');
+    showAlert('Erreur réseau - Veuillez réessayer', 'danger');
   });
 });
 </script>
@@ -910,6 +926,17 @@ document.getElementById('stockForm').addEventListener('submit', function(e){
 <?php endif; ?>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+function showAlert(message, type = 'success') {
+  const alertId = 'alert-' + Date.now();
+  const iconClass = type === 'success' ? 'check-circle' : type === 'danger' ? 'exclamation-triangle' : 'info-circle';
+  const alertHTML = `<div id="${alertId}" class="alert alert-${type} alert-dismissible fade show" role="alert"><i class="fa-solid fa-${iconClass}"></i><span class="ms-2">${message}</span><button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>`;
+  document.getElementById('alerts-container').insertAdjacentHTML('beforeend', alertHTML);
+  setTimeout(() => { const a = document.getElementById(alertId); if(a) new bootstrap.Alert(a).close(); }, 5000);
+}
+</script>
+
 </body>
 </html>
 
