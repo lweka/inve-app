@@ -26,99 +26,96 @@ if(isset($headerPath) && is_file($headerPath)){
 <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
 
 <style>
+/* ==============================
+   CHARTE CARTELPLUS CONGO
+============================== */
 :root{
-  --pp-blue:#0070e0;
-  --pp-blue-dark:#003087;
-  --pp-cyan:#00a8ff;
-  --pp-bg:#f5f7fb;
-  --pp-text:#0b1f3a;
-  --pp-muted:#6b7a90;
-  --pp-card:#ffffff;
-  --pp-border:#e5e9f2;
-  --pp-shadow:0 12px 30px rgba(0, 48, 135, 0.08);
+  --cp-blue:#0b6fbf;
+  --cp-blue-dark:#0a2540;
+  --cp-orange:#f25c2a;
+  --cp-black:#050505;
+  --cp-card:#0f2f4f;
 }
 
+/* ===== BACKGROUND GLOBAL ===== */
 body{
-  background: radial-gradient(1200px 600px at 10% -10%, rgba(0,112,224,0.12), transparent 60%),
-              radial-gradient(1200px 600px at 110% 10%, rgba(0,48,135,0.10), transparent 60%),
-              var(--pp-bg);
-  color:var(--pp-text);
+  background: radial-gradient(circle at top, #0a2540 0%, #050505 70%);
+  color:#e9f1f8;
   min-height:100vh;
-  font-family:'Segoe UI', system-ui, sans-serif;
+  font-family: 'Segoe UI', system-ui, sans-serif;
 }
 
-.page-hero{
-  background: linear-gradient(135deg, var(--pp-blue), var(--pp-blue-dark));
+/* ===== TITRES ===== */
+h3,h5{
+  color:#ffffff;
+}
+
+/* ===== BOUTONS ===== */
+.btn-primary{
+  background:linear-gradient(135deg,var(--cp-blue),#1484e6);
+  border:none;
+}
+.btn-primary:hover{
+  background:linear-gradient(135deg,#1484e6,var(--cp-blue));
+}
+
+.btn-secondary{
+  background:#1b1b1b;
+  border:1px solid #333;
+}
+
+.btn-outline-secondary{
+  color:#cfd8e3;
+  border-color:#3b4d63;
+}
+.btn-outline-secondary:hover{
+  background:#1f3b5a;
   color:#fff;
-  border-radius:20px;
-  padding:22px 24px;
-  box-shadow:0 18px 36px rgba(0,48,135,0.2);
-  display:flex;
-  flex-wrap:wrap;
-  align-items:center;
-  justify-content:space-between;
-  gap:16px;
-  position:relative;
-  overflow:hidden;
-  animation: fadeSlide .7s ease both;
 }
 
-.page-hero::after{
-  content:"";
-  position:absolute;
-  inset:-60% -20% auto auto;
-  width:260px;
-  height:260px;
-  background:radial-gradient(circle, rgba(255,255,255,.25), transparent 60%);
-  animation:pulseGlow 3.2s ease-in-out infinite;
+.btn-outline-success{
+  color:#5dd39e;
+  border-color:#5dd39e;
+}
+.btn-outline-success:hover{
+  background:#5dd39e;
+  color:#000;
 }
 
-.page-hero h1{font-size:24px;margin:0 0 6px;font-weight:700;}
-.page-hero p{margin:0;font-size:13px;color:rgba(255,255,255,.85);}
-
-.page-actions{display:flex;flex-wrap:wrap;gap:10px;}
-
-.btn-pp{
-  display:inline-flex;
-  align-items:center;
-  gap:8px;
-  padding:10px 18px;
-  border-radius:999px;
-  border:1px solid transparent;
-  font-weight:600;
-  font-size:14px;
-  text-decoration:none;
-  transition:transform .2s ease, box-shadow .2s ease, opacity .2s ease;
+.btn-outline-danger{
+  color:var(--cp-orange);
+  border-color:var(--cp-orange);
 }
-.btn-pp-primary{
-  background:linear-gradient(135deg,var(--pp-blue),var(--pp-blue-dark));
-  color:#fff;
-  box-shadow:0 10px 24px rgba(0,112,224,.25);
+.btn-outline-danger:hover{
+  background:var(--cp-orange);
+  color:#000;
 }
-.btn-pp-secondary{
-  background:#fff;
-  color:var(--pp-blue-dark);
-  border-color:var(--pp-border);
-}
-.btn-pp:hover{transform:translateY(-1px);opacity:.95;}
 
+/* ===== CARDS MAISONS ===== */
 .card-house{
-  background:var(--pp-card);
-  border:1px solid var(--pp-border);
+  background:linear-gradient(180deg,var(--cp-card),#091a2a);
+  border:1px solid rgba(242,92,42,0.25);
   border-radius:16px;
-  box-shadow:var(--pp-shadow);
+  box-shadow:0 10px 30px rgba(0,0,0,.6);
   transition:transform .25s ease, box-shadow .25s ease;
 }
-.card-house:hover{transform:translateY(-6px);box-shadow:0 18px 36px rgba(0,48,135,.14);}
+.card-house:hover{
+  transform:translateY(-6px);
+  box-shadow:0 18px 45px rgba(0,0,0,.8);
+}
 
-.card-house h5{color:var(--pp-blue-dark);font-weight:700;}
+.card-house h5{
+  color:#ffffff;
+  font-weight:600;
+}
 
+/* ===== CODE MASQUÉ ===== */
 .code-mask{
-  background:#eef3ff;
+  background:#000;
   padding:4px 10px;
   border-radius:8px;
   letter-spacing:2px;
-  color:var(--pp-blue-dark);
+  color:var(--cp-orange);
 }
 
 /* ===== ALERTES ===== */
@@ -156,13 +153,19 @@ body{
 
 /* ===== INPUTS ===== */
 .form-control{
-  background:#fff;
-  color:var(--pp-text);
-  border:1px solid var(--pp-border);
+  background:#071726;
+  color:#fff;
+  border:1px solid #1f3b5a;
 }
 .form-control:focus{
-  border-color:var(--pp-blue);
-  box-shadow:0 0 0 .2rem rgba(0,112,224,.15);
+  background:#071726;
+  color:#fff;
+  border-color:var(--cp-blue);
+  box-shadow:0 0 0 .2rem rgba(11,111,191,.25);
+}
+
+.form-text{
+  color:#9fb3c8;
 }
 
 /* ===== ICONES ===== */
@@ -171,26 +174,21 @@ body{
 }
 
 /* ===== CONTAINER ===== */
-.container{max-width:1200px;}
-
-@keyframes fadeSlide{from{opacity:0;transform:translateY(12px);}to{opacity:1;transform:translateY(0);}}
-@keyframes pulseGlow{0%,100%{transform:scale(1);opacity:.6;}50%{transform:scale(1.12);opacity:1;}}
+.container{
+  max-width:1200px;
+}
 </style>
 </head>
 
 <body>
 
 <div class="container py-4">
-  <div class="page-hero mb-4">
-    <div>
-      <h1>Gestion des maisons</h1>
-      <p>Créez, sécurisez et administrez vos maisons, vendeurs et produits.</p>
-    </div>
-    <div class="page-actions">
-      <a href="<?=DASHBOARD_ADMIN?>" class="btn-pp btn-pp-secondary">Retour tableau de bord</a>
-      <button class="btn-pp btn-pp-primary" data-bs-toggle="modal" data-bs-target="#createHouseModal">+ Créer une maison</button>
-    </div>
+  <div class="d-flex justify-content-between mb-4">
+    <h3 class="fw-bold">Gestion des maisons</h3>
+    <button class="btn btn-primary mb-3" data-bs-toggle="modal" data-bs-target="#createHouseModal">+ Créer une maison</button>
+    
   </div>
+  <a href="<?=DASHBOARD_ADMIN?>" class="btn btn-secondary mb-3">← Retour aux maisons</a>
 
   <!-- Alerts -->
   <div id="alerts-container" class="mb-3">

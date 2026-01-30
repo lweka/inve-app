@@ -60,161 +60,125 @@ $sql .= " ORDER BY pm.receipt_id DESC, pm.is_kit DESC, pm.created_at DESC ";
 
 $stmt = $pdo->prepare($sql);
 $stmt->execute($params);
-    <style>
-        :root {
-            --pp-blue: #0070e0;
-            --pp-blue-dark: #003087;
-            --pp-cyan: #00a8ff;
-            --pp-bg: #f5f7fb;
-            --pp-text: #0b1f3a;
-            --pp-muted: #6b7a90;
-            --pp-card: #ffffff;
-            --pp-border: #e5e9f2;
-            --pp-shadow: 0 12px 30px rgba(0, 48, 135, 0.08);
+$sales = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+/* ===============================
+   STATISTIQUES GLOBALES
+   =============================== */
+$total_sales = 0;
+$total_discount = 0;
+$qty_total = 0;
+$payment_methods = [];
+
+foreach ($sales as $sale) {
+    if (!$sale['is_kit']) {
+        $total_sales += ($sale['qty'] * $sale['unit_sell_price']) - (float)$sale['discount'];
+        $total_discount += (float)$sale['discount'];
+    } else {
+        $total_sales += $sale['unit_sell_price'];
+    }
+    
+    $qty_total += $sale['qty'];
+    
+    $method = $sale['payment_method'] ?? 'inconnu';
+    if (!isset($payment_methods[$method])) {
+        $payment_methods[$method] = 0;
+    }
+    if (!$sale['is_kit']) {
+        $payment_methods[$method] += ($sale['qty'] * $sale['unit_sell_price']) - (float)$sale['discount'];
+    } else {
+        $payment_methods[$method] += $sale['unit_sell_price'];
+    }
+}
+
+/* ===============================
+   LISTES POUR FILTRES
+   =============================== */
+$stmt_houses = $pdo->prepare("SELECT id, name FROM houses WHERE client_code = ? ORDER BY name");
+$stmt_houses->execute([$client_code]);
+$houses = $stmt_houses->fetchAll(PDO::FETCH_ASSOC);
+
+$stmt_agents = $pdo->prepare("SELECT id, fullname FROM agents WHERE client_code = ? ORDER BY fullname");
+$stmt_agents->execute([$client_code]);
+$agents = $stmt_agents->fetchAll(PDO::FETCH_ASSOC);
+
+/* ===============================
+   EXPORT PDF
+   =============================== */
+if (isset($_GET['export_pdf'])) {
+    require_once __DIR__ . '/../vendor/autoload.php';
+    $pdf = new TCPDF();
+    $pdf->SetFont('helvetica', '', 8);
+    $pdf->AddPage();
+    
+    // Récupérer le nom de la maison si filtrée
+    $house_name = 'RAPPORT JOURNALIER';
+    if ($filter_house) {
+        $stmt_house = $pdo->prepare("SELECT name FROM houses WHERE id = ? AND client_code = ?");
+        $stmt_house->execute([$filter_house, $client_code]);
+        $house = $stmt_house->fetch(PDO::FETCH_ASSOC);
+        if ($house) {
+            $house_name = 'RAPPORT JOURNALIER - ' . strtoupper($house['name']);
         }
-
-        body {
-            background: radial-gradient(1200px 600px at 10% -10%, rgba(0,112,224,0.12), transparent 60%),
-                        radial-gradient(1200px 600px at 110% 10%, rgba(0,48,135,0.10), transparent 60%),
-                        var(--pp-bg);
-            color: var(--pp-text);
-            font-family: "Segoe UI", system-ui, sans-serif;
-            min-height: 100vh;
+    } else {
+        $house_name = 'RAPPORT JOURNALIER - TOUTES LES MAISONS';
+    }
+    
+    // En-tête
+    $pdf->SetFont('helvetica', 'B', 14);
+    $pdf->Cell(0, 10, $house_name, 0, 1, 'C');
+    
+    $pdf->SetFont('helvetica', '', 10);
+    $pdf->Cell(0, 5, 'Période: ' . $filter_date_from . ' au ' . $filter_date_to, 0, 1, 'C');
+    $pdf->Ln(5);
+    
+    // Statistiques
+    $pdf->SetFont('helvetica', 'B', 10);
+    $pdf->SetFillColor(10, 111, 183);
+    $pdf->SetTextColor(255, 255, 255);
+    $pdf->Cell(40, 6, 'Total Ventes', 1, 0, 'C', true);
+    $pdf->Cell(40, 6, 'Remise Total', 1, 0, 'C', true);
+    $pdf->Cell(40, 6, 'Qté Vendue', 1, 1, 'C', true);
+    
+    $pdf->SetFont('helvetica', '', 10);
+    $pdf->SetTextColor(0, 0, 0);
+    $pdf->SetFillColor(240, 240, 240);
+    $pdf->Cell(40, 6, number_format($total_sales, 0) . ' FC', 1, 0, 'R', true);
+    $pdf->Cell(40, 6, number_format($total_discount, 0) . ' FC', 1, 0, 'R', true);
+    $pdf->Cell(40, 6, $qty_total, 1, 1, 'C', true);
+    $pdf->Ln(5);
+    
+    // Tableau détail
+    $pdf->SetFont('helvetica', 'B', 9);
+    $pdf->SetFillColor(10, 111, 183);
+    $pdf->SetTextColor(255, 255, 255);
+    $pdf->Cell(20, 5, 'Date', 1, 0, 'C', true);
+    $pdf->Cell(30, 5, 'Produit', 1, 0, 'L', true);
+    $pdf->Cell(15, 5, 'Qté', 1, 0, 'C', true);
+    $pdf->Cell(20, 5, 'PU', 1, 0, 'R', true);
+    $pdf->Cell(15, 5, 'Total', 1, 0, 'R', true);
+    $pdf->Cell(25, 5, 'Vendeur', 1, 1, 'L', true);
+    
+    $pdf->SetFont('helvetica', '', 8);
+    $pdf->SetTextColor(0, 0, 0);
+    
+    $alt = 0;
+    foreach ($sales as $s) {
+        if ($s['is_kit']) continue;
+        
+        $row_amount = ($s['qty'] * $s['unit_sell_price']) - (float)$s['discount'];
+        
+        if ($alt++ % 2 == 0) {
+            $pdf->SetFillColor(220, 240, 255); // Bleu clair
+        } else {
+            $pdf->SetFillColor(245, 250, 255); // Blanc bleuté
         }
-
-        .page-header {
-            background: linear-gradient(135deg, var(--pp-blue), var(--pp-blue-dark));
-            color: #fff;
-            border-radius: 20px;
-            padding: 22px 24px;
-            margin: 24px 16px 24px;
-            box-shadow: 0 18px 36px rgba(0, 48, 135, 0.2);
-            position: relative;
-            overflow: hidden;
-            animation: fadeSlide .7s ease both;
-        }
-
-        .page-header::after {
-            content: "";
-            position: absolute;
-            inset: -60% -20% auto auto;
-            width: 260px;
-            height: 260px;
-            background: radial-gradient(circle, rgba(255,255,255,0.25), transparent 60%);
-            animation: pulseGlow 3.2s ease-in-out infinite;
-        }
-
-        .filter-card {
-            background: var(--pp-card);
-            border: 1px solid var(--pp-border);
-            border-radius: 16px;
-            padding: 20px;
-            margin: 0 16px 24px;
-            box-shadow: var(--pp-shadow);
-            animation: fadeUp .6s ease both;
-        }
-
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-            gap: 15px;
-            margin: 0 16px 24px;
-        }
-
-        .stat-card {
-            background: var(--pp-card);
-            border: 1px solid var(--pp-border);
-            border-radius: 14px;
-            padding: 15px;
-            box-shadow: var(--pp-shadow);
-            transition: transform .2s ease, box-shadow .2s ease;
-        }
-
-        .stat-card:hover { transform: translateY(-4px); box-shadow: 0 16px 32px rgba(0,48,135,.12); }
-
-        .stat-label {
-            font-size: 12px;
-            color: var(--pp-muted);
-            text-transform: uppercase;
-            letter-spacing: 0.4px;
-            margin-bottom: 5px;
-        }
-
-        .stat-value {
-            font-size: 22px;
-            font-weight: 700;
-            color: var(--pp-blue-dark);
-        }
-
-        .table-container {
-            background: var(--pp-card);
-            border-radius: 14px;
-            overflow: hidden;
-            border: 1px solid var(--pp-border);
-            box-shadow: var(--pp-shadow);
-            margin: 0 16px 24px;
-        }
-
-        .table { margin-bottom: 0; }
-
-        .table thead th {
-            background: #f0f4ff;
-            color: var(--pp-blue-dark);
-            border: none;
-            padding: 15px;
-            font-weight: 700;
-        }
-
-        .table tbody td {
-            padding: 12px 15px;
-            border-color: #eef1f6;
-        }
-
-        .table-striped tbody tr:nth-of-type(odd) {
-            background: #fafbff;
-        }
-
-        .btn-export {
-            background: linear-gradient(135deg, var(--pp-cyan), var(--pp-blue));
-            color: #fff;
-            font-weight: 600;
-            border: none;
-            border-radius: 999px;
-            padding: 10px 18px;
-            transition: transform .2s ease, opacity .2s ease;
-        }
-
-        .btn-export:hover { transform: translateY(-1px); opacity: .95; }
-
-        .btn-filter {
-            background: linear-gradient(135deg, var(--pp-blue), var(--pp-blue-dark));
-            color: #fff;
-            border: none;
-            padding: 8px 18px;
-            border-radius: 999px;
-            cursor: pointer;
-            font-weight: 600;
-            transition: transform .2s ease, opacity .2s ease;
-        }
-
-        .btn-filter:hover { transform: translateY(-1px); opacity: .95; }
-
-        .receipt-group {
-            border-left: 3px solid var(--pp-blue);
-            padding-left: 15px;
-            margin-bottom: 15px;
-        }
-
-        .receipt-label {
-            font-size: 11px;
-            color: var(--pp-muted);
-            margin-bottom: 5px;
-        }
-
-        @keyframes fadeSlide { from{opacity:0;transform:translateY(12px);} to{opacity:1;transform:translateY(0);} }
-        @keyframes fadeUp { from{opacity:0;transform:translateY(14px);} to{opacity:1;transform:translateY(0);} }
-        @keyframes pulseGlow { 0%,100%{transform:scale(1);opacity:.6;} 50%{transform:scale(1.12);opacity:1;} }
-    </style>
+        $pdf->SetTextColor(0, 0, 0); // Texte noir
+        
+        $pdf->Cell(20, 4, substr($s['created_at'], 5, 11), 1, 0, 'C', $alt % 2 == 0);
+        $pdf->Cell(30, 4, substr($s['product_name'], 0, 12), 1, 0, 'L', $alt % 2 == 0);
+        $pdf->Cell(15, 4, $s['qty'], 1, 0, 'C', $alt % 2 == 0);
+        $pdf->Cell(20, 4, number_format($s['unit_sell_price'], 0), 1, 0, 'R', $alt % 2 == 0);
         $pdf->Cell(15, 4, number_format($row_amount, 0), 1, 0, 'R', $alt % 2 == 0);
         $pdf->Cell(25, 4, substr($s['agent_fullname'] ?? '', 0, 10), 1, 1, 'L', $alt % 2 == 0);
     }
@@ -394,12 +358,9 @@ $stmt->execute($params);
 
 <div class="page-header">
     <div class="container-fluid">
-        <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
-            <div>
-                <h2 class="mb-1">Rapports journaliers</h2>
-                <div style="font-size:13px; color: rgba(255,255,255,.85);">Suivi complet des ventes et export PDF.</div>
-            </div>
-            <a href="dashboard.php" class="btn btn-light">Retour tableau de bord</a>
+        <div class="d-flex justify-content-between align-items-center">
+            <h2 class="mb-0">📈 Rapports Journaliers</h2>
+            <a href="dashboard.php" class="btn btn-outline-light">← Retour Admin</a>
         </div>
     </div>
 </div>
