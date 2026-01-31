@@ -821,8 +821,20 @@ function showMsg(title, message){
     /* ================= KIT ================= */
     if(c.is_kit){
 
-      totals[c.sell_currency] =
-        (totals[c.sell_currency] || 0) + c.total_price;
+      // Ajouter les totaux par devise au panier global
+      if(c.total_by_currency) {
+        for(const cur in c.total_by_currency) {
+          totals[cur] = (totals[cur] || 0) + c.total_by_currency[cur];
+        }
+      }
+
+      // Générer l'affichage des totaux du kit par devise
+      let kitTotalsDisplay = '';
+      if(c.total_by_currency) {
+        for(const cur in c.total_by_currency) {
+          kitTotalsDisplay += `<div><strong>${c.total_by_currency[cur].toFixed(2)} ${cur}</strong></div>`;
+        }
+      }
 
       el.innerHTML += `
         <div class="cart-item">
@@ -832,13 +844,14 @@ function showMsg(title, message){
                 <i class="fa-solid fa-boxes-stacked"></i> ${c.label}
               </div>
               <div class="small" style="color:#6b7280;margin-top:4px;">
-                ${c.items.length} produit(s) • Devise: <strong>${c.sell_currency}</strong>
+                ${c.items.length} produit(s)
               </div>
               <ul class="small mt-2 mb-2" style="color:#6b7280;">
-                ${c.items.map(it => `<li>${it.name} × ${it.qty} = ${(it.sell_price * it.qty).toFixed(2)} ${c.sell_currency}</li>`).join('')}
+                ${c.items.map(it => `<li>${it.name} × ${it.qty} = ${(it.sell_price * it.qty).toFixed(2)} ${it.sell_currency}</li>`).join('')}
               </ul>
               <div class="cart-item-price" style="border-top:1px solid #e5e7eb;padding-top:8px;margin-top:8px;">
-                <strong>Total: ${c.total_price.toFixed(2)} ${c.sell_currency}</strong>
+                <div style="font-weight:600;">Total Kit:</div>
+                ${kitTotalsDisplay}
               </div>
             </div>
             <button class="btn-pp btn-pp-danger btn-sm" onclick="cart.splice(${i},1); renderCart();">
@@ -931,32 +944,37 @@ function addKitToCart(){
     return;
   }
 
-  // Grouper les produits du kit par devise
-  const kitsByCurrency = {};
-
+  // Calculer le total - on garde tous les produits ensemble
+  // mais on stocke le montant par devise pour le calcul
+  let totalByCurrency = {};
+  
   currentKit.forEach(k => {
     const cur = k.sell_currency;
-    if(!kitsByCurrency[cur]) {
-      kitsByCurrency[cur] = {
-        items: [],
-        total: 0
-      };
+    if(!totalByCurrency[cur]) {
+      totalByCurrency[cur] = 0;
     }
-    kitsByCurrency[cur].items.push(k);
-    kitsByCurrency[cur].total += k.sell_price * k.qty;
+    totalByCurrency[cur] += k.sell_price * k.qty;
   });
 
-  // Créer un kit pour chaque devise
-  for(const currency in kitsByCurrency) {
-    const kitData = kitsByCurrency[currency];
-    cart.push({
-      is_kit: true,
-      label: "KIT PRODUITS",
-      total_price: kitData.total,
-      sell_currency: currency,
-      items: JSON.parse(JSON.stringify(kitData.items)) // copie propre
-    });
-  }
+  // Créer UN seul kit avec tous les produits
+  // Le total sera en multi-devises (stocké pour l'affichage)
+  cart.push({
+    is_kit: true,
+    label: "KIT PRODUITS",
+    total_by_currency: totalByCurrency, // Stocke les totaux par devise
+    items: JSON.parse(JSON.stringify(currentKit)) // tous les produits du kit
+  });
+
+  // reset
+  currentKit = [];
+  renderCart();
+
+  // fermer + reset modal
+  bootstrap.Modal.getInstance(
+    document.getElementById('kitModal')
+  ).hide();
+  resetKitModal();
+}
 
   // reset
   currentKit = [];

@@ -57,13 +57,16 @@ try {
            ===================================================== */
         if (!empty($item['is_kit']) && !empty($item['items'])) {
 
-            $kitTotalPrice = 0;
+            // Calculer les totaux par devise
+            $kitTotalsByCurrency = [];
+            $kitCurrencies = [];
 
             // 🔒 Vérifier stock vendeur pour TOUS les composants
             foreach ($item['items'] as $k) {
 
                 $pid = (int)$k['product_id'];
                 $qty = (int)$k['qty'];
+                $currency = $k['sell_currency'] ?? 'CDF';
 
                 $stmt = $pdo->prepare("
                     SELECT qty
@@ -82,8 +85,20 @@ try {
                     );
                 }
 
-                $kitTotalPrice += ($k['sell_price'] * $qty);
+                // Calculer le total par devise
+                if(!isset($kitTotalsByCurrency[$currency])) {
+                    $kitTotalsByCurrency[$currency] = 0;
+                    $kitCurrencies[] = $currency;
+                }
+                $kitTotalsByCurrency[$currency] += ($k['sell_price'] * $qty);
             }
+
+            // Déterminer le total du kit (on prend la première devise ou CDF par défaut)
+            $kitPrimaryCurrency = $kitCurrencies[0] ?? 'CDF';
+            $kitTotalPrice = $kitTotalsByCurrency[$kitPrimaryCurrency] ?? 0;
+            
+            // Marquer comme kit mixte si plusieurs devises
+            $isMixedCurrency = count($kitCurrencies) > 1;
 
             // 🔻 Appliquer remise sur le KIT
             if ($discount > 0) {
