@@ -24,7 +24,7 @@ if (session_id() != '') {
 session_destroy();
 
 // Déterminer la redirection
-$redirect_url = ($role === 'admin') ? 'admin_login_form.php' : 'connect-parse.php?role=seller';
+$redirect_url = ($role === 'admin') ? 'connect-parse.php?role=admin' : 'connect-parse.php?role=seller';
 ?>
 <!DOCTYPE html>
 <html lang="fr">
