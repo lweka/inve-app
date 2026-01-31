@@ -315,8 +315,8 @@ body {
     $marginDecimals = ($marginCurrency === 'USD') ? 2 : 0;
 ?>
 <td><?= number_format((float)$r['margin_unit'], $marginDecimals) ?> <?= htmlspecialchars($marginCurrency) ?></td>
-<td><strong><?= number_format((float)$r['margin_total'], $marginDecimals) ?> <?= htmlspecialchars($marginCurrency) ?></strong></td>
-<td><?= htmlspecialchars($r['note']) ?></td>
+<td><?= htmlspecialchars($r['margin_total'] ?? 0) ?> <?= htmlspecialchars($marginCurrency) ?></strong></td>
+<td><?= htmlspecialchars($r['note'] ?? '-') ?></td>
 </tr>
 <?php endforeach; ?>
 
