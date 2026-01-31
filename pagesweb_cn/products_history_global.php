@@ -100,10 +100,30 @@ SELECT
     pm.qty,
     pm.unit_buy_price_cdf,
     pm.unit_sell_price_cdf,
-    (pm.unit_sell_price_cdf - pm.unit_buy_price_cdf) AS margin_unit,
-    (pm.qty * (pm.unit_sell_price_cdf - pm.unit_buy_price_cdf)) AS margin_total,
+    CASE
+        WHEN pm.unit_sell_price_cdf IS NOT NULL
+         AND pm.unit_buy_price_cdf IS NOT NULL
+         AND (pm.unit_sell_price_cdf != 0 OR pm.unit_buy_price_cdf != 0)
+        THEN (pm.unit_sell_price_cdf - pm.unit_buy_price_cdf)
+        ELSE (COALESCE(NULLIF(pm.unit_sell_price, 0), p.sell_price) - COALESCE(NULLIF(pm.unit_buy_price, 0), p.buy_price))
+    END AS margin_unit,
+    CASE
+        WHEN pm.unit_sell_price_cdf IS NOT NULL
+         AND pm.unit_buy_price_cdf IS NOT NULL
+         AND (pm.unit_sell_price_cdf != 0 OR pm.unit_buy_price_cdf != 0)
+        THEN (pm.qty * (pm.unit_sell_price_cdf - pm.unit_buy_price_cdf))
+        ELSE (pm.qty * (COALESCE(NULLIF(pm.unit_sell_price, 0), p.sell_price) - COALESCE(NULLIF(pm.unit_buy_price, 0), p.buy_price)))
+    END AS margin_total,
+    CASE
+        WHEN pm.unit_sell_price_cdf IS NOT NULL
+         AND pm.unit_buy_price_cdf IS NOT NULL
+         AND (pm.unit_sell_price_cdf != 0 OR pm.unit_buy_price_cdf != 0)
+        THEN 'CDF'
+        ELSE p.sell_currency
+    END AS margin_currency,
     pm.note,
     p.name AS product_name,
+    p.sell_currency,
     h.name AS house_name,
     a.fullname AS agent_name
 FROM product_movements pm
@@ -122,9 +142,15 @@ $rows = $stmt->fetchAll();
 /* =========================
    DONNÉES FILTRES
 ========================= */
-$stmt = $pdo->prepare("SELECT id, name FROM products WHERE client_code = ? ORDER BY name");
-$stmt->execute([$client_code]);
-$products = $stmt->fetchAll();
+if($house_id > 0){
+    $stmt = $pdo->prepare("SELECT DISTINCT p.id, p.name FROM products p JOIN house_stock hs ON hs.product_id = p.id WHERE p.client_code = ? AND hs.house_id = ? ORDER BY p.name");
+    $stmt->execute([$client_code, $house_id]);
+    $products = $stmt->fetchAll();
+} else {
+    $stmt = $pdo->prepare("SELECT id, name FROM products WHERE client_code = ? ORDER BY name");
+    $stmt->execute([$client_code]);
+    $products = $stmt->fetchAll();
+}
 
 $stmt = $pdo->prepare("SELECT id, fullname FROM agents WHERE client_code = ? ORDER BY fullname");
 $stmt->execute([$client_code]);
@@ -284,8 +310,12 @@ body {
 <td><?= strtoupper($r['type']) ?></td>
 <td><?= htmlspecialchars($r['agent_name'] ?? '-') ?></td>
 <td><?= $r['qty'] ?></td>
-<td><?= number_format((float)$r['margin_unit'],0) ?> CDF</td>
-<td><strong><?= number_format((float)$r['margin_total'],0) ?> CDF</strong></td>
+<?php
+    $marginCurrency = $r['margin_currency'] ?? 'CDF';
+    $marginDecimals = ($marginCurrency === 'USD') ? 2 : 0;
+?>
+<td><?= number_format((float)$r['margin_unit'], $marginDecimals) ?> <?= htmlspecialchars($marginCurrency) ?></td>
+<td><strong><?= number_format((float)$r['margin_total'], $marginDecimals) ?> <?= htmlspecialchars($marginCurrency) ?></strong></td>
 <td><?= htmlspecialchars($r['note']) ?></td>
 </tr>
 <?php endforeach; ?>
