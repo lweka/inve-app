@@ -377,8 +377,8 @@ body {
         <i class="fa fa-plus"></i> Ajouter produit
       </button>
       <a href="<?= EXCHANGE_RATE_MANAGER ?>?house_id=<?= (int)$house_id ?>" class="btn-pp btn-pp-secondary"><i class="fa-solid fa-dollar-sign"></i> TAUX USD</a>
-      <a href="<?=PRODUCTS_ALL_STORY?>" class="btn-pp btn-pp-secondary"><i class="fa-solid fa-history"></i> HISTORIQUE</a>
-      <a href="<?=PRODUCTS_LOW_STOCK?>" class="btn-pp btn-pp-warning"><i class="fa-solid fa-exclamation-triangle"></i> ALERTE</a>
+      <a href="<?=PRODUCTS_ALL_STORY?>?house_id=<?= (int)$house_id ?>" class="btn-pp btn-pp-secondary"><i class="fa-solid fa-history"></i> HISTORIQUE</a>
+      <a href="<?=PRODUCTS_LOW_STOCK?>?house_id=<?= (int)$house_id ?>" class="btn-pp btn-pp-warning"><i class="fa-solid fa-exclamation-triangle"></i> ALERTE</a>
       <a href="<?=HOUSES_MANAGE?>" class="btn-pp btn-pp-secondary">← Retour</a>
     </div>
   </div>

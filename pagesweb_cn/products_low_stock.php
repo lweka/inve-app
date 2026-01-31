@@ -28,7 +28,9 @@ if($_SERVER['REQUEST_METHOD']==='POST'){
 /* =========================
    PRODUITS EN ALERTE
 ========================= */
-$stmt = $pdo->prepare("
+$house_id = isset($_GET['house_id']) ? (int)$_GET['house_id'] : 0;
+
+$sql = "
 SELECT 
     p.id AS product_id,
     p.name AS product_name,
@@ -39,9 +41,20 @@ FROM house_stock hs
 JOIN products p ON p.id = hs.product_id
 JOIN houses h ON h.id = hs.house_id
 WHERE hs.qty < 5
-ORDER BY hs.qty ASC
-");
-$stmt->execute();
+";
+
+if($house_id > 0){
+    $sql .= " AND h.id = ?";
+}
+
+$sql .= " ORDER BY hs.qty ASC";
+
+$stmt = $pdo->prepare($sql);
+if($house_id > 0){
+    $stmt->execute([$house_id]);
+} else {
+    $stmt->execute();
+}
 $rows = $stmt->fetchAll();
 
 
@@ -106,9 +119,15 @@ body {
     <h3><i class="fa-solid fa-triangle-exclamation"></i> Produits en stock bas</h3>
   </div>
   
-  <a href="<?= DASHBOARD_ADMIN ?>" class="btn-pp btn-pp-secondary mb-3">
-    <i class="fa-solid fa-arrow-left"></i> Retour au Dashboard
-  </a>
+  <?php if($house_id > 0): ?>
+    <a href="<?= PRODUCTS_MANAGE ?>?house_id=<?= (int)$house_id ?>" class="btn-pp btn-pp-secondary mb-3">
+      <i class="fa-solid fa-arrow-left"></i> Retour aux produits
+    </a>
+  <?php else: ?>
+    <a href="<?= DASHBOARD_ADMIN ?>" class="btn-pp btn-pp-secondary mb-3">
+      <i class="fa-solid fa-arrow-left"></i> Retour au Dashboard
+    </a>
+  <?php endif; ?>
 
 <?php if(!$rows): ?>
   <div class="alert alert-success">

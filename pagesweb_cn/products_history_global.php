@@ -35,6 +35,7 @@ $page   = max(1, (int)($_GET['page'] ?? 1));
 $limit  = max(1, (int)($_GET['limit'] ?? 10));
 $offset = ($page - 1) * $limit;
 
+$house_id   = (int)($_GET['house_id'] ?? 0);
 $product_id = (int)($_GET['product_id'] ?? 0);
 $agent_id   = (int)($_GET['agent_id'] ?? 0);
 $type       = $_GET['movement_type'] ?? '';
@@ -46,6 +47,11 @@ $end_date   = $_GET['end_date'] ?? '';
 ========================= */
 $where = " WHERE pm.client_code = ? ";
 $params = [$client_code];
+
+if($house_id > 0){
+    $where .= " AND pm.house_id = ? ";
+    $params[] = $house_id;
+}
 
 if($product_id > 0){
     $where .= " AND pm.product_id = ? ";
@@ -197,12 +203,21 @@ body {
     <h3><i class="fa-solid fa-clock-rotate-left"></i> Historique global des produits</h3>
   </div>
   
-  <a href="<?= DASHBOARD_ADMIN ?>" class="btn-pp btn-pp-secondary mb-3">
-    <i class="fa-solid fa-arrow-left"></i> Retour au Dashboard
-  </a>
+  <?php if($house_id > 0): ?>
+    <a href="<?= PRODUCTS_MANAGE ?>?house_id=<?= (int)$house_id ?>" class="btn-pp btn-pp-secondary mb-3">
+      <i class="fa-solid fa-arrow-left"></i> Retour aux produits
+    </a>
+  <?php else: ?>
+    <a href="<?= DASHBOARD_ADMIN ?>" class="btn-pp btn-pp-secondary mb-3">
+      <i class="fa-solid fa-arrow-left"></i> Retour au Dashboard
+    </a>
+  <?php endif; ?>
 
 <div class="filter-card">
 <form method="GET" class="row g-3">
+<?php if($house_id > 0): ?>
+  <input type="hidden" name="house_id" value="<?= (int)$house_id ?>">
+<?php endif; ?>
 <div class="col-md-2">
 <select name="product_id" class="form-select">
 <option value="">Tous produits</option>
@@ -281,9 +296,18 @@ body {
 
 <nav class="mt-4">
 <ul class="pagination">
-<?php for($i=1;$i<=$totalPages;$i++): ?>
+<?php for($i=1;$i<=$totalPages;$i++): 
+  $query_params = ['page' => $i];
+  if($house_id > 0) $query_params['house_id'] = $house_id;
+  if($product_id > 0) $query_params['product_id'] = $product_id;
+  if($agent_id > 0) $query_params['agent_id'] = $agent_id;
+  if($type) $query_params['movement_type'] = $type;
+  if($start_date) $query_params['start_date'] = $start_date;
+  if($end_date) $query_params['end_date'] = $end_date;
+  $query_string = http_build_query($query_params);
+?>
 <li class="page-item <?= $i==$page?'active':'' ?>">
-<a class="page-link" href="?page=<?= $i ?>"><?= $i ?></a>
+<a class="page-link" href="?<?= $query_string ?>"><?= $i ?></a>
 </li>
 <?php endfor; ?>
 </ul>
