@@ -196,9 +196,10 @@ body {
   <div class="page-hero">
     <h3><i class="fa-solid fa-clock-rotate-left"></i> Historique global des produits</h3>
   </div>
-  <?php foreach($houses as $h): ?>
-    <a href="<?=PRODUCTS_MANAGE?>?house_id=<?= $h['id']?>" class="btn-pp btn-pp-secondary mb-3"><i class="fa-solid fa-arrow-left"></i> Retour</a>
-  <?php endforeach; ?>
+  
+  <a href="<?= DASHBOARD_ADMIN ?>" class="btn-pp btn-pp-secondary mb-3">
+    <i class="fa-solid fa-arrow-left"></i> Retour au Dashboard
+  </a>
 
 <div class="filter-card">
 <form method="GET" class="row g-3">
