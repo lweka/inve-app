@@ -486,5 +486,99 @@ body {
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 
+<!-- SYSTÈME DE VÉRIFICATION DU STATUT DU VENDEUR EN TEMPS RÉEL -->
+<script>
+// Vérifier le statut du vendeur toutes les 5 secondes
+let accountDisabledShown = false;
+
+function checkSellerStatus() {
+  fetch('api_check_seller_status.php')
+    .then(response => response.json())
+    .then(data => {
+      // Si le vendeur a été désactivé
+      if(data.is_active === false && !accountDisabledShown) {
+        accountDisabledShown = true;
+        showAccountDisabledModal(data.name);
+      }
+    })
+    .catch(err => console.error('Erreur vérification statut:', err));
+}
+
+function showAccountDisabledModal(agentName) {
+  // Créer la modale dynamiquement
+  const modalHTML = `
+    <div class="modal fade" id="accountDisabledModal" tabindex="-1" backdrop="static" keyboard="false">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="border: none; border-radius: 20px; box-shadow: 0 20px 60px rgba(0, 48, 135, 0.15);">
+          <div class="modal-header" style="background: linear-gradient(135deg, #dc2626, #b91c1c); border: none; border-radius: 20px 20px 0 0; padding: 24px;">
+            <div style="text-align: center; width: 100%; color: white;">
+              <div style="font-size: 48px; margin-bottom: 12px;">
+                <i class="fa-solid fa-lock" style="animation: pulse 1s ease-in-out infinite;"></i>
+              </div>
+              <h5 class="modal-title" style="color: white; font-weight: 700; font-size: 20px;">Compte Désactivé</h5>
+            </div>
+          </div>
+          <div class="modal-body" style="padding: 32px; text-align: center;">
+            <p style="font-size: 16px; color: #0b1f3a; margin-bottom: 16px; font-weight: 500;">
+              Votre compte a été désactivé par l'administrateur.
+            </p>
+            <p style="font-size: 15px; color: #6b7280; margin-bottom: 24px; line-height: 1.6;">
+              L'accès à votre espace de vente n'est plus disponible.
+            </p>
+            <div style="background: #fff3cd; border-left: 4px solid #f59e0b; padding: 16px; border-radius: 8px; text-align: left; margin-bottom: 24px;">
+              <strong style="color: #856404; display: block; margin-bottom: 6px;">
+                <i class="fa-solid fa-exclamation-circle"></i> Action requise
+              </strong>
+              <span style="color: #704214; font-size: 14px;">
+                Veuillez contacter l'administrateur pour rétablir l'accès à votre compte.
+              </span>
+            </div>
+            <p style="font-size: 13px; color: #9ca3af; margin: 0;">
+              <i class="fa-solid fa-user-circle"></i> ${agentName}
+            </p>
+          </div>
+          <div class="modal-footer" style="border-top: 1px solid #e5e7eb; padding: 16px 24px;">
+            <button type="button" class="btn" style="background: #0070e0; color: white; border: none; border-radius: 24px; padding: 10px 24px; font-weight: 600;" onclick="redirectToDisabled()">
+              <i class="fa-solid fa-sign-in"></i> Retour à la connexion
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  // Ajouter la modale au DOM
+  document.body.insertAdjacentHTML('beforeend', modalHTML);
+
+  // Afficher la modale
+  const modal = new bootstrap.Modal(document.getElementById('accountDisabledModal'), {
+    backdrop: 'static',
+    keyboard: false
+  });
+  modal.show();
+}
+
+function redirectToDisabled() {
+  // Rediriger vers la page de compte désactivé
+  window.location.href = 'account_disabled.php';
+}
+
+// Lancer la vérification toutes les 5 secondes
+setInterval(checkSellerStatus, 5000);
+
+// Vérifier aussi au chargement
+checkSellerStatus();
+
+// Animation CSS pour le pulse
+const style = document.createElement('style');
+style.textContent = \`
+  @keyframes pulse {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.05); opacity: 0.8; }
+  }
+\`;
+document.head.appendChild(style);
+</script>
+
 </body>
 </html>
