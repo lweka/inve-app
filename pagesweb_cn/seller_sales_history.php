@@ -33,7 +33,6 @@ SELECT
   pm.customer_name,
   pm.is_kit,
   pm.kit_id,
-  pm.sell_currency_cdf,
   p.name AS product_name,
   p.sell_currency
 FROM product_movements pm
@@ -400,7 +399,7 @@ body {
           <td class="text-end">—</td>
           <td class="text-end">
             <?php if($s['discount'] > 0): ?>
-              <?php $kit_currency = $s['sell_currency'] ?: ($s['sell_currency_cdf'] ? 'CDF' : 'USD'); ?>
+              <?php $kit_currency = $s['sell_currency'] ?: 'CDF'; ?>
               <span class="price-high">-<?= number_format((float)$s['discount'], 2) ?> <?= htmlspecialchars($kit_currency) ?></span>
             <?php else: ?>
               <span>—</span>
@@ -416,7 +415,7 @@ body {
           </td>
           <td><?= htmlspecialchars($s['customer_name'] ?: '—') ?></td>
           <td class="text-end price-high">
-            <?php $kit_currency = $s['sell_currency'] ?: ($s['sell_currency_cdf'] ? 'CDF' : 'USD'); ?>
+            <?php $kit_currency = $s['sell_currency'] ?: 'CDF'; ?>
             <strong><?= number_format($s['unit_sell_price'], 2) ?> <?= htmlspecialchars($kit_currency) ?></strong>
           </td>
         </tr>
@@ -437,7 +436,7 @@ body {
             <span class="price-medium">× <?= (int)$s['qty'] ?></span>
           </td>
           <td class="text-end price-medium">
-            <?php $item_currency = $s['sell_currency'] ?: ($s['sell_currency_cdf'] ? 'CDF' : 'USD'); ?>
+            <?php $item_currency = $s['sell_currency'] ?: 'CDF'; ?>
             <?= number_format($s['unit_sell_price'], 2) ?> <?= htmlspecialchars($item_currency) ?>
           </td>
           <td></td>
@@ -463,7 +462,7 @@ body {
             <strong><?= (int)$s['qty'] ?></strong>
           </td>
           <td class="text-end price-medium">
-            <?php $prod_currency = $s['sell_currency'] ?: ($s['sell_currency_cdf'] ? 'CDF' : 'USD'); ?>
+            <?php $prod_currency = $s['sell_currency'] ?: 'CDF'; ?>
             <?= number_format($s['unit_sell_price'], 2) ?> <?= htmlspecialchars($prod_currency) ?>
           </td>
           <td class="text-end">
