@@ -57,16 +57,13 @@ try {
            ===================================================== */
         if (!empty($item['is_kit']) && !empty($item['items'])) {
 
-            // Calculer les totaux par devise
-            $kitTotalsByCurrency = [];
-            $kitCurrencies = [];
+            $kitTotalPrice = 0;
 
             // 🔒 Vérifier stock vendeur pour TOUS les composants
             foreach ($item['items'] as $k) {
 
                 $pid = (int)$k['product_id'];
                 $qty = (int)$k['qty'];
-                $currency = $k['sell_currency'] ?? 'CDF';
 
                 $stmt = $pdo->prepare("
                     SELECT qty
@@ -85,20 +82,8 @@ try {
                     );
                 }
 
-                // Calculer le total par devise
-                if(!isset($kitTotalsByCurrency[$currency])) {
-                    $kitTotalsByCurrency[$currency] = 0;
-                    $kitCurrencies[] = $currency;
-                }
-                $kitTotalsByCurrency[$currency] += ($k['sell_price'] * $qty);
+                $kitTotalPrice += ($k['sell_price'] * $qty);
             }
-
-            // Déterminer le total du kit (on prend la première devise ou CDF par défaut)
-            $kitPrimaryCurrency = $kitCurrencies[0] ?? 'CDF';
-            $kitTotalPrice = $kitTotalsByCurrency[$kitPrimaryCurrency] ?? 0;
-            
-            // Marquer comme kit mixte si plusieurs devises
-            $isMixedCurrency = count($kitCurrencies) > 1;
 
             // 🔻 Appliquer remise sur le KIT
             if ($discount > 0) {
@@ -109,6 +94,14 @@ try {
             }
 
             // 🧾 1️⃣ Enregistrer la vente KIT (parent)
+            // Détecter les devises du kit
+            $kit_currencies = [];
+            foreach ($item['items'] as $k) {
+                $kit_currencies[] = $k['sell_currency'] ?? 'CDF';
+            }
+            $kit_currencies = array_unique($kit_currencies);
+            $kit_currency = implode('/', $kit_currencies); // ex: "CDF" ou "CDF/USD"
+
             $stmt = $pdo->prepare("
                 INSERT INTO product_movements
                 (
@@ -122,10 +115,11 @@ try {
                     payment_method,
                     customer_name,
                     is_kit,
+                    sell_currency,
                     receipt_id,
                     created_at
                 )
-                VALUES (?,?,?,?,?,?,?,?,?,1,?,NOW())
+                VALUES (?,?,?,?,?,?,?,?,?,1,?,?,NOW())
             ");
             $stmt->execute([
                 $client_code,
@@ -137,6 +131,7 @@ try {
                 $discount,
                 $payment_method,
                 $customer_name,
+                $kit_currency,
                 $receipt_id
             ]);
 
@@ -160,6 +155,7 @@ try {
                 ")->execute([$qty, $agent_id, $house_id, $pid]);
 
                 // 📦 Mouvement composant
+                $component_currency = $k['sell_currency'] ?? 'CDF';
                 $pdo->prepare("
                     INSERT INTO product_movements
                     (
@@ -170,11 +166,12 @@ try {
                         type,
                         qty,
                         unit_sell_price,
+                        sell_currency,
                         kit_id,
                         receipt_id,
                         created_at
                     )
-                    VALUES (?,?,?,?,?,?,?,?,?,NOW())
+                    VALUES (?,?,?,?,?,?,?,?,?,?,NOW())
                 ")->execute([
                     $client_code,
                     $pid,
@@ -183,6 +180,7 @@ try {
                     'sale',
                     $qty,
                     $prix,
+                    $component_currency,
                     $kit_id,
                     $receipt_id
                 ]);
@@ -229,6 +227,7 @@ try {
         ")->execute([$qty, $agent_id, $house_id, $product_id]);
 
         // 🧾 Historique vente simple
+        $simple_currency = $item['sell_currency'] ?? 'CDF';
         $pdo->prepare("
             INSERT INTO product_movements
             (
@@ -239,6 +238,7 @@ try {
                 type,
                 qty,
                 unit_sell_price,
+                sell_currency,
                 discount,
                 payment_method,
                 customer_name,
@@ -246,7 +246,7 @@ try {
                 receipt_id,
                 created_at
             )
-            VALUES (?,?,?,?,?,?,?,?,?,?,0,?,NOW())
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,0,?,NOW())
         ")->execute([
             $client_code,
             $product_id,
@@ -255,6 +255,7 @@ try {
             'sale',
             $qty,
             $sell_price,
+            $simple_currency,
             $discount,
             $payment_method,
             $customer_name,

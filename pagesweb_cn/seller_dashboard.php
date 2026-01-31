@@ -821,19 +821,14 @@ function showMsg(title, message){
     /* ================= KIT ================= */
     if(c.is_kit){
 
-      // Ajouter les totaux par devise au panier global
+      // Gérer les totaux par devise
       if(c.total_by_currency) {
         for(const cur in c.total_by_currency) {
           totals[cur] = (totals[cur] || 0) + c.total_by_currency[cur];
         }
-      }
-
-      // Générer l'affichage des totaux du kit par devise
-      let kitTotalsDisplay = '';
-      if(c.total_by_currency) {
-        for(const cur in c.total_by_currency) {
-          kitTotalsDisplay += `<div><strong>${c.total_by_currency[cur].toFixed(2)} ${cur}</strong></div>`;
-        }
+      } else if(c.sell_currency) {
+        // Fallback pour ancien format
+        totals[c.sell_currency] = (totals[c.sell_currency] || 0) + (c.total_price || 0);
       }
 
       el.innerHTML += `
@@ -850,8 +845,7 @@ function showMsg(title, message){
                 ${c.items.map(it => `<li>${it.name} × ${it.qty} = ${(it.sell_price * it.qty).toFixed(2)} ${it.sell_currency}</li>`).join('')}
               </ul>
               <div class="cart-item-price" style="border-top:1px solid #e5e7eb;padding-top:8px;margin-top:8px;">
-                <div style="font-weight:600;">Total Kit:</div>
-                ${kitTotalsDisplay}
+                <strong>Total: ${c.display_total || Object.entries(c.total_by_currency || {}).map(([cur, tot]) => `${tot.toFixed(2)} ${cur}`).join(' + ')}</strong>
               </div>
             </div>
             <button class="btn-pp btn-pp-danger btn-sm" onclick="cart.splice(${i},1); renderCart();">
@@ -944,37 +938,30 @@ function addKitToCart(){
     return;
   }
 
-  // Calculer le total - on garde tous les produits ensemble
-  // mais on stocke le montant par devise pour le calcul
-  let totalByCurrency = {};
-  
+  // Calculer le total du kit (chaque produit avec sa devise)
+  let totals = {};
+  let totalDisplay = '';
+
   currentKit.forEach(k => {
     const cur = k.sell_currency;
-    if(!totalByCurrency[cur]) {
-      totalByCurrency[cur] = 0;
-    }
-    totalByCurrency[cur] += k.sell_price * k.qty;
+    totals[cur] = (totals[cur] || 0) + (k.sell_price * k.qty);
   });
 
-  // Créer UN seul kit avec tous les produits
-  // Le total sera en multi-devises (stocké pour l'affichage)
+  // Créer un label affichant toutes les devises
+  for(const cur in totals) {
+    totalDisplay += `${totals[cur].toFixed(2)} ${cur} + `;
+  }
+  totalDisplay = totalDisplay.slice(0, -3); // Enlever le dernier " + "
+
+  // Ajouter le kit au panier (en gardant tous les composants)
   cart.push({
     is_kit: true,
     label: "KIT PRODUITS",
-    total_by_currency: totalByCurrency, // Stocke les totaux par devise
-    items: JSON.parse(JSON.stringify(currentKit)) // tous les produits du kit
+    total_by_currency: totals,
+    display_total: totalDisplay,
+    sell_currency: Object.keys(totals).join('/'), // ex: "CDF/USD"
+    items: JSON.parse(JSON.stringify(currentKit)) // copie propre
   });
-
-  // reset
-  currentKit = [];
-  renderCart();
-
-  // fermer + reset modal
-  bootstrap.Modal.getInstance(
-    document.getElementById('kitModal')
-  ).hide();
-  resetKitModal();
-}
 
   // reset
   currentKit = [];
@@ -1050,6 +1037,8 @@ function renderKitPreview(){
   
   // Grouper par devise pour affichage
   const kitsByUnitCurrency = {};
+  let grandTotal = 0;
+  
   currentKit.forEach(k => {
     const cur = k.sell_currency;
     if(!kitsByUnitCurrency[cur]) {
@@ -1060,6 +1049,8 @@ function renderKitPreview(){
 
   // Afficher chaque groupe avec sa devise
   for(const currency in kitsByUnitCurrency) {
+    const subtotalByCurrency = kitsByUnitCurrency[currency].reduce((sum, k) => sum + (k.sell_price * k.qty), 0);
+    
     el.innerHTML += `<div style="margin-bottom:12px;padding:8px;background:rgba(0,112,224,0.05);border-left:3px solid var(--pp-blue);border-radius:6px;">`;
     
     kitsByUnitCurrency[currency].forEach(k => {
@@ -1073,7 +1064,6 @@ function renderKitPreview(){
     });
     
     // Sous-total par devise
-    const subtotalByCurrency = kitsByUnitCurrency[currency].reduce((sum, k) => sum + (k.sell_price * k.qty), 0);
     el.innerHTML += `
       <div style="border-top:1px solid rgba(0,112,224,0.2);padding-top:6px;margin-top:6px;">
         <div class="d-flex justify-content-between" style="font-weight:700;color:var(--pp-blue-dark);">

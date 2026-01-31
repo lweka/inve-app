@@ -33,8 +33,8 @@ SELECT
   pm.customer_name,
   pm.is_kit,
   pm.kit_id,
-  p.name AS product_name,
-  p.sell_currency
+  pm.sell_currency,
+  p.name AS product_name
 FROM product_movements pm
 LEFT JOIN products p ON p.id = pm.product_id
 WHERE pm.house_id = ?
@@ -399,8 +399,7 @@ body {
           <td class="text-end">—</td>
           <td class="text-end">
             <?php if($s['discount'] > 0): ?>
-              <?php $kit_currency = $s['sell_currency'] ?: 'CDF'; ?>
-              <span class="price-high">-<?= number_format((float)$s['discount'], 2) ?> <?= htmlspecialchars($kit_currency) ?></span>
+              <span class="price-high">-<?= number_format((float)$s['discount'], 2) ?> <?= htmlspecialchars($s['sell_currency']) ?></span>
             <?php else: ?>
               <span>—</span>
             <?php endif; ?>
@@ -415,8 +414,7 @@ body {
           </td>
           <td><?= htmlspecialchars($s['customer_name'] ?: '—') ?></td>
           <td class="text-end price-high">
-            <?php $kit_currency = $s['sell_currency'] ?: 'CDF'; ?>
-            <strong><?= number_format($s['unit_sell_price'], 2) ?> <?= htmlspecialchars($kit_currency) ?></strong>
+            <strong><?= number_format($s['unit_sell_price'], 2) ?> <?= htmlspecialchars($s['sell_currency']) ?></strong>
           </td>
         </tr>
 
@@ -436,14 +434,13 @@ body {
             <span class="price-medium">× <?= (int)$s['qty'] ?></span>
           </td>
           <td class="text-end price-medium">
-            <?php $item_currency = $s['sell_currency'] ?: 'CDF'; ?>
-            <?= number_format($s['unit_sell_price'], 2) ?> <?= htmlspecialchars($item_currency) ?>
+            <?= number_format($s['unit_sell_price'], 2) ?> <?= htmlspecialchars($s['sell_currency']) ?>
           </td>
           <td></td>
           <td></td>
           <td></td>
           <td class="text-end price-medium">
-            <strong><?= number_format($s['unit_sell_price'] * $s['qty'], 2) ?> <?= htmlspecialchars($item_currency) ?></strong>
+            <strong><?= number_format($s['unit_sell_price'] * $s['qty'], 2) ?> <?= htmlspecialchars($s['sell_currency']) ?></strong>
           </td>
         </tr>
 
@@ -462,12 +459,11 @@ body {
             <strong><?= (int)$s['qty'] ?></strong>
           </td>
           <td class="text-end price-medium">
-            <?php $prod_currency = $s['sell_currency'] ?: 'CDF'; ?>
-            <?= number_format($s['unit_sell_price'], 2) ?> <?= htmlspecialchars($prod_currency) ?>
+            <?= number_format($s['unit_sell_price'], 2) ?> <?= htmlspecialchars($s['sell_currency']) ?>
           </td>
           <td class="text-end">
             <?php if($s['discount'] > 0): ?>
-              <span class="price-high">-<?= number_format((float)$s['discount'], 2) ?> <?= htmlspecialchars($prod_currency) ?></span>
+              <span class="price-high">-<?= number_format((float)$s['discount'], 2) ?> <?= htmlspecialchars($s['sell_currency']) ?></span>
             <?php else: ?>
               <span>—</span>
             <?php endif; ?>
@@ -482,7 +478,7 @@ body {
           </td>
           <td><?= htmlspecialchars($s['customer_name'] ?: '—') ?></td>
           <td class="text-end price-high">
-            <strong><?= number_format(($s['unit_sell_price'] * $s['qty']) - (float)$s['discount'], 2) ?> <?= htmlspecialchars($prod_currency) ?></strong>
+            <strong><?= number_format(($s['unit_sell_price'] * $s['qty']) - (float)$s['discount'], 2) ?> <?= htmlspecialchars($s['sell_currency']) ?></strong>
           </td>
         </tr>
 
