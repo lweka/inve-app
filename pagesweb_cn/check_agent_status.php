@@ -48,7 +48,8 @@ $stmt->execute([$agent_id]);
 $status = $stmt->fetchColumn();
 
 if($status !== 'active'){
-    echo json_encode(['active' => false]);
+    // Rediriger vers la page de compte désactivé
+    header('Location: account_disabled.php');
     exit;
 }
 

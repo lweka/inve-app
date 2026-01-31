@@ -11,7 +11,8 @@ $stmt->execute([$_SESSION['user_id']]);
 $agent = $stmt->fetch();
 
 if(!$agent || $agent['status'] !== 'active'){
-    die("Compte vendeur désactivé");
+    header("Location: account_disabled.php");
+    exit;
 }
 
 $_SESSION['agent_name'] = $agent['fullname'];

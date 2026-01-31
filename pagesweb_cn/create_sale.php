@@ -7,6 +7,16 @@ if (!isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'agent') {
     exit;
 }
 
+// Vérifier que le vendeur est toujours actif
+$stmt_check = $pdo->prepare("SELECT status FROM agents WHERE id=? LIMIT 1");
+$stmt_check->execute([$_SESSION['user_id']]);
+$agent_status = $stmt_check->fetchColumn();
+
+if($agent_status !== 'active'){
+    echo json_encode(['ok' => false, 'message' => 'Compte désactivé', 'disabled' => true]);
+    exit;
+}
+
 $lastSaleId = null;
 $receipt_id = uniqid('RCP-', true); // Générer un ID unique pour cette transaction
 $agent_id = (int)$_SESSION['user_id'];

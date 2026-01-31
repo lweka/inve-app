@@ -6,6 +6,16 @@ if(!isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'agent'){
     exit;
 }
 
+// Vérifier que le vendeur est toujours actif
+$stmt = $pdo->prepare("SELECT id, status FROM agents WHERE id=? LIMIT 1");
+$stmt->execute([$_SESSION['user_id']]);
+$agent = $stmt->fetch();
+
+if(!$agent || $agent['status'] !== 'active'){
+    header("Location: account_disabled.php");
+    exit;
+}
+
 $house_id = (int)$_SESSION['house_id'];
 $agent_id = (int)$_SESSION['user_id'];
 

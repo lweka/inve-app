@@ -7,6 +7,17 @@ if(!isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'agent'){
     exit;
 }
 
+// Vérifier que le vendeur est toujours actif
+$stmt_check = $pdo->prepare("SELECT status FROM agents WHERE id=? LIMIT 1");
+$stmt_check->execute([$_SESSION['user_id']]);
+$agent_status = $stmt_check->fetchColumn();
+
+if($agent_status !== 'active'){
+    // Rediriger vers la page de compte désactivé
+    header('Location: account_disabled.php');
+    exit;
+}
+
 $agent_id = (int)$_SESSION['user_id'];
 $house_id = (int)($_GET['house_id'] ?? 0);
 
