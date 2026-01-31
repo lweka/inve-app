@@ -141,6 +141,9 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  color: var(--pp-white);
+  position: relative;
+  z-index: 1;
 }
 
 .history-header h1 {
@@ -213,6 +216,8 @@ body {
   font-size: 14px;
   text-transform: uppercase;
   letter-spacing: 0.5px;
+  background: linear-gradient(135deg, var(--pp-blue), var(--pp-blue-dark));
+  box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.08);
 }
 
 .table-pp tbody tr {
