@@ -832,13 +832,13 @@ function showMsg(title, message){
                 <i class="fa-solid fa-boxes-stacked"></i> ${c.label}
               </div>
               <div class="small" style="color:#6b7280;margin-top:4px;">
-                ${c.items.length} produits dans le kit
+                ${c.items.length} produit(s) • Devise: <strong>${c.sell_currency}</strong>
               </div>
               <ul class="small mt-2 mb-2" style="color:#6b7280;">
-                ${c.items.map(it => `<li>${it.name} × ${it.qty}</li>`).join('')}
+                ${c.items.map(it => `<li>${it.name} × ${it.qty} = ${(it.sell_price * it.qty).toFixed(2)} ${c.sell_currency}</li>`).join('')}
               </ul>
-              <div class="cart-item-price">
-                ${c.total_price.toFixed(2)} ${c.sell_currency}
+              <div class="cart-item-price" style="border-top:1px solid #e5e7eb;padding-top:8px;margin-top:8px;">
+                <strong>Total: ${c.total_price.toFixed(2)} ${c.sell_currency}</strong>
               </div>
             </div>
             <button class="btn-pp btn-pp-danger btn-sm" onclick="cart.splice(${i},1); renderCart();">
@@ -931,20 +931,32 @@ function addKitToCart(){
     return;
   }
 
-  let total = 0;
-  let currency = currentKit[0].sell_currency;
+  // Grouper les produits du kit par devise
+  const kitsByCurrency = {};
 
-  currentKit.forEach(k=>{
-    total += k.sell_price * k.qty;
+  currentKit.forEach(k => {
+    const cur = k.sell_currency;
+    if(!kitsByCurrency[cur]) {
+      kitsByCurrency[cur] = {
+        items: [],
+        total: 0
+      };
+    }
+    kitsByCurrency[cur].items.push(k);
+    kitsByCurrency[cur].total += k.sell_price * k.qty;
   });
 
-  cart.push({
-    is_kit: true,
-    label: "KIT PRODUITS",
-    total_price: total,
-    sell_currency: currency,
-    items: JSON.parse(JSON.stringify(currentKit)) // copie propre
-  });
+  // Créer un kit pour chaque devise
+  for(const currency in kitsByCurrency) {
+    const kitData = kitsByCurrency[currency];
+    cart.push({
+      is_kit: true,
+      label: "KIT PRODUITS",
+      total_price: kitData.total,
+      sell_currency: currency,
+      items: JSON.parse(JSON.stringify(kitData.items)) // copie propre
+    });
+  }
 
   // reset
   currentKit = [];
@@ -1017,14 +1029,44 @@ function renderKitPreview(){
   }
   
   el.innerHTML = '';
-  currentKit.forEach(k=>{
+  
+  // Grouper par devise pour affichage
+  const kitsByUnitCurrency = {};
+  currentKit.forEach(k => {
+    const cur = k.sell_currency;
+    if(!kitsByUnitCurrency[cur]) {
+      kitsByUnitCurrency[cur] = [];
+    }
+    kitsByUnitCurrency[cur].push(k);
+  });
+
+  // Afficher chaque groupe avec sa devise
+  for(const currency in kitsByUnitCurrency) {
+    el.innerHTML += `<div style="margin-bottom:12px;padding:8px;background:rgba(0,112,224,0.05);border-left:3px solid var(--pp-blue);border-radius:6px;">`;
+    
+    kitsByUnitCurrency[currency].forEach(k => {
+      const subtotal = (k.sell_price * k.qty).toFixed(2);
+      el.innerHTML += `
+        <div class="d-flex justify-content-between align-items-center" style="padding:6px 0;font-size:13px;">
+          <span style="color:var(--pp-text);">${k.name} × ${k.qty}</span>
+          <span style="color:var(--pp-blue);font-weight:600;">${subtotal} ${currency}</span>
+        </div>
+      `;
+    });
+    
+    // Sous-total par devise
+    const subtotalByCurrency = kitsByUnitCurrency[currency].reduce((sum, k) => sum + (k.sell_price * k.qty), 0);
     el.innerHTML += `
-      <div class="d-flex justify-content-between align-items-center" style="padding:8px 12px;background:var(--pp-bg);border-radius:8px;margin-bottom:6px;">
-        <span style="font-weight:600;color:var(--pp-text);">${k.name}</span>
-        <span style="color:var(--pp-blue);">× ${k.qty}</span>
+      <div style="border-top:1px solid rgba(0,112,224,0.2);padding-top:6px;margin-top:6px;">
+        <div class="d-flex justify-content-between" style="font-weight:700;color:var(--pp-blue-dark);">
+          <span>Sous-total ${currency}</span>
+          <span>${subtotalByCurrency.toFixed(2)} ${currency}</span>
+        </div>
       </div>
     `;
-  });
+    
+    el.innerHTML += '</div>';
+  }
 }
 
 
