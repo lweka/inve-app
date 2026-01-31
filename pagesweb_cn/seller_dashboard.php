@@ -509,7 +509,7 @@ body {
       <a href="seller_sales_history.php" class="btn-pp btn-pp-secondary">
         <i class="fa-solid fa-clock-rotate-left"></i> Historique
       </a>
-      <a href="auth.php?logout=1" class="btn-pp btn-pp-danger">
+      <a href="logout.php" class="btn-pp btn-pp-danger">
         <i class="fa-solid fa-right-from-bracket"></i> Déconnexion
       </a>
     </div>

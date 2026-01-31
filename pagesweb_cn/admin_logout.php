@@ -1,7 +1,9 @@
 <?php
-// pagesweb_cn/admin_logout.php
-session_start();
-session_unset();
-session_destroy();
-header("Location: admin_login_form");
+/**
+ * ============================================================
+ *  ADMIN LOGOUT - Redirect to unified logout page
+ *  ============================================================
+ */
+header("Location: logout.php");
 exit;
+?>
