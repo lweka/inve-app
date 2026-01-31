@@ -130,6 +130,52 @@
         letter-spacing: 0.3px;
     }
 
+    .hero-actions {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        align-items: center;
+    }
+
+    .btn-pp {
+        padding: 10px 20px;
+        border-radius: 24px;
+        font-weight: 600;
+        border: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        transition: all 0.3s ease;
+        text-decoration: none;
+        font-size: 14px;
+        cursor: pointer;
+    }
+
+    .btn-pp-danger {
+        background: #dc2626;
+        color: #ffffff;
+    }
+
+    .btn-pp-danger:hover {
+        background: #b91c1c;
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(220, 38, 38, 0.3);
+        color: #ffffff;
+    }
+
+    .btn-pp-secondary {
+        background: rgba(255,255,255,0.25);
+        color: #ffffff;
+        border: 1px solid rgba(255,255,255,0.4);
+    }
+
+    .btn-pp-secondary:hover {
+        background: rgba(255,255,255,0.35);
+        border-color: rgba(255,255,255,0.6);
+        transform: translateY(-2px);
+        color: #ffffff;
+    }
+
     .kpi-grid {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
@@ -286,6 +332,14 @@
         .dashboard-hero h1 {
             font-size: 22px;
         }
+        .hero-actions {
+            width: 100%;
+            justify-content: flex-start;
+        }
+        .btn-pp {
+            font-size: 13px;
+            padding: 8px 16px;
+        }
     }
 </style>
 
@@ -296,7 +350,15 @@
             <h1>Tableau de bord — Administration</h1>
             <p>Suivi en temps réel de vos activités, ventes et performance globale.</p>
         </div>
-        <div class="hero-chip">Statut : Actif</div>
+        <div class="hero-actions">
+            <div class="hero-chip">Statut : Actif</div>
+            <a href="<?= HOUSES_MANAGE; ?>" class="btn-pp btn-pp-secondary">
+                <i class="fa-solid fa-house"></i> Maisons
+            </a>
+            <a href="logout.php" class="btn-pp btn-pp-danger">
+                <i class="fa-solid fa-right-from-bracket"></i> Déconnexion
+            </a>
+        </div>
     </div>
 
     <div class="kpi-grid">
