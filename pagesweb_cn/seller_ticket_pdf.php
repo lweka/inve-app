@@ -44,6 +44,7 @@ SELECT
     pm.kit_id,
     pm.qty,
     pm.unit_sell_price,
+    pm.discount,
     pm.sell_currency,
     CASE 
         WHEN pm.is_kit = 1 THEN 'KIT PRODUITS'
@@ -157,7 +158,8 @@ $totalsByCurrency = [];
 /* ===== AFFICHER LES KITS AVEC COMPOSANTS ===== */
 foreach ($kits as $kit) {
     // Si le kit a une remise ET est multi-devises, il sera affiché en CDF
-    $hasDiscount = (float)$kit['discount'] > 0;
+    $kitDiscount = (float)($kit['discount'] ?? 0);
+    $hasDiscount = $kitDiscount > 0;
     $kitCurrency = $kit['sell_currency'] ?? 'CDF';
     $isMultiCurrency = strpos($kitCurrency, '/') !== false;
     
@@ -190,7 +192,7 @@ foreach ($kits as $kit) {
         $pdf->Cell(3, 2.5, '', 0, 0);
         $pdf->Cell(32, 2.5, 'Remise appliquée', 0, 0, 'L');
         $pdf->Cell(10, 2.5, '', 0, 0, 'C');
-        $pdf->Cell(15, 2.5, '-' . formatAmount($kit['discount'], 'CDF'), 0, 1, 'R');
+        $pdf->Cell(15, 2.5, '-' . formatAmount($kitDiscount, 'CDF'), 0, 1, 'R');
         
     } else {
         // Kit normal sans remise ou mono-devise
@@ -233,10 +235,10 @@ foreach ($kits as $kit) {
             $pdf->Cell(3, 2.5, '', 0, 0);
             $pdf->Cell(32, 2.5, 'Remise appliquée', 0, 0, 'L');
             $pdf->Cell(10, 2.5, '', 0, 0, 'C');
-            $pdf->Cell(15, 2.5, '-' . formatAmount($kit['discount'], $kitCurrency), 0, 1, 'R');
+            $pdf->Cell(15, 2.5, '-' . formatAmount($kitDiscount, $kitCurrency), 0, 1, 'R');
             
             // Soustraire la remise du total
-            $totalsByCurrency[$kitCurrency] = ($totalsByCurrency[$kitCurrency] ?? 0) - (float)$kit['discount'];
+            $totalsByCurrency[$kitCurrency] = ($totalsByCurrency[$kitCurrency] ?? 0) - $kitDiscount;
         }
     }
     
@@ -257,17 +259,18 @@ foreach ($simpleProducts as $product) {
 /* ===== AFFICHER LA REMISE ===== */
 // Note: Pour les kits, la remise est déjà affichée dans la section kit ci-dessus
 // Cette section est uniquement pour les produits simples avec remise
-if ($sale['discount'] > 0 && $sale['is_kit'] == 0) {
+$saleDiscount = (float)($sale['discount'] ?? 0);
+if ($saleDiscount > 0 && (int)($sale['is_kit'] ?? 0) === 0) {
     $pdf->SetFont('helvetica', 'B', 7);
     
     $pdf->Cell(35, 3, 'REMISE', 0, 0, 'L');
     $pdf->Cell(10, 3, '', 0, 0, 'C');
     $discountCurrency = $sale['sell_currency'] ?? 'CDF';
-    $pdf->Cell(15, 3, '-' . formatAmount($sale['discount'], $discountCurrency), 0, 1, 'R');
+    $pdf->Cell(15, 3, '-' . formatAmount($saleDiscount, $discountCurrency), 0, 1, 'R');
     
     // Appliquer la remise uniquement si devise unique
     if (strpos((string)$discountCurrency, '/') === false) {
-        $totalsByCurrency[$discountCurrency] = ($totalsByCurrency[$discountCurrency] ?? 0) - (float)$sale['discount'];
+        $totalsByCurrency[$discountCurrency] = ($totalsByCurrency[$discountCurrency] ?? 0) - $saleDiscount;
     }
 }
 

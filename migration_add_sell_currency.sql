@@ -3,9 +3,24 @@
 -- Date: 2026-01-31
 -- ============================================================
 
--- Vérifier si la colonne existe déjà
-ALTER TABLE product_movements 
-ADD COLUMN sell_currency VARCHAR(3) DEFAULT 'CDF' AFTER unit_sell_price;
+-- Vérifier si la colonne existe déjà (exécution idempotente)
+SET @col_exists := (
+  SELECT COUNT(*)
+  FROM INFORMATION_SCHEMA.COLUMNS
+  WHERE TABLE_SCHEMA = DATABASE()
+    AND TABLE_NAME = 'product_movements'
+    AND COLUMN_NAME = 'sell_currency'
+);
+
+SET @sql := IF(
+  @col_exists = 0,
+  'ALTER TABLE product_movements ADD COLUMN sell_currency VARCHAR(3) DEFAULT ''CDF'' AFTER unit_sell_price',
+  'SELECT 1'
+);
+
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
 
 -- Remplir les devises existantes en fonction des produits liés
 UPDATE product_movements pm

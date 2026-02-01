@@ -61,6 +61,126 @@ $message = isset($_GET['message']) ? $_GET['message'] : '';
             flex-direction: column;
         }
 
+        /* COOKIE CONSENT */
+        .cookie-consent {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            max-width: 420px;
+            width: calc(100% - 48px);
+            background: linear-gradient(145deg, #ffffff, #f3f6fb);
+            border: 1px solid rgba(0, 112, 186, 0.18);
+            border-radius: 18px;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.12);
+            padding: 18px 20px;
+            z-index: 9999;
+            opacity: 0;
+            transform: translateY(20px) scale(0.98);
+            pointer-events: none;
+            transition: all 0.35s ease;
+        }
+
+        .cookie-consent.show {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+            pointer-events: auto;
+        }
+
+        .cookie-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 10px;
+        }
+
+        .cookie-badge {
+            background: rgba(0, 112, 186, 0.12);
+            color: var(--blue);
+            font-weight: 700;
+            font-size: 12px;
+            padding: 6px 10px;
+            border-radius: 999px;
+        }
+
+        .cookie-title {
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--blue-dark);
+        }
+
+        .cookie-text {
+            font-size: 13px;
+            color: #3b3f46;
+            line-height: 1.5;
+            margin-bottom: 14px;
+        }
+
+        .cookie-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .cookie-btn {
+            border: none;
+            border-radius: 10px;
+            padding: 10px 14px;
+            font-weight: 600;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.25s ease;
+        }
+
+        .cookie-btn.primary {
+            background: linear-gradient(135deg, var(--blue) 0%, var(--blue-dark) 100%);
+            color: #fff;
+            box-shadow: 0 10px 20px rgba(0, 112, 186, 0.25);
+        }
+
+        .cookie-btn.secondary {
+            background: #e9edf5;
+            color: #1f2a44;
+        }
+
+        .cookie-btn:hover {
+            transform: translateY(-1px);
+        }
+
+        .cookie-settings {
+            margin-top: 12px;
+            padding: 10px;
+            background: #f8fafc;
+            border-radius: 12px;
+            border: 1px solid #e4e9f2;
+            display: none;
+        }
+
+        .cookie-settings.show {
+            display: block;
+        }
+
+        .cookie-toggle {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 12px;
+            color: #3b3f46;
+            margin-bottom: 6px;
+        }
+
+        .cookie-toggle input {
+            accent-color: var(--blue);
+        }
+
+        @media (max-width: 640px) {
+            .cookie-consent {
+                left: 16px;
+                right: 16px;
+                bottom: 16px;
+                width: auto;
+            }
+        }
+
         /* NAVBAR */
         .navbar-custom {
             background: var(--white);
@@ -452,7 +572,74 @@ $message = isset($_GET['message']) ? $_GET['message'] : '';
     <p>&copy; 2026 CartelPlus Congo. Tous droits réservés.</p>
 </footer>
 
+<!-- COOKIE CONSENT -->
+<div id="cookieConsent" class="cookie-consent" role="dialog" aria-live="polite" aria-label="Consentement cookies">
+    <div class="cookie-header">
+        <span class="cookie-badge">Sécurité & Confidentialité</span>
+        <div class="cookie-title">Nous respectons vos données</div>
+    </div>
+    <div class="cookie-text">
+        Nous utilisons des cookies pour sécuriser la session, améliorer l'expérience et analyser l'utilisation.
+        Vous pouvez accepter, refuser ou personnaliser vos préférences.
+    </div>
+    <div class="cookie-actions">
+        <button class="cookie-btn primary" id="cookieAccept">Accepter tout</button>
+        <button class="cookie-btn secondary" id="cookieDecline">Refuser</button>
+        <button class="cookie-btn secondary" id="cookieSettingsToggle">Personnaliser</button>
+    </div>
+    <div class="cookie-settings" id="cookieSettings">
+        <div class="cookie-toggle">
+            <span>Cookies essentiels (obligatoires)</span>
+            <input type="checkbox" checked disabled>
+        </div>
+        <div class="cookie-toggle">
+            <span>Mesure d'audience</span>
+            <input type="checkbox" id="cookieAnalytics" checked>
+        </div>
+        <div class="cookie-toggle">
+            <span>Personnalisation</span>
+            <input type="checkbox" id="cookiePersonalization" checked>
+        </div>
+    </div>
+</div>
+
 <script src="js/bootstrap.min.js"></script>
+
+<script>
+    const cookieKey = 'cp_cookie_consent_v1';
+    const banner = document.getElementById('cookieConsent');
+    const acceptBtn = document.getElementById('cookieAccept');
+    const declineBtn = document.getElementById('cookieDecline');
+    const settingsToggle = document.getElementById('cookieSettingsToggle');
+    const settingsPanel = document.getElementById('cookieSettings');
+
+    const existingConsent = localStorage.getItem(cookieKey);
+
+    if (!existingConsent) {
+        setTimeout(() => {
+            banner.classList.add('show');
+        }, 3000);
+    }
+
+    function saveConsent(status) {
+        const analytics = document.getElementById('cookieAnalytics').checked;
+        const personalization = document.getElementById('cookiePersonalization').checked;
+        const payload = {
+            status,
+            analytics,
+            personalization,
+            timestamp: new Date().toISOString()
+        };
+        localStorage.setItem(cookieKey, JSON.stringify(payload));
+        banner.classList.remove('show');
+    }
+
+    acceptBtn.addEventListener('click', () => saveConsent('accepted'));
+    declineBtn.addEventListener('click', () => saveConsent('declined'));
+    settingsToggle.addEventListener('click', () => {
+        settingsPanel.classList.toggle('show');
+    });
+</script>
 
 </body>
 </html>
