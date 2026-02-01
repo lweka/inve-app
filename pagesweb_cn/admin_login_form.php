@@ -257,6 +257,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         <button type="submit" class="btn-login">🚀 Se Connecter</button>
 
+        <div style="text-align: center; margin-top: 14px;">
+            <a href="admin_forgot_password.php" style="color: rgba(255,255,255,0.7); font-size: 13px; text-decoration: none; transition: color 0.3s;">
+                🔑 Mot de passe oublié ?
+            </a>
+        </div>
+
     </form>
 
     <!-- AVERTISSEMENT DE SÉCURITÉ -->
