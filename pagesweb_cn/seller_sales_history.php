@@ -47,6 +47,21 @@ ORDER BY
 $stmt->execute([$house_id, $agent_id]);
 $sales = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
+// Fonction pour récupérer les totaux par devise d'un kit
+function getKitTotalsByCurrency($pdo, $kit_id) {
+  $stmt = $pdo->prepare("
+    SELECT
+      pm.sell_currency,
+      SUM(pm.unit_sell_price * pm.qty) AS subtotal
+    FROM product_movements pm
+    WHERE pm.kit_id = ?
+      AND pm.type = 'sale'
+    GROUP BY pm.sell_currency
+  ");
+  $stmt->execute([$kit_id]);
+  return $stmt->fetchAll(PDO::FETCH_ASSOC);
+}
+
 
 /*
 $stmt = $pdo->prepare("
@@ -386,6 +401,7 @@ body {
         if($s['is_kit'] && !$s['kit_id']):
           $currentKit = $s['id'];
         ?>
+        <!-- KIT PARENT -->
         <tr class="row-kit">
           <td>
             <strong><?= htmlspecialchars($s['created_at']) ?></strong>
@@ -414,7 +430,17 @@ body {
           </td>
           <td><?= htmlspecialchars($s['customer_name'] ?: '—') ?></td>
           <td class="text-end price-high">
-            <strong><?= number_format($s['unit_sell_price'], 2) ?> <?= htmlspecialchars($s['sell_currency']) ?></strong>
+            <!-- Calcul du total du kit par devise -->
+            <strong>
+              <?php
+                $kit_totals = getKitTotalsByCurrency($pdo, $s['id']);
+                $total_parts = [];
+                foreach($kit_totals as $kt) {
+                  $total_parts[] = number_format((float)$kt['subtotal'], 2) . ' ' . htmlspecialchars($kt['sell_currency']);
+                }
+                echo implode(' + ', $total_parts);
+              ?>
+            </strong>
           </td>
         </tr>
 
