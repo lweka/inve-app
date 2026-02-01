@@ -34,6 +34,20 @@ $stmt->execute([$sale_id, $agent_id]);
 $sale = $stmt->fetch();
 if (!$sale) exit('Vente introuvable');
 
+// Helpers
+function formatAmount($amount, $currency) {
+    $decimals = ($currency === 'USD') ? 2 : 0;
+    return number_format((float)$amount, $decimals) . ' ' . $currency;
+}
+
+function buildTotalsString($totalsByCurrency) {
+    $parts = [];
+    foreach ($totalsByCurrency as $cur => $amt) {
+        $parts[] = formatAmount($amt, $cur);
+    }
+    return implode(' + ', $parts);
+}
+
 /* ===== Détails ===== */
 // Vérifier si c'est une vente KIT ou simple
 $stmt = $pdo->prepare("SELECT is_kit FROM product_movements WHERE id = ? LIMIT 1");
@@ -42,17 +56,21 @@ $saleType = $stmt->fetch();
 $isKit = $saleType['is_kit'] == 1;
 
 if($isKit) {
-    // Si c'est un KIT: afficher SEULEMENT la ligne du KIT (pas les composants)
+    // Si c'est un KIT: récupérer les composants avec devises
     $stmt = $pdo->prepare("
-    SELECT 'KIT' as name, pm.qty, pm.unit_sell_price
+    SELECT COALESCE(p.name, 'Produit inconnu') as name, pm.qty, pm.unit_sell_price, pm.sell_currency
     FROM product_movements pm
-    WHERE pm.id = ?
+    LEFT JOIN products p ON p.id = pm.product_id
+    WHERE pm.kit_id = ?
+    ORDER BY pm.id ASC
     ");
     $stmt->execute([$sale_id]);
+    $kitComponents = $stmt->fetchAll();
+    $items = [];
 } else {
     // Si ce sont des ventes simples: afficher TOUS les produits
     $stmt = $pdo->prepare("
-    SELECT p.name, pm.qty, pm.unit_sell_price
+    SELECT p.name, pm.qty, pm.unit_sell_price, pm.sell_currency
     FROM product_movements pm
     LEFT JOIN products p ON p.id = pm.product_id
     WHERE pm.agent_id = ? AND pm.house_id = ? AND pm.type = 'sale' AND pm.is_kit = 0
@@ -62,9 +80,8 @@ if($isKit) {
     LIMIT 100
     ");
     $stmt->execute([$agent_id, $sale['house_id'], $sale['created_at'], $sale_id]);
+    $items = $stmt->fetchAll();
 }
-
-$items = $stmt->fetchAll();
 
 /* ===== PDF 80mm ===== */
 $pdf = new TCPDF_Lib('P', 'mm', [80, 200]);
@@ -88,18 +105,50 @@ $pdf->Cell(10,4,'Qté',0,0,'C');
 $pdf->Cell(20,4,'Total',0,1,'R');
 $pdf->Ln(1);
 
-$total = 0;
-foreach ($items as $it) {
-    $line = $it['qty'] * $it['unit_sell_price'];
-    $total += $line;
+$totalsByCurrency = [];
 
-    $pdf->Cell(40,4,$it['name'] ?? 'KIT');
-    $pdf->Cell(10,4,$it['qty'],0,0,'C');
-    $pdf->Cell(20,4,number_format($line,0),0,1,'R');
+if ($isKit) {
+    // Ligne KIT avec totaux multi-devises
+    $kitTotals = [];
+    foreach ($kitComponents as $comp) {
+        $cur = $comp['sell_currency'] ?? 'CDF';
+        $line = $comp['qty'] * $comp['unit_sell_price'];
+        $kitTotals[$cur] = ($kitTotals[$cur] ?? 0) + $line;
+        $totalsByCurrency[$cur] = ($totalsByCurrency[$cur] ?? 0) + $line;
+    }
+
+    $pdf->SetFont('helvetica','B',9);
+    $pdf->Cell(40,4,'KIT PRODUITS');
+    $pdf->Cell(10,4,1,0,0,'C');
+    $pdf->Cell(20,4,buildTotalsString($kitTotals),0,1,'R');
+
+    // Composants du kit
+    $pdf->SetFont('helvetica','',8);
+    foreach ($kitComponents as $comp) {
+        $cur = $comp['sell_currency'] ?? 'CDF';
+        $line = $comp['qty'] * $comp['unit_sell_price'];
+        $pdf->Cell(40,4,'  > '.($comp['name'] ?? 'Produit'),0,0);
+        $pdf->Cell(10,4,$comp['qty'],0,0,'C');
+        $pdf->Cell(20,4,formatAmount($line, $cur),0,1,'R');
+    }
+} else {
+    foreach ($items as $it) {
+        $cur = $it['sell_currency'] ?? 'CDF';
+        $line = $it['qty'] * $it['unit_sell_price'];
+        $totalsByCurrency[$cur] = ($totalsByCurrency[$cur] ?? 0) + $line;
+
+        $pdf->Cell(40,4,$it['name'] ?? 'Produit');
+        $pdf->Cell(10,4,$it['qty'],0,0,'C');
+        $pdf->Cell(20,4,formatAmount($line, $cur),0,1,'R');
+    }
 }
 
 $pdf->Ln(2);
 $pdf->Cell(50,5,'TOTAL');
-$pdf->Cell(20,5,number_format($total,0),0,1,'R');
+$pdf->Cell(20,5,'',0,1,'R');
+foreach ($totalsByCurrency as $cur => $amt) {
+    $pdf->Cell(50,4,'');
+    $pdf->Cell(20,4,formatAmount($amt, $cur),0,1,'R');
+}
 
 $pdf->Output('ticket.pdf','I');
