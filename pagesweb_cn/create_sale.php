@@ -47,6 +47,14 @@ if (!$client_code) {
     exit;
 }
 
+// Récupérer le taux de change USD de cette maison
+$stmt = $pdo->prepare("SELECT usd_rate FROM exchange_rate WHERE house_id = ? LIMIT 1");
+$stmt->execute([$house_id]);
+$usd_rate = $stmt->fetchColumn();
+if (!$usd_rate || $usd_rate <= 0) {
+    $usd_rate = 2500; // taux par défaut si non configuré
+}
+
 try {
     $pdo->beginTransaction();
 
@@ -57,13 +65,15 @@ try {
            ===================================================== */
         if (!empty($item['is_kit']) && !empty($item['items'])) {
 
-            $kitTotalPrice = 0;
+            // Calculer les totaux par devise
+            $totalsByCurrency = [];
 
             // 🔒 Vérifier stock vendeur pour TOUS les composants
             foreach ($item['items'] as $k) {
 
                 $pid = (int)$k['product_id'];
                 $qty = (int)$k['qty'];
+                $currency = $k['sell_currency'] ?? 'CDF';
 
                 $stmt = $pdo->prepare("
                     SELECT qty
@@ -82,26 +92,45 @@ try {
                     );
                 }
 
-                $kitTotalPrice += ($k['sell_price'] * $qty);
+                // Grouper par devise
+                if (!isset($totalsByCurrency[$currency])) {
+                    $totalsByCurrency[$currency] = 0;
+                }
+                $totalsByCurrency[$currency] += ($k['sell_price'] * $qty);
             }
 
-            // 🔻 Appliquer remise sur le KIT
+            // 🔻 Appliquer remise sur le KIT multi-devises
+            $kitTotalPrice = 0;
+            $kit_currency = implode('/', array_keys($totalsByCurrency));
+
             if ($discount > 0) {
-                $kitTotalPrice -= $discount;
-                if ($kitTotalPrice < 0) {
-                    $kitTotalPrice = 0;
+                // Si le kit contient USD et CDF, on convertit tout en CDF avant d'appliquer la réduction
+                $totalInCDF = 0;
+                foreach ($totalsByCurrency as $cur => $amount) {
+                    if ($cur === 'USD') {
+                        $totalInCDF += $amount * $usd_rate;
+                    } else {
+                        $totalInCDF += $amount;
+                    }
+                }
+                
+                // Appliquer la réduction sur le total converti
+                $totalInCDF -= $discount;
+                if ($totalInCDF < 0) {
+                    $totalInCDF = 0;
+                }
+                
+                $kitTotalPrice = $totalInCDF;
+                $kit_currency = 'CDF'; // Après réduction, tout est en CDF
+            } else {
+                // Pas de réduction : on garde le format multi-devises
+                // Le total affiché sera reconstruit lors de l'affichage
+                foreach ($totalsByCurrency as $amount) {
+                    $kitTotalPrice += $amount; // Somme brute pour référence
                 }
             }
 
             // 🧾 1️⃣ Enregistrer la vente KIT (parent)
-            // Détecter les devises du kit
-            $kit_currencies = [];
-            foreach ($item['items'] as $k) {
-                $kit_currencies[] = $k['sell_currency'] ?? 'CDF';
-            }
-            $kit_currencies = array_unique($kit_currencies);
-            $kit_currency = implode('/', $kit_currencies); // ex: "CDF" ou "CDF/USD"
-
             $stmt = $pdo->prepare("
                 INSERT INTO product_movements
                 (

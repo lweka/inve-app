@@ -108,28 +108,72 @@ $pdf->Ln(1);
 $totalsByCurrency = [];
 
 if ($isKit) {
-    // Ligne KIT avec totaux multi-devises
-    $kitTotals = [];
-    foreach ($kitComponents as $comp) {
-        $cur = $comp['sell_currency'] ?? 'CDF';
-        $line = $comp['qty'] * $comp['unit_sell_price'];
-        $kitTotals[$cur] = ($kitTotals[$cur] ?? 0) + $line;
-        $totalsByCurrency[$cur] = ($totalsByCurrency[$cur] ?? 0) + $line;
-    }
+    // Vérifier si le kit a une remise et est multi-devises
+    $hasDiscount = (float)$sale['discount'] > 0;
+    $kitCurrency = $sale['sell_currency'] ?? 'CDF';
+    $isMultiCurrency = strpos($kitCurrency, '/') !== false;
+    
+    if ($hasDiscount && $isMultiCurrency) {
+        // Kit avec réduction : tout est en CDF
+        $kitTotal = (float)$sale['unit_sell_price'];
+        $totalsByCurrency['CDF'] = ($totalsByCurrency['CDF'] ?? 0) + $kitTotal;
+        
+        $pdf->SetFont('helvetica','B',9);
+        $pdf->Cell(40,4,'KIT PRODUITS');
+        $pdf->Cell(10,4,1,0,0,'C');
+        $pdf->Cell(20,4,formatAmount($kitTotal, 'CDF'),0,1,'R');
 
-    $pdf->SetFont('helvetica','B',9);
-    $pdf->Cell(40,4,'KIT PRODUITS');
-    $pdf->Cell(10,4,1,0,0,'C');
-    $pdf->Cell(20,4,buildTotalsString($kitTotals),0,1,'R');
+        // Composants du kit
+        $pdf->SetFont('helvetica','',8);
+        foreach ($kitComponents as $comp) {
+            $cur = $comp['sell_currency'] ?? 'CDF';
+            $line = $comp['qty'] * $comp['unit_sell_price'];
+            $pdf->Cell(40,4,'  > '.($comp['name'] ?? 'Produit'),0,0);
+            $pdf->Cell(10,4,$comp['qty'],0,0,'C');
+            $pdf->Cell(20,4,formatAmount($line, $cur),0,1,'R');
+        }
+        
+        // Afficher la remise
+        $pdf->SetFont('helvetica','B',8);
+        $pdf->Cell(40,4,'Remise appliquée',0,0);
+        $pdf->Cell(10,4,'',0,0,'C');
+        $pdf->Cell(20,4,'-' . formatAmount($sale['discount'], 'CDF'),0,1,'R');
+        
+    } else {
+        // Kit normal sans remise ou mono-devise
+        $kitTotals = [];
+        foreach ($kitComponents as $comp) {
+            $cur = $comp['sell_currency'] ?? 'CDF';
+            $line = $comp['qty'] * $comp['unit_sell_price'];
+            $kitTotals[$cur] = ($kitTotals[$cur] ?? 0) + $line;
+            $totalsByCurrency[$cur] = ($totalsByCurrency[$cur] ?? 0) + $line;
+        }
 
-    // Composants du kit
-    $pdf->SetFont('helvetica','',8);
-    foreach ($kitComponents as $comp) {
-        $cur = $comp['sell_currency'] ?? 'CDF';
-        $line = $comp['qty'] * $comp['unit_sell_price'];
-        $pdf->Cell(40,4,'  > '.($comp['name'] ?? 'Produit'),0,0);
-        $pdf->Cell(10,4,$comp['qty'],0,0,'C');
-        $pdf->Cell(20,4,formatAmount($line, $cur),0,1,'R');
+        $pdf->SetFont('helvetica','B',9);
+        $pdf->Cell(40,4,'KIT PRODUITS');
+        $pdf->Cell(10,4,1,0,0,'C');
+        $pdf->Cell(20,4,buildTotalsString($kitTotals),0,1,'R');
+
+        // Composants du kit
+        $pdf->SetFont('helvetica','',8);
+        foreach ($kitComponents as $comp) {
+            $cur = $comp['sell_currency'] ?? 'CDF';
+            $line = $comp['qty'] * $comp['unit_sell_price'];
+            $pdf->Cell(40,4,'  > '.($comp['name'] ?? 'Produit'),0,0);
+            $pdf->Cell(10,4,$comp['qty'],0,0,'C');
+            $pdf->Cell(20,4,formatAmount($line, $cur),0,1,'R');
+        }
+        
+        // Si kit mono-devise avec remise
+        if ($hasDiscount && !$isMultiCurrency) {
+            $pdf->SetFont('helvetica','B',8);
+            $pdf->Cell(40,4,'Remise appliquée',0,0);
+            $pdf->Cell(10,4,'',0,0,'C');
+            $pdf->Cell(20,4,'-' . formatAmount($sale['discount'], $kitCurrency),0,1,'R');
+            
+            // Soustraire la remise du total
+            $totalsByCurrency[$kitCurrency] = ($totalsByCurrency[$kitCurrency] ?? 0) - (float)$sale['discount'];
+        }
     }
 } else {
     foreach ($items as $it) {
@@ -140,6 +184,17 @@ if ($isKit) {
         $pdf->Cell(40,4,$it['name'] ?? 'Produit');
         $pdf->Cell(10,4,$it['qty'],0,0,'C');
         $pdf->Cell(20,4,formatAmount($line, $cur),0,1,'R');
+    }
+    
+    // Afficher la remise pour produits simples
+    if ((float)$sale['discount'] > 0) {
+        $discountCurrency = $sale['sell_currency'] ?? 'CDF';
+        $pdf->SetFont('helvetica','B',8);
+        $pdf->Cell(40,4,'Remise',0,0);
+        $pdf->Cell(10,4,'',0,0,'C');
+        $pdf->Cell(20,4,'-' . formatAmount($sale['discount'], $discountCurrency),0,1,'R');
+        
+        $totalsByCurrency[$discountCurrency] = ($totalsByCurrency[$discountCurrency] ?? 0) - (float)$sale['discount'];
     }
 }
 

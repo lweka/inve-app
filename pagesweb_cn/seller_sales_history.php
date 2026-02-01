@@ -433,12 +433,27 @@ body {
             <!-- Calcul du total du kit par devise -->
             <strong>
               <?php
-                $kit_totals = getKitTotalsByCurrency($pdo, $s['id']);
-                $total_parts = [];
-                foreach($kit_totals as $kt) {
-                  $total_parts[] = number_format((float)$kt['subtotal'], 2) . ' ' . htmlspecialchars($kt['sell_currency']);
+                // Si le kit a une réduction et est multi-devises, afficher en CDF
+                $hasDiscount = (float)$s['discount'] > 0;
+                $isMultiCurrency = strpos($s['sell_currency'], '/') !== false;
+                
+                if ($hasDiscount && $isMultiCurrency) {
+                  // Kit avec réduction : tout est en CDF
+                  echo number_format((float)$s['unit_sell_price'], 2) . ' CDF';
+                } else {
+                  // Kit normal : afficher par devise
+                  $kit_totals = getKitTotalsByCurrency($pdo, $s['id']);
+                  $total_parts = [];
+                  foreach($kit_totals as $kt) {
+                    $subtotal = (float)$kt['subtotal'];
+                    // Si kit mono-devise avec remise, soustraire la remise
+                    if ($hasDiscount && count($kit_totals) == 1) {
+                      $subtotal -= (float)$s['discount'];
+                    }
+                    $total_parts[] = number_format($subtotal, 2) . ' ' . htmlspecialchars($kt['sell_currency']);
+                  }
+                  echo implode(' + ', $total_parts);
                 }
-                echo implode(' + ', $total_parts);
               ?>
             </strong>
           </td>

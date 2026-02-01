@@ -21,6 +21,14 @@ $house_id = (int)$_SESSION['house_id'];
 if($house_id <= 0){
     die("Maison non assignée");
 }
+
+// Récupérer le taux de change USD de cette maison
+$stmt = $pdo->prepare("SELECT usd_rate FROM exchange_rate WHERE house_id = ? LIMIT 1");
+$stmt->execute([$house_id]);
+$usd_rate = $stmt->fetchColumn();
+if (!$usd_rate || $usd_rate <= 0) {
+    $usd_rate = 2500; // taux par défaut si non configuré
+}
 ?>
 <!doctype html>
 <html lang="fr">
@@ -700,6 +708,7 @@ body {
 
 <script>
   let products=[], cart=[];
+  const USD_RATE = <?= $usd_rate ?>; // Taux de change USD → CDF
 
   /* ===== PRODUITS ===== */
   function loadProducts(){

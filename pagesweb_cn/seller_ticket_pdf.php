@@ -156,37 +156,87 @@ $totalsByCurrency = [];
 
 /* ===== AFFICHER LES KITS AVEC COMPOSANTS ===== */
 foreach ($kits as $kit) {
-    // Calculer le total par devise à partir des composants
-    $kitTotals = [];
-    if (isset($kitComponents[$kit['id']])) {
-        foreach ($kitComponents[$kit['id']] as $comp) {
-            $cur = $comp['sell_currency'] ?? 'CDF';
-            $compTotal = $comp['qty'] * $comp['unit_sell_price'];
-            $kitTotals[$cur] = ($kitTotals[$cur] ?? 0) + $compTotal;
-        }
-    }
-
-    // Ajouter les totaux du kit au total global par devise
-    foreach ($kitTotals as $cur => $amt) {
-        $totalsByCurrency[$cur] = ($totalsByCurrency[$cur] ?? 0) + $amt;
-    }
-
-    /* Afficher le KIT parent avec totaux multi-devise */
-    $pdf->SetFont('helvetica', 'B', 7);
-    $pdf->Cell(35, 3, 'KIT PRODUITS', 0, 0, 'L');
-    $pdf->Cell(10, 3, $kit['qty'], 0, 0, 'C');
-    $pdf->Cell(15, 3, buildTotalsString($kitTotals), 0, 1, 'R');
+    // Si le kit a une remise ET est multi-devises, il sera affiché en CDF
+    $hasDiscount = (float)$kit['discount'] > 0;
+    $kitCurrency = $kit['sell_currency'] ?? 'CDF';
+    $isMultiCurrency = strpos($kitCurrency, '/') !== false;
     
-    /* Afficher les composants du KIT en indentation */
-    $pdf->SetFont('helvetica', '', 6);
-    if (isset($kitComponents[$kit['id']])) {
-        foreach ($kitComponents[$kit['id']] as $comp) {
-            $compTotal = $comp['qty'] * $comp['unit_sell_price'];
-            $compCurrency = $comp['sell_currency'] ?? 'CDF';
-            $pdf->Cell(3, 2.5, '', 0, 0); // indentation
-            $pdf->Cell(32, 2.5, '  > ' . substr($comp['name'], 0, 21), 0, 0, 'L');
-            $pdf->Cell(10, 2.5, $comp['qty'], 0, 0, 'C');
-            $pdf->Cell(15, 2.5, formatAmount($compTotal, $compCurrency), 0, 1, 'R');
+    if ($hasDiscount && $isMultiCurrency) {
+        // Kit avec réduction : tout est en CDF
+        $kitTotal = (float)$kit['unit_sell_price'];
+        $totalsByCurrency['CDF'] = ($totalsByCurrency['CDF'] ?? 0) + $kitTotal;
+        
+        /* Afficher le KIT parent */
+        $pdf->SetFont('helvetica', 'B', 7);
+        $pdf->Cell(35, 3, 'KIT PRODUITS', 0, 0, 'L');
+        $pdf->Cell(10, 3, $kit['qty'], 0, 0, 'C');
+        $pdf->Cell(15, 3, formatAmount($kitTotal, 'CDF'), 0, 1, 'R');
+        
+        /* Afficher les composants du KIT */
+        $pdf->SetFont('helvetica', '', 6);
+        if (isset($kitComponents[$kit['id']])) {
+            foreach ($kitComponents[$kit['id']] as $comp) {
+                $compTotal = $comp['qty'] * $comp['unit_sell_price'];
+                $compCurrency = $comp['sell_currency'] ?? 'CDF';
+                $pdf->Cell(3, 2.5, '', 0, 0);
+                $pdf->Cell(32, 2.5, '  > ' . substr($comp['name'], 0, 21), 0, 0, 'L');
+                $pdf->Cell(10, 2.5, $comp['qty'], 0, 0, 'C');
+                $pdf->Cell(15, 2.5, formatAmount($compTotal, $compCurrency), 0, 1, 'R');
+            }
+        }
+        
+        /* Afficher la remise du kit */
+        $pdf->SetFont('helvetica', 'B', 6);
+        $pdf->Cell(3, 2.5, '', 0, 0);
+        $pdf->Cell(32, 2.5, 'Remise appliquée', 0, 0, 'L');
+        $pdf->Cell(10, 2.5, '', 0, 0, 'C');
+        $pdf->Cell(15, 2.5, '-' . formatAmount($kit['discount'], 'CDF'), 0, 1, 'R');
+        
+    } else {
+        // Kit normal sans remise ou mono-devise
+        $kitTotals = [];
+        if (isset($kitComponents[$kit['id']])) {
+            foreach ($kitComponents[$kit['id']] as $comp) {
+                $cur = $comp['sell_currency'] ?? 'CDF';
+                $compTotal = $comp['qty'] * $comp['unit_sell_price'];
+                $kitTotals[$cur] = ($kitTotals[$cur] ?? 0) + $compTotal;
+            }
+        }
+
+        // Ajouter les totaux du kit au total global par devise
+        foreach ($kitTotals as $cur => $amt) {
+            $totalsByCurrency[$cur] = ($totalsByCurrency[$cur] ?? 0) + $amt;
+        }
+
+        /* Afficher le KIT parent avec totaux multi-devise */
+        $pdf->SetFont('helvetica', 'B', 7);
+        $pdf->Cell(35, 3, 'KIT PRODUITS', 0, 0, 'L');
+        $pdf->Cell(10, 3, $kit['qty'], 0, 0, 'C');
+        $pdf->Cell(15, 3, buildTotalsString($kitTotals), 0, 1, 'R');
+        
+        /* Afficher les composants du KIT en indentation */
+        $pdf->SetFont('helvetica', '', 6);
+        if (isset($kitComponents[$kit['id']])) {
+            foreach ($kitComponents[$kit['id']] as $comp) {
+                $compTotal = $comp['qty'] * $comp['unit_sell_price'];
+                $compCurrency = $comp['sell_currency'] ?? 'CDF';
+                $pdf->Cell(3, 2.5, '', 0, 0); // indentation
+                $pdf->Cell(32, 2.5, '  > ' . substr($comp['name'], 0, 21), 0, 0, 'L');
+                $pdf->Cell(10, 2.5, $comp['qty'], 0, 0, 'C');
+                $pdf->Cell(15, 2.5, formatAmount($compTotal, $compCurrency), 0, 1, 'R');
+            }
+        }
+        
+        /* Si kit mono-devise avec remise */
+        if ($hasDiscount && !$isMultiCurrency) {
+            $pdf->SetFont('helvetica', 'B', 6);
+            $pdf->Cell(3, 2.5, '', 0, 0);
+            $pdf->Cell(32, 2.5, 'Remise appliquée', 0, 0, 'L');
+            $pdf->Cell(10, 2.5, '', 0, 0, 'C');
+            $pdf->Cell(15, 2.5, '-' . formatAmount($kit['discount'], $kitCurrency), 0, 1, 'R');
+            
+            // Soustraire la remise du total
+            $totalsByCurrency[$kitCurrency] = ($totalsByCurrency[$kitCurrency] ?? 0) - (float)$kit['discount'];
         }
     }
     
@@ -205,9 +255,9 @@ foreach ($simpleProducts as $product) {
 }
 
 /* ===== AFFICHER LA REMISE ===== */
-// ⚠️ IMPORTANT: Ne la soustraire du total que si PAS de KIT
-// Car pour les KITs, elle est déjà incluse dans unit_sell_price
-if ($sale['discount'] > 0) {
+// Note: Pour les kits, la remise est déjà affichée dans la section kit ci-dessus
+// Cette section est uniquement pour les produits simples avec remise
+if ($sale['discount'] > 0 && $sale['is_kit'] == 0) {
     $pdf->SetFont('helvetica', 'B', 7);
     
     $pdf->Cell(35, 3, 'REMISE', 0, 0, 'L');
