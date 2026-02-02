@@ -25,23 +25,65 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $error_message = '❌ Veuillez remplir tous les champs obligatoires';
     } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
         $error_message = '❌ Adresse email invalide';
+    } elseif (!preg_match('/@gmail\.com$/i', $email)) {
+        $error_message = '❌ Seules les adresses Gmail (@gmail.com) sont acceptées pour des raisons de sécurité';
     } else {
-        // Générer code d'essai unique
-        $trial_code = 'TRIAL-' . strtoupper(uniqid());
+        // Vérifier que l'email n'existe pas déjà dans subscription_codes ou trial_codes
+        $stmt = $pdo->prepare("
+            SELECT email FROM subscription_codes WHERE email = ?
+            UNION
+            SELECT email FROM trial_codes WHERE email = ?
+            UNION
+            SELECT email FROM active_clients WHERE email = ?
+        ");
+        $stmt->execute([$email, $email, $email]);
         
-        try {
-            $stmt = $pdo->prepare("
-                INSERT INTO trial_codes (code, first_name, last_name, email, phone, company_name, status)
-                VALUES (?, ?, ?, ?, ?, ?, 'unused')
-            ");
-            $stmt->execute([$trial_code, $first_name, $last_name, $email, $phone, $company_name]);
+        if ($stmt->fetch()) {
+            $error_message = '❌ Cette adresse email est déjà utilisée. Utilisez une autre adresse Gmail ou contactez le support.';
+        } else {
+            // Générer code d'essai unique
+            $trial_code = 'TRIAL-' . strtoupper(uniqid());
+            $client_code = 'CLI-TRIAL-' . strtoupper(uniqid());
+            $expires_at = date('Y-m-d H:i:s', strtotime('+7 days'));
             
-            $success_message = "✅ Code d'essai généré avec succès !";
-        } catch (PDOException $e) {
-            if (strpos($e->getMessage(), 'Duplicate entry') !== false) {
-                $error_message = '❌ Cette adresse email est déjà enregistrée';
-            } else {
-                $error_message = '❌ Erreur lors de l\'enregistrement';
+            try {
+                $pdo->beginTransaction();
+                
+                // Insérer dans trial_codes
+                $stmt = $pdo->prepare("
+                    INSERT INTO trial_codes (code, first_name, last_name, email, phone, company_name, status)
+                    VALUES (?, ?, ?, ?, ?, ?, 'activated')
+                ");
+                $stmt->execute([$trial_code, $first_name, $last_name, $email, $phone, $company_name]);
+                $trial_id = $pdo->lastInsertId();
+                
+                // Créer directement le client actif
+                $stmt = $pdo->prepare("
+                    INSERT INTO active_clients (
+                        client_code, first_name, last_name, email, phone, company_name,
+                        subscription_type, trial_code_id, status, created_at, expires_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, 'trial', ?, 'active', NOW(), ?)
+                ");
+                $stmt->execute([
+                    $client_code, $first_name, $last_name, $email, $phone, $company_name,
+                    $trial_id, $expires_at
+                ]);
+                
+                $pdo->commit();
+                
+                // Envoyer l'email avec le lien d'activation
+                require_once __DIR__ . '/send_email.php';
+                $email_sent = sendActivationEmail($email, "$first_name $last_name", $client_code, 'trial');
+                
+                if ($email_sent) {
+                    $success_message = "✅ Code d'essai généré ! Consultez votre email pour activer votre compte.";
+                } else {
+                    $success_message = "✅ Code d'essai généré ! Vérifiez votre email (vérifiez aussi les spams).";
+                }
+                
+            } catch (PDOException $e) {
+                $pdo->rollBack();
+                $error_message = '❌ Erreur lors de l\'enregistrement: ' . $e->getMessage();
             }
         }
     }
@@ -471,8 +513,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             </div>
 
             <div class="form-group">
-                <label class="form-label">Email <span class="required">*</span></label>
-                <input type="email" name="email" class="form-control" placeholder="votre@email.com" required>
+                <label class="form-label">Email Gmail <span class="required">*</span></label>
+                <input type="email" name="email" class="form-control" placeholder="votreadresse@gmail.com" required pattern=".+@gmail\.com$" title="Seules les adresses Gmail sont acceptées">
+                <small style="color: #7d8fa3; font-size: 11px; display: block; margin-top: 4px;">
+                    🔒 Seules les adresses Gmail (@gmail.com) sont acceptées pour la sécurité
+                </small>
             </div>
 
             <div class="form-row">
@@ -495,26 +540,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         <div class="alert alert-success"><?= $success_message ?></div>
 
-        <div class="code-box">
-            <div class="code-label">🎫 Votre Code d'Essai</div>
-            <div class="code-display"><?= htmlspecialchars($trial_code) ?></div>
-            <button onclick="copyCode()" class="btn-validate">
-                <i class="fas fa-copy"></i> Copier le Code
-            </button>
-        </div>
-
         <div class="next-step">
-            <div class="next-step-title">📋 Prochaine Étape</div>
+            <div class="next-step-title">📧 Email envoyé avec succès</div>
             <div class="next-step-desc">
-                Cliquez sur le bouton ci-dessous pour activer votre essai. Notre équipe créera votre compte d'accès immédiatement et vous pourrez commencer à utiliser le système.
+                Un email vient d'être envoyé à votre adresse <strong><?= htmlspecialchars($email ?? '') ?></strong> avec un lien pour créer votre compte et choisir votre mot de passe.
             </div>
-            <a href="trial_verify.php?code=<?= urlencode($trial_code) ?>" class="btn-validate">
-                <i class="fas fa-check-circle"></i> Valider et Activer →
-            </a>
+            
+            <div style="background: linear-gradient(135deg, rgba(0, 112, 224, 0.08) 0%, rgba(0, 168, 255, 0.08) 100%); padding: 20px; border-radius: 12px; margin: 20px 0;">
+                <div style="font-weight: 600; color: var(--pp-blue); margin-bottom: 10px;">⚠️ Important :</div>
+                <ul style="margin: 0; padding-left: 20px; color: var(--pp-text); font-size: 13px;">
+                    <li>Vérifiez votre boîte de réception Gmail</li>
+                    <li>Consultez aussi votre dossier Spam/Indésirables</li>
+                    <li>Le lien est valide et vous permet de créer votre compte immédiatement</li>
+                    <li>Votre essai de 7 jours commence dès la création du compte</li>
+                </ul>
+            </div>
         </div>
 
         <div style="text-align: center; margin-top: 20px; font-size: 12px; color: #7d8fa3;">
-            <p>⏰ Votre essai expire automatiquement après 7 jours</p>
+            <p>Vous n'avez pas reçu l'email ? Contactez-nous à support@cartelplus.cd</p>
         </div>
 
     <?php endif; ?>

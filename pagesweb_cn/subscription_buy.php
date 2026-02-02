@@ -27,30 +27,42 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $error_message = '❌ Veuillez remplir tous les champs obligatoires';
     } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
         $error_message = '❌ Adresse email invalide';
+    } elseif (!preg_match('/@gmail\.com$/i', $email)) {
+        $error_message = '❌ Seules les adresses Gmail (@gmail.com) sont acceptées pour des raisons de sécurité';
     } elseif ($payment_amount < 1) {
         $error_message = '❌ Montant minimum: 1 USD';
     } else {
-        // Générer code d'abonnement unique
-        $subscription_code = 'SUB-' . strtoupper(uniqid());
+        // Vérifier que l'email n'existe pas déjà dans subscription_codes ou trial_codes
+        $stmt = $pdo->prepare("
+            SELECT email FROM subscription_codes WHERE email = ?
+            UNION
+            SELECT email FROM trial_codes WHERE email = ?
+            UNION
+            SELECT email FROM active_clients WHERE email = ?
+        ");
+        $stmt->execute([$email, $email, $email]);
         
-        try {
-            $stmt = $pdo->prepare("
-                INSERT INTO subscription_codes (
-                    code, first_name, last_name, email, phone, company_name, 
-                    payment_amount, status
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, 'pending')
-            ");
-            $stmt->execute([
-                $subscription_code, $first_name, $last_name, $email, $phone, 
-                $company_name, $payment_amount
-            ]);
+        if ($stmt->fetch()) {
+            $error_message = '❌ Cette adresse email est déjà utilisée. Utilisez une autre adresse Gmail ou contactez le support.';
+        } else {
+            // Générer code d'abonnement unique
+            $subscription_code = 'SUB-' . strtoupper(uniqid());
             
-            $success_message = '✅ Code d\'abonnement généré !';
-        } catch (PDOException $e) {
-            if (strpos($e->getMessage(), 'Duplicate entry') !== false) {
-                $error_message = '❌ Cette adresse email est déjà enregistrée';
-            } else {
-                $error_message = '❌ Erreur lors de l\'enregistrement';
+            try {
+                $stmt = $pdo->prepare("
+                    INSERT INTO subscription_codes (
+                        code, first_name, last_name, email, phone, company_name, 
+                        payment_amount, status
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, 'pending')
+                ");
+                $stmt->execute([
+                    $subscription_code, $first_name, $last_name, $email, $phone, 
+                    $company_name, $payment_amount
+                ]);
+                
+                $success_message = '✅ Code d\'abonnement généré !';
+            } catch (PDOException $e) {
+                $error_message = '❌ Erreur lors de l\'enregistrement: ' . $e->getMessage();
             }
         }
     }
@@ -567,8 +579,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             </div>
 
             <div class="form-group">
-                <label class="form-label">Email <span class="required">*</span></label>
-                <input type="email" name="email" class="form-control" placeholder="votre@email.com" required>
+                <label class="form-label">Email Gmail <span class="required">*</span></label>
+                <input type="email" name="email" class="form-control" placeholder="votreadresse@gmail.com" required pattern=".+@gmail\.com$" title="Seules les adresses Gmail sont acceptées">
+                <small style="color: #7d8fa3; font-size: 11px; display: block; margin-top: 4px;">
+                    🔒 Seules les adresses Gmail (@gmail.com) sont acceptées pour la sécurité
+                </small>
             </div>
 
             <div class="form-row">

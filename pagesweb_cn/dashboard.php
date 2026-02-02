@@ -73,8 +73,8 @@
         $nowDateTime = new DateTime();
         $daysRemaining = (int)$expiresDateTime->diff($nowDateTime)->days;
         
-        // Afficher le bouton de renouvellement si ≤4 jours restants ET c'est un abonnement (pas trial)
-        if ($daysRemaining <= 4 && !$is_trial) {
+        // Afficher le bouton de renouvellement si ≤12 jours restants ET c'est un abonnement (pas trial)
+        if ($daysRemaining <= 12 && !$is_trial) {
             $show_renewal_btn = true;
         }
     }
