@@ -51,8 +51,8 @@ if (!$client) {
 }
 
 if (strtotime($client['expires_at']) < time()) {
-    session_destroy();
-    header('Location: /pagesweb_cn/connect-parse.php?role=admin&message=subscription_expired');
+    // Ne pas détruire la session, rediriger vers page d'expiration
+    header('Location: /pagesweb_cn/expired_account.php');
     exit;
 }
 

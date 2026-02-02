@@ -66,11 +66,71 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             ");
             $stmt_update->execute([$sub_code_id]);
             
-            // Rediriger vers le formulaire d'enregistrement
-            header('Location: admin_register.php?code=' . urlencode($client_code));
-            exit;
+            // Envoyer l'email d'activation
+            require_once __DIR__ . '/send_email.php';
+            sendActivationEmail($sub_code['email'], $sub_code['first_name'] . ' ' . $sub_code['last_name'], $client_code, 'subscription');
             
-            $success_message = "✅ Code abonnement validé ! Client créé: $client_code";
+            $success_message = "✅ Code abonnement validé ! Email d'activation envoyé. Client: $client_code";
+        }
+    }
+    
+    /* ===============================
+       ACTION : BASCULER EN PRO
+       =============================== */
+    elseif ($_POST['action'] === 'upgrade_to_pro') {
+        $client_id = (int)$_POST['client_id'];
+        
+        $stmt = $pdo->prepare("SELECT * FROM active_clients WHERE id = ? AND subscription_type = 'trial' AND status = 'active'");
+        $stmt->execute([$client_id]);
+        $client = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if ($client) {
+            // Basculer en Pro (monthly) et étendre de 30 jours
+            $new_expires_at = date('Y-m-d H:i:s', strtotime('+30 days'));
+            
+            $stmt_update = $pdo->prepare("
+                UPDATE active_clients 
+                SET subscription_type = 'monthly', expires_at = ?, updated_at = NOW()
+                WHERE id = ?
+            ");
+            $stmt_update->execute([$new_expires_at, $client_id]);
+            
+            // Envoyer email de confirmation upgrade Pro
+            require_once __DIR__ . '/send_email.php';
+            sendUpgradeProEmail($client['email'], $client['first_name'] . ' ' . $client['last_name']);
+            
+            $success_message = "✅ Client basculé en Pro ! Email de confirmation envoyé.";
+        }
+    }
+    
+    /* ===============================
+       ACTION : RELANCER ABONNEMENT
+       =============================== */
+    elseif ($_POST['action'] === 'renew_subscription') {
+        $client_id = (int)$_POST['client_id'];
+        
+        $stmt = $pdo->prepare("SELECT * FROM active_clients WHERE id = ? AND subscription_type = 'monthly'");
+        $stmt->execute([$client_id]);
+        $client = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if ($client) {
+            // Ajouter 30 jours à la date d'expiration actuelle
+            $current_expires = $client['expires_at'];
+            $new_expires_at = date('Y-m-d H:i:s', strtotime($current_expires . ' +30 days'));
+            
+            // Si déjà expiré, partir d'aujourd'hui
+            if (strtotime($current_expires) < time()) {
+                $new_expires_at = date('Y-m-d H:i:s', strtotime('+30 days'));
+            }
+            
+            $stmt_update = $pdo->prepare("
+                UPDATE active_clients 
+                SET expires_at = ?, status = 'active', updated_at = NOW()
+                WHERE id = ?
+            ");
+            $stmt_update->execute([$new_expires_at, $client_id]);
+            
+            $success_message = "✅ Abonnement renouvelé ! Nouvelle date d'expiration: " . date('d/m/Y', strtotime($new_expires_at));
         }
     }
 }
@@ -513,6 +573,29 @@ $active_clients = $stmt_clients->fetchAll(PDO::FETCH_ASSOC);
             box-shadow: 0 8px 20px rgba(0, 112, 224, 0.4);
         }
 
+        .btn-upgrade {
+            background: linear-gradient(135deg, #ff8800 0%, #e76f00 100%);
+            color: white;
+            box-shadow: 0 4px 12px rgba(255, 107, 53, 0.3);
+        }
+
+        .btn-upgrade:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(255, 107, 53, 0.4);
+        }
+
+        .btn-renew {
+            background: linear-gradient(135deg, #ffc107 0%, #ff9800 100%);
+            color: #333;
+            box-shadow: 0 4px 12px rgba(255, 152, 0, 0.3);
+        }
+
+        .btn-renew:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(255, 152, 0, 0.4);
+            color: #000;
+        }
+
         .btn-copy:active {
             transform: translateY(0);
         }
@@ -836,8 +919,7 @@ $active_clients = $stmt_clients->fetchAll(PDO::FETCH_ASSOC);
                                             <th>Type</th>
                                             <th>Statut</th>
                                             <th>Expire le</th>
-                                            <th>Dernier Accès</th>
-                                        </tr>
+                                            <th>Dernier Accès</th>                                            <th>Actions</th>                                        </tr>
                                     </thead>
                                     <tbody>
                                         <?php foreach($active_clients as $c): 
@@ -864,6 +946,39 @@ $active_clients = $stmt_clients->fetchAll(PDO::FETCH_ASSOC);
                                             </td>
                                             <td><?= date('d/m/Y', strtotime($c['expires_at'])) ?></td>
                                             <td><?= $c['last_login'] ? date('d/m/Y H:i', strtotime($c['last_login'])) : '—' ?></td>
+                                            <td>
+                                                <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                                                    <?php if ($c['subscription_type'] === 'trial' && !$is_expired): ?>
+                                                        <form method="POST" style="display: inline;">
+                                                            <input type="hidden" name="action" value="upgrade_to_pro">
+                                                            <input type="hidden" name="client_id" value="<?= $c['id'] ?>">
+                                                            <button type="submit" class="btn-action btn-upgrade" title="Basculer en Pro" onclick="return confirm('Basculer ce compte Trial en Pro (30 jours) ?')">
+                                                                <i class="fas fa-crown"></i> Pro
+                                                            </button>
+                                                        </form>
+                                                    <?php endif; ?>
+                                                    
+                                                    <?php if ($c['subscription_type'] === 'monthly'): ?>
+                                                        <form method="POST" style="display: inline;">
+                                                            <input type="hidden" name="action" value="renew_subscription">
+                                                            <input type="hidden" name="client_id" value="<?= $c['id'] ?>">
+                                                            <button type="submit" class="btn-action btn-renew" title="Renouveler abonnement +30j" onclick="return confirm('Renouveler l\'abonnement de ce client (+30 jours) ?')">
+                                                                <i class="fas fa-rotate-right"></i> Renouveler
+                                                            </button>
+                                                        </form>
+                                                    <?php endif; ?>
+                                                    
+                                                    <?php if ($is_expired): ?>
+                                                        <form method="POST" style="display: inline;">
+                                                            <input type="hidden" name="action" value="renew_subscription">
+                                                            <input type="hidden" name="client_id" value="<?= $c['id'] ?>">
+                                                            <button type="submit" class="btn-action btn-renew" title="Relancer abonnement" onclick="return confirm('Relancer l\'abonnement de ce client ?')">
+                                                                <i class="fas fa-play"></i> Relancer
+                                                            </button>
+                                                        </form>
+                                                    <?php endif; ?>
+                                                </div>
+                                            </td>
                                         </tr>
                                         <?php endforeach; ?>
                                     </tbody>

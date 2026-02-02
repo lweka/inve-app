@@ -374,6 +374,28 @@
         50% { transform: scale(1.15); opacity: 1; }
     }
 
+    .badge-pro {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
+        color: #1a1a1a;
+        font-size: 14px;
+        font-weight: 700;
+        padding: 5px 12px;
+        border-radius: 999px;
+        box-shadow: 0 4px 16px rgba(255, 165, 0, 0.4);
+        vertical-align: middle;
+        margin-left: 12px;
+        letter-spacing: 0.5px;
+        animation: proPulse 3s ease-in-out infinite;
+    }
+
+    @keyframes proPulse {
+        0%, 100% { box-shadow: 0 4px 16px rgba(255, 165, 0, 0.4); }
+        50% { box-shadow: 0 6px 24px rgba(255, 215, 0, 0.6); }
+    }
+
     @media (max-width: 768px) {
         .dashboard-hero {
             padding: 22px;
@@ -396,7 +418,12 @@
 
     <div class="dashboard-hero">
         <div>
-            <h1>Tableau de bord — Administration</h1>
+            <h1>
+                Tableau de bord — Administration
+                <?php if (!$is_trial): ?>
+                    <span class="badge-pro" title="Compte Professionnel">👑 Pro</span>
+                <?php endif; ?>
+            </h1>
             <p>Suivi en temps réel de vos activités, ventes et performance globale.</p>
         </div>
         <div class="hero-actions">
