@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test PWA - CartelPlus Congo</title>
+    
+    <!-- PWA Meta Tags -->
+    <link rel="manifest" href="/inve-app/manifest.json">
+    <meta name="theme-color" content="#0070e0">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="CartelPlus">
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            background: linear-gradient(135deg, #f5f7fb 0%, #e8f0f8 100%);
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #0070e0 0%, #003087 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 16px;
+            margin-bottom: 30px;
+            box-shadow: 0 8px 30px rgba(0, 48, 135, 0.15);
+        }
+
+        .header h1 {
+            font-size: 28px;
+            margin-bottom: 8px;
+        }
+
+        .header p {
+            opacity: 0.9;
+            font-size: 14px;
+        }
+
+        .test-section {
+            background: white;
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 12px rgba(0, 48, 135, 0.08);
+        }
+
+        .test-section h2 {
+            color: #0b1f3a;
+            font-size: 18px;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 700;
+        }
+
+        .status-success {
+            background: rgba(31, 143, 106, 0.15);
+            color: #1f8f6a;
+        }
+
+        .status-error {
+            background: rgba(220, 38, 38, 0.15);
+            color: #dc2626;
+        }
+
+        .status-pending {
+            background: rgba(245, 158, 11, 0.15);
+            color: #d97706;
+        }
+
+        .test-item {
+            padding: 12px 0;
+            border-bottom: 1px solid #e1e8f0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .test-item:last-child {
+            border-bottom: none;
+        }
+
+        .test-label {
+            font-weight: 600;
+            color: #0b1f3a;
+        }
+
+        .test-value {
+            color: #6b7280;
+            font-size: 14px;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #0070e0 0%, #003087 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 14px;
+            display: inline-block;
+            margin: 8px 8px 8px 0;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(0, 112, 224, 0.4);
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #1f8f6a 0%, #1a7a52 100%);
+        }
+
+        .log-output {
+            background: #0b1f3a;
+            color: #00ff00;
+            padding: 16px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+            margin-top: 16px;
+        }
+
+        .log-line {
+            margin: 4px 0;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <div class="header">
+            <h1>🧪 Test PWA - CartelPlus Congo</h1>
+            <p>Interface de test pour les fonctionnalités offline</p>
+        </div>
+
+        <!-- Service Worker Status -->
+        <div class="test-section">
+            <h2>⚙️ Service Worker</h2>
+            <div class="test-item">
+                <span class="test-label">Statut</span>
+                <span id="sw-status" class="status-badge status-pending">Vérification...</span>
+            </div>
+            <div class="test-item">
+                <span class="test-label">Version</span>
+                <span id="sw-version" class="test-value">-</span>
+            </div>
+            <div class="test-item">
+                <span class="test-label">Scope</span>
+                <span id="sw-scope" class="test-value">-</span>
+            </div>
+            <button class="btn" onclick="registerServiceWorker()">🔄 Réenregistrer</button>
+            <button class="btn btn-danger" onclick="unregisterServiceWorker()">❌ Désinstaller</button>
+        </div>
+
+        <!-- IndexedDB Status -->
+        <div class="test-section">
+            <h2>💾 IndexedDB</h2>
+            <div class="test-item">
+                <span class="test-label">Base de données</span>
+                <span id="db-status" class="status-badge status-pending">Vérification...</span>
+            </div>
+            <div class="test-item">
+                <span class="test-label">Ventes non synchronisées</span>
+                <span id="db-sales" class="test-value">-</span>
+            </div>
+            <div class="test-item">
+                <span class="test-label">Éléments en queue</span>
+                <span id="db-queue" class="test-value">-</span>
+            </div>
+            <div class="test-item">
+                <span class="test-label">Produits en cache</span>
+                <span id="db-products" class="test-value">-</span>
+            </div>
+            <button class="btn" onclick="refreshDBStats()">🔄 Actualiser</button>
+            <button class="btn btn-success" onclick="testAddSale()">➕ Test Vente Offline</button>
+        </div>
+
+        <!-- Network Status -->
+        <div class="test-section">
+            <h2>🌐 Réseau</h2>
+            <div class="test-item">
+                <span class="test-label">Connexion</span>
+                <span id="network-status" class="status-badge">-</span>
+            </div>
+            <div class="test-item">
+                <span class="test-label">Type</span>
+                <span id="network-type" class="test-value">-</span>
+            </div>
+            <div class="test-item">
+                <span class="test-label">Dernière sync</span>
+                <span id="last-sync" class="test-value">-</span>
+            </div>
+            <button class="btn btn-success" onclick="forceSync()">🔄 Forcer Synchronisation</button>
+        </div>
+
+        <!-- Cache Status -->
+        <div class="test-section">
+            <h2>📦 Cache</h2>
+            <div class="test-item">
+                <span class="test-label">Caches actifs</span>
+                <span id="cache-count" class="test-value">-</span>
+            </div>
+            <div id="cache-list"></div>
+            <button class="btn" onclick="listCaches()">📋 Lister Caches</button>
+            <button class="btn btn-danger" onclick="clearAllCaches()">🗑️ Vider Tous les Caches</button>
+        </div>
+
+        <!-- Test Actions -->
+        <div class="test-section">
+            <h2>🧪 Actions de Test</h2>
+            <button class="btn btn-success" onclick="simulateOffline()">📡 Simuler Offline</button>
+            <button class="btn" onclick="testNotification()">🔔 Test Notification</button>
+            <button class="btn" onclick="exportLogs()">📥 Exporter Logs</button>
+        </div>
+
+        <!-- Console Logs -->
+        <div class="test-section">
+            <h2>📝 Console</h2>
+            <div id="log-output" class="log-output">
+                <div class="log-line">[INFO] Page de test chargée</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts PWA -->
+    <script src="/inve-app/js/offline-db.js"></script>
+    <script src="/inve-app/js/sync-manager.js"></script>
+
+    <script>
+        // Logger
+        function log(message, type = 'INFO') {
+            const output = document.getElementById('log-output');
+            const timestamp = new Date().toLocaleTimeString();
+            const line = document.createElement('div');
+            line.className = 'log-line';
+            line.textContent = `[${timestamp}] [${type}] ${message}`;
+            output.appendChild(line);
+            output.scrollTop = output.scrollHeight;
+            console.log(`[${type}]`, message);
+        }
+
+        // Service Worker Tests
+        async function checkServiceWorker() {
+            if ('serviceWorker' in navigator) {
+                const registration = await navigator.serviceWorker.getRegistration();
+                if (registration) {
+                    document.getElementById('sw-status').className = 'status-badge status-success';
+                    document.getElementById('sw-status').textContent = 'Actif ✅';
+                    document.getElementById('sw-scope').textContent = registration.scope;
+                    log('Service Worker actif');
+                } else {
+                    document.getElementById('sw-status').className = 'status-badge status-error';
+                    document.getElementById('sw-status').textContent = 'Inactif ❌';
+                    log('Service Worker non enregistré', 'WARN');
+                }
+            } else {
+                document.getElementById('sw-status').className = 'status-badge status-error';
+                document.getElementById('sw-status').textContent = 'Non supporté ❌';
+                log('Service Worker non supporté par ce navigateur', 'ERROR');
+            }
+        }
+
+        async function registerServiceWorker() {
+            if ('serviceWorker' in navigator) {
+                try {
+                    const registration = await navigator.serviceWorker.register('/inve-app/js/service-worker.js');
+                    log('Service Worker enregistré: ' + registration.scope);
+                    await checkServiceWorker();
+                } catch (error) {
+                    log('Erreur enregistrement SW: ' + error.message, 'ERROR');
+                }
+            }
+        }
+
+        async function unregisterServiceWorker() {
+            if (confirm('Désinstaller le Service Worker ?')) {
+                const registration = await navigator.serviceWorker.getRegistration();
+                if (registration) {
+                    await registration.unregister();
+                    log('Service Worker désinstallé');
+                    await checkServiceWorker();
+                }
+            }
+        }
+
+        // IndexedDB Tests
+        async function refreshDBStats() {
+            try {
+                if (typeof offlineDB !== 'undefined' && offlineDB.db) {
+                    const stats = await offlineDB.getStats();
+                    
+                    document.getElementById('db-status').className = 'status-badge status-success';
+                    document.getElementById('db-status').textContent = 'Connectée ✅';
+                    document.getElementById('db-sales').textContent = stats.unsynced_sales;
+                    document.getElementById('db-queue').textContent = stats.queue_length;
+                    document.getElementById('db-products').textContent = stats.cached_products;
+                    
+                    if (stats.last_sync_at) {
+                        const lastSync = new Date(stats.last_sync_at);
+                        document.getElementById('last-sync').textContent = lastSync.toLocaleString();
+                    }
+                    
+                    log('Stats DB actualisées');
+                } else {
+                    document.getElementById('db-status').className = 'status-badge status-error';
+                    document.getElementById('db-status').textContent = 'Non initialisée ❌';
+                    log('IndexedDB non initialisée', 'WARN');
+                }
+            } catch (error) {
+                log('Erreur refresh DB: ' + error.message, 'ERROR');
+            }
+        }
+
+        async function testAddSale() {
+            try {
+                const testSale = {
+                    client_code: 'TEST_CLIENT',
+                    products: JSON.stringify([{id: 1, name: 'Test Product', quantity: 1, price: 10000}]),
+                    total: 10000,
+                    discount: 0,
+                    final_total: 10000,
+                    payment_method: 'cash',
+                    currency: 'CDF',
+                    created_at: new Date().toISOString()
+                };
+                
+                const id = await offlineDB.addSale(testSale);
+                log(`Vente test ajoutée (ID: ${id})`);
+                await refreshDBStats();
+            } catch (error) {
+                log('Erreur ajout vente: ' + error.message, 'ERROR');
+            }
+        }
+
+        // Network Tests
+        function checkNetwork() {
+            const online = navigator.onLine;
+            const status = document.getElementById('network-status');
+            
+            if (online) {
+                status.className = 'status-badge status-success';
+                status.textContent = 'En ligne 🌐';
+            } else {
+                status.className = 'status-badge status-error';
+                status.textContent = 'Hors ligne 📡';
+            }
+            
+            const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+            if (connection) {
+                document.getElementById('network-type').textContent = connection.effectiveType || 'Inconnu';
+            }
+            
+            log('Statut réseau: ' + (online ? 'Online' : 'Offline'));
+        }
+
+        async function forceSync() {
+            try {
+                if (typeof syncManager !== 'undefined') {
+                    log('Synchronisation forcée lancée...');
+                    await syncManager.forceSync();
+                    log('Synchronisation terminée');
+                    await refreshDBStats();
+                } else {
+                    log('SyncManager non disponible', 'ERROR');
+                }
+            } catch (error) {
+                log('Erreur sync: ' + error.message, 'ERROR');
+            }
+        }
+
+        // Cache Tests
+        async function listCaches() {
+            try {
+                const cacheNames = await caches.keys();
+                document.getElementById('cache-count').textContent = cacheNames.length;
+                
+                const list = document.getElementById('cache-list');
+                list.innerHTML = '';
+                
+                for (const name of cacheNames) {
+                    const item = document.createElement('div');
+                    item.className = 'test-item';
+                    item.innerHTML = `
+                        <span class="test-label">${name}</span>
+                        <button class="btn btn-danger" style="padding: 6px 12px; font-size: 12px;" onclick="deleteCache('${name}')">Supprimer</button>
+                    `;
+                    list.appendChild(item);
+                }
+                
+                log(`${cacheNames.length} cache(s) trouvé(s)`);
+            } catch (error) {
+                log('Erreur liste caches: ' + error.message, 'ERROR');
+            }
+        }
+
+        async function deleteCache(name) {
+            if (confirm(`Supprimer le cache "${name}" ?`)) {
+                await caches.delete(name);
+                log(`Cache "${name}" supprimé`);
+                await listCaches();
+            }
+        }
+
+        async function clearAllCaches() {
+            if (confirm('Vider tous les caches ?')) {
+                const cacheNames = await caches.keys();
+                for (const name of cacheNames) {
+                    await caches.delete(name);
+                }
+                log('Tous les caches supprimés');
+                await listCaches();
+            }
+        }
+
+        // Other Tests
+        function simulateOffline() {
+            log('Simulation offline activée (ouvrir DevTools > Network > Offline)');
+            alert('Activez le mode offline dans DevTools (F12 > Network > Throttling > Offline)');
+        }
+
+        function testNotification() {
+            if ('Notification' in window) {
+                Notification.requestPermission().then(permission => {
+                    if (permission === 'granted') {
+                        new Notification('Test PWA', {
+                            body: 'Les notifications fonctionnent !',
+                            icon: '/inve-app/images/logos/icon-192x192.png'
+                        });
+                        log('Notification envoyée');
+                    }
+                });
+            }
+        }
+
+        function exportLogs() {
+            const logs = document.getElementById('log-output').innerText;
+            const blob = new Blob([logs], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `pwa-test-logs-${Date.now()}.txt`;
+            a.click();
+            log('Logs exportés');
+        }
+
+        // Auto-refresh
+        window.addEventListener('load', async () => {
+            await checkServiceWorker();
+            await refreshDBStats();
+            checkNetwork();
+            await listCaches();
+            
+            // Listeners
+            window.addEventListener('online', checkNetwork);
+            window.addEventListener('offline', checkNetwork);
+            
+            log('Tous les tests initialisés');
+        });
+
+        setInterval(() => {
+            checkNetwork();
+            refreshDBStats();
+        }, 5000);
+    </script>
+
+</body>
+</html>

@@ -6,6 +6,23 @@ if (ob_get_length()) ob_end_clean();
 header('Content-Type: application/json; charset=utf-8');
 
 /* ============================================================
+   MODE OFFLINE - Détection et traitement
+============================================================ */
+$offline_mode = isset($_POST['offline_mode']) && $_POST['offline_mode'] === 'true';
+
+if ($offline_mode) {
+    // En mode offline, on retourne juste une confirmation
+    // Les données seront stockées côté client dans IndexedDB
+    echo json_encode([
+        'ok' => true,
+        'offline' => true,
+        'message' => 'Vente enregistrée localement. Sera synchronisée au retour de la connexion.',
+        'offline_id' => 'OFFLINE_' . time() . '_' . uniqid()
+    ]);
+    exit;
+}
+
+/* ============================================================
    SÉCURITÉ SESSION
 ============================================================ */
 if(!isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'agent'){
@@ -154,12 +171,20 @@ try {
     echo json_encode([
         'ok'      => true,
         'sale_id'=> $sale_id,
-        'total'  => $grandTotal
+        'total'  => $grandTotal,
+        'synced'  => true,
+        'message' => 'Vente créée avec succès'
     ]);
     exit;
 
 } catch(Exception $e){
     if($pdo->inTransaction()) $pdo->rollBack();
-    echo json_encode(['ok'=>false,'message'=>$e->getMessage()]);
+    
+    // En cas d'erreur, suggérer le mode offline si disponible
+    echo json_encode([
+        'ok'=>false,
+        'message'=>$e->getMessage(),
+        'suggest_offline' => true
+    ]);
     exit;
 }
