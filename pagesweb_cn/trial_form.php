@@ -520,7 +520,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <?php endif; ?>
 
     <div class="footer-links">
-        <a href="trial_form"><i class="fas fa-redo"></i> Nouvelle Inscription</a>
         <a href="subscription_buy"><i class="fas fa-credit-card"></i> Abonnement</a>
         <a href="../"><i class="fas fa-home"></i> Accueil</a>
     </div>

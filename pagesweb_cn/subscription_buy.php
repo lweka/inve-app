@@ -640,7 +640,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <?php endif; ?>
 
     <div class="footer-links">
-        <a href="trial_form"><i class="fas fa-gift"></i> Essayer 7 jours gratuit</a>
         <a href="../"><i class="fas fa-home"></i> Retour Accueil</a>
     </div>
 
