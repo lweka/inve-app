@@ -29,14 +29,14 @@ function sendActivationEmail($to_email, $to_name, $client_code, $type = 'trial')
         $mail->isSMTP();
         $mail->Host       = 'smtp.titan.email';
         $mail->SMTPAuth   = true;
-        $mail->Username   = 'cartelplus-congo@cartelplus.tech';
+        $mail->Username   = 'cartelplus-congo@cartelplus.site';
         $mail->Password   = 'Jo@Kin243';
         $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
         $mail->Port       = 587;
         $mail->CharSet    = 'UTF-8';
 
         // Expéditeur
-        $mail->setFrom('cartelplus-congo@cartelplus.tech', 'Cartelplus Congo');
+        $mail->setFrom('cartelplus-congo@cartelplus.site', 'Cartelplus Congo');
         $mail->addAddress($to_email, $to_name);
         $mail->addReplyTo('support@cartelplus.cd', 'Support Cartelplus Congo');
 
@@ -77,14 +77,14 @@ function sendUpgradeProEmail($to_email, $to_name) {
         $mail->isSMTP();
         $mail->Host       = 'smtp.titan.email';
         $mail->SMTPAuth   = true;
-        $mail->Username   = 'cartelplus-congo@cartelplus.tech';
+        $mail->Username   = 'cartelplus-congo@cartelplus.site';
         $mail->Password   = 'Jo@Kin243';
         $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
         $mail->Port       = 587;
         $mail->CharSet    = 'UTF-8';
 
         // Expéditeur
-        $mail->setFrom('cartelplus-congo@cartelplus.tech', 'Cartelplus Congo');
+        $mail->setFrom('cartelplus-congo@cartelplus.site', 'Cartelplus Congo');
         $mail->addAddress($to_email, $to_name);
         $mail->addReplyTo('support@cartelplus.cd', 'Support Cartelplus Congo');
 
