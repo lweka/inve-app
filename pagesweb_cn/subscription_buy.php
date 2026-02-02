@@ -64,18 +64,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Abonnement 1 Mois | CartelPlus Congo</title>
     <link href="../css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
     <style>
         :root {
-            --blue: #0A6FB7;
-            --orange: #F25C2A;
-            --dark: #0B0E14;
-            --white: #ffffff;
+            --pp-blue: #0070e0;
+            --pp-blue-dark: #003087;
+            --pp-cyan: #00a8ff;
+            --pp-bg: #f5f7fb;
+            --pp-white: #ffffff;
+            --pp-text: #0b1f3a;
+            --pp-border: #e1e8f0;
+            --pp-success: #1f8f6a;
+            --pp-orange: #ff6b35;
+            --pp-shadow: rgba(0, 48, 135, 0.08);
+            --pp-shadow-lg: rgba(0, 48, 135, 0.15);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
         }
 
         body {
-            background: linear-gradient(135deg, #0B0E14 0%, #1a1f2e 100%);
-            color: var(--white);
-            font-family: "Segoe UI", system-ui, sans-serif;
+            background: linear-gradient(135deg, var(--pp-bg) 0%, #e8f0f8 100%);
+            font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+            color: var(--pp-text);
             min-height: 100vh;
             display: flex;
             align-items: center;
@@ -83,260 +97,408 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             padding: 20px;
         }
 
-        .container-subscription {
-            width: 100%;
-            max-width: 550px;
-            background: rgba(255, 255, 255, 0.08);
-            backdrop-filter: blur(20px);
-            border: 1px solid rgba(10, 111, 183, 0.3);
-            border-radius: 20px;
-            padding: 50px;
-            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.5);
+        /* ===== ANIMATIONS ===== */
+        @keyframes fadeSlide {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
         }
 
+        @keyframes shimmer {
+            0% { background-position: -1000px 0; }
+            100% { background-position: 1000px 0; }
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        @keyframes slideInRight {
+            from { opacity: 0; transform: translateX(20px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+
+        /* ===== CONTAINER ===== */
+        .container-subscription {
+            width: 100%;
+            max-width: 650px;
+            background: var(--pp-white);
+            border-radius: 24px;
+            padding: 0;
+            box-shadow: 0 20px 60px var(--pp-shadow-lg);
+            overflow: hidden;
+            animation: fadeSlide 0.8s ease;
+            border: 1px solid var(--pp-border);
+        }
+
+        /* ===== HEADER ===== */
         .header {
+            background: linear-gradient(135deg, var(--pp-blue) 0%, var(--pp-blue-dark) 100%);
+            padding: 48px 40px;
             text-align: center;
-            margin-bottom: 40px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: radial-gradient(circle at 30% 50%, rgba(0, 168, 255, 0.2) 0%, transparent 50%);
         }
 
         .logo {
-            font-size: 36px;
-            margin-bottom: 10px;
+            font-size: 56px;
+            margin-bottom: 16px;
+            animation: pulse 2s infinite;
+            position: relative;
+            z-index: 1;
         }
 
         .title {
-            font-size: 28px;
+            font-size: 32px;
             font-weight: 700;
-            color: var(--white);
-            margin-bottom: 10px;
+            color: white;
+            margin-bottom: 12px;
+            position: relative;
+            z-index: 1;
         }
 
         .subtitle {
-            font-size: 14px;
-            color: rgba(255, 255, 255, 0.6);
+            font-size: 15px;
+            color: rgba(255, 255, 255, 0.85);
+            position: relative;
+            z-index: 1;
         }
 
+        /* ===== BODY CONTENT ===== */
+        .content-body {
+            padding: 40px;
+        }
+
+        /* ===== PRICING BOX ===== */
         .pricing-box {
-            background: rgba(242, 92, 42, 0.15);
-            border: 2px solid var(--orange);
-            padding: 20px;
-            border-radius: 10px;
+            background: linear-gradient(135deg, rgba(0, 112, 224, 0.05) 0%, rgba(0, 168, 255, 0.05) 100%);
+            border: 2px solid var(--pp-blue);
+            padding: 32px;
+            border-radius: 16px;
             text-align: center;
-            margin-bottom: 30px;
+            margin-bottom: 32px;
+            position: relative;
+            overflow: hidden;
+            animation: fadeSlide 0.9s ease;
+        }
+
+        .pricing-box::before {
+            content: '';
+            position: absolute;
+            top: -2px;
+            left: -2px;
+            right: -2px;
+            height: 4px;
+            background: linear-gradient(90deg, var(--pp-blue), var(--pp-cyan), var(--pp-blue));
+            background-size: 200% 100%;
+            animation: shimmer 3s linear infinite;
         }
 
         .pricing-label {
             font-size: 12px;
-            color: rgba(255, 255, 255, 0.7);
+            color: #6b7280;
             text-transform: uppercase;
-            margin-bottom: 8px;
+            letter-spacing: 1px;
+            font-weight: 700;
+            margin-bottom: 12px;
         }
 
         .pricing-amount {
-            font-size: 32px;
+            font-size: 48px;
             font-weight: 700;
-            color: var(--orange);
+            color: var(--pp-blue);
             margin-bottom: 8px;
+            line-height: 1;
         }
 
         .pricing-period {
-            font-size: 13px;
-            color: rgba(255, 255, 255, 0.7);
+            font-size: 14px;
+            color: #6b7280;
+            font-weight: 500;
         }
 
+        /* ===== BENEFITS ===== */
         .benefits {
-            background: rgba(10, 111, 183, 0.1);
-            border-left: 4px solid var(--blue);
-            padding: 15px;
-            border-radius: 8px;
-            margin-bottom: 30px;
+            background: linear-gradient(135deg, rgba(31, 143, 106, 0.05) 0%, rgba(31, 143, 106, 0.02) 100%);
+            border-left: 4px solid var(--pp-success);
+            padding: 24px;
+            border-radius: 12px;
+            margin-bottom: 32px;
+            animation: slideInRight 1s ease;
         }
 
         .benefits-title {
             font-size: 13px;
-            font-weight: 600;
+            font-weight: 700;
             text-transform: uppercase;
-            color: var(--blue);
-            margin-bottom: 8px;
+            color: var(--pp-success);
+            margin-bottom: 16px;
+            letter-spacing: 0.5px;
         }
 
         .benefit-item {
-            font-size: 12px;
-            color: rgba(255, 255, 255, 0.8);
-            margin-bottom: 5px;
-            padding-left: 20px;
+            font-size: 14px;
+            color: var(--pp-text);
+            margin-bottom: 10px;
+            padding-left: 28px;
             position: relative;
+            line-height: 1.6;
         }
 
         .benefit-item:before {
             content: '✓';
             position: absolute;
             left: 0;
-            color: var(--blue);
-            font-weight: bold;
+            color: var(--pp-success);
+            font-weight: 700;
+            font-size: 16px;
         }
 
+        .benefit-item:last-child {
+            margin-bottom: 0;
+        }
+
+        /* ===== FORM ===== */
         .form-group {
-            margin-bottom: 20px;
+            margin-bottom: 24px;
         }
 
         .form-label {
             display: block;
             font-size: 13px;
             font-weight: 600;
-            text-transform: uppercase;
-            color: rgba(255, 255, 255, 0.8);
+            color: var(--pp-text);
             margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+
+        .form-label .required {
+            color: #dc2626;
         }
 
         .form-control {
             width: 100%;
-            padding: 12px 15px;
-            background: rgba(255, 255, 255, 0.08);
-            border: 1px solid rgba(10, 111, 183, 0.3);
-            border-radius: 8px;
-            color: var(--white);
-            font-size: 14px;
+            padding: 14px 16px;
+            background: var(--pp-bg);
+            border: 2px solid var(--pp-border);
+            border-radius: 10px;
+            color: var(--pp-text);
+            font-size: 15px;
             transition: all 0.3s;
+            font-family: inherit;
         }
 
         .form-control:focus {
             outline: none;
-            border-color: var(--orange);
-            background: rgba(255, 255, 255, 0.12);
-            box-shadow: 0 0 10px rgba(242, 92, 42, 0.2);
+            border-color: var(--pp-blue);
+            background: var(--pp-white);
+            box-shadow: 0 0 0 4px rgba(0, 112, 224, 0.1);
         }
 
         .form-control::placeholder {
-            color: rgba(255, 255, 255, 0.4);
+            color: #9ca3af;
         }
 
         .form-row {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 15px;
+            gap: 20px;
         }
 
+        /* ===== BUTTONS ===== */
         .btn-submit {
             width: 100%;
-            padding: 12px;
-            background: linear-gradient(135deg, var(--orange) 0%, #E84A1F 100%);
+            padding: 16px;
+            background: linear-gradient(135deg, var(--pp-blue) 0%, var(--pp-blue-dark) 100%);
             border: none;
-            border-radius: 8px;
+            border-radius: 12px;
             color: white;
             font-weight: 700;
-            font-size: 14px;
+            font-size: 15px;
             cursor: pointer;
             transition: all 0.3s;
             text-transform: uppercase;
             letter-spacing: 1px;
+            box-shadow: 0 8px 24px rgba(0, 112, 224, 0.3);
         }
 
         .btn-submit:hover {
             transform: translateY(-2px);
-            box-shadow: 0 10px 30px rgba(242, 92, 42, 0.3);
+            box-shadow: 0 12px 32px rgba(0, 112, 224, 0.4);
         }
 
+        .btn-submit:active {
+            transform: translateY(0);
+        }
+
+        /* ===== ALERTS ===== */
         .alert {
-            padding: 15px;
-            border-radius: 10px;
-            margin-bottom: 20px;
-            font-size: 13px;
+            padding: 16px 20px;
+            border-radius: 12px;
+            margin-bottom: 24px;
+            font-size: 14px;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            animation: fadeSlide 0.5s ease;
         }
 
         .alert-error {
-            background: rgba(220, 53, 69, 0.2);
-            border-left: 4px solid #dc3545;
-            color: #ff6b6b;
+            background: rgba(220, 38, 38, 0.1);
+            border: 1px solid #dc2626;
+            color: #dc2626;
+        }
+
+        .alert-error::before {
+            content: '❌';
+            font-size: 20px;
         }
 
         .alert-success {
-            background: rgba(40, 167, 69, 0.2);
-            border-left: 4px solid #28a745;
-            color: #90EE90;
+            background: rgba(31, 143, 106, 0.1);
+            border: 1px solid var(--pp-success);
+            color: var(--pp-success);
         }
 
-        .next-steps {
-            background: rgba(10, 111, 183, 0.15);
-            border: 1px dashed var(--blue);
-            padding: 20px;
-            border-radius: 10px;
-            text-align: center;
-            margin-top: 20px;
+        .alert-success::before {
+            content: '✅';
+            font-size: 20px;
         }
 
+        /* ===== CODE BOX ===== */
         .code-box {
-            background: rgba(10, 111, 183, 0.2);
-            border: 1px dashed var(--blue);
-            padding: 20px;
-            border-radius: 10px;
+            background: linear-gradient(135deg, rgba(0, 112, 224, 0.08) 0%, rgba(0, 168, 255, 0.08) 100%);
+            border: 2px dashed var(--pp-blue);
+            padding: 32px;
+            border-radius: 16px;
             text-align: center;
-            margin-top: 20px;
+            margin-top: 24px;
+            animation: fadeSlide 0.8s ease;
         }
 
         .code-label {
             font-size: 12px;
-            color: rgba(255, 255, 255, 0.6);
+            color: #6b7280;
             text-transform: uppercase;
-            margin-bottom: 10px;
+            margin-bottom: 16px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
         }
 
         .code-display {
             font-family: 'Courier New', monospace;
-            font-size: 24px;
-            font-weight: bold;
-            color: var(--orange);
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--pp-blue);
             letter-spacing: 2px;
             word-break: break-all;
-            margin-bottom: 15px;
+            margin-bottom: 20px;
+            padding: 16px;
+            background: rgba(0, 112, 224, 0.05);
+            border-radius: 10px;
+        }
+
+        /* ===== NEXT STEPS ===== */
+        .next-steps {
+            background: linear-gradient(135deg, rgba(31, 143, 106, 0.05) 0%, rgba(31, 143, 106, 0.02) 100%);
+            border: 1px solid rgba(31, 143, 106, 0.2);
+            padding: 28px;
+            border-radius: 16px;
+            margin-top: 24px;
+            animation: slideInRight 1s ease;
         }
 
         .step-title {
             font-weight: 700;
-            color: var(--orange);
-            margin-bottom: 10px;
-            font-size: 14px;
+            color: var(--pp-blue);
+            margin-bottom: 20px;
+            font-size: 16px;
+            text-align: center;
         }
 
         .step-desc {
-            font-size: 12px;
-            color: rgba(255, 255, 255, 0.8);
-            line-height: 1.6;
-            margin-bottom: 10px;
+            font-size: 14px;
+            color: var(--pp-text);
+            line-height: 1.8;
+            margin-bottom: 16px;
+            padding: 16px;
+            background: white;
+            border-radius: 10px;
+            border-left: 3px solid var(--pp-blue);
         }
 
-        .btn-waiting {
-            width: 100%;
-            padding: 10px;
-            background: rgba(255, 255, 255, 0.1);
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            border-radius: 8px;
-            color: rgba(255, 255, 255, 0.8);
-            font-weight: 600;
-            cursor: default;
-            margin-top: 10px;
-            font-size: 12px;
+        .step-desc strong {
+            color: var(--pp-blue);
+            display: block;
+            margin-bottom: 6px;
+            font-size: 15px;
         }
 
+        .contact-box {
+            background: rgba(255, 107, 53, 0.08);
+            padding: 16px;
+            border-radius: 10px;
+            margin-top: 20px;
+            font-size: 13px;
+            color: var(--pp-text);
+            text-align: center;
+            border: 1px solid rgba(255, 107, 53, 0.2);
+        }
+
+        /* ===== FOOTER ===== */
         .footer-links {
             text-align: center;
-            margin-top: 30px;
-            font-size: 12px;
+            margin-top: 32px;
+            padding-top: 24px;
+            border-top: 1px solid var(--pp-border);
+            font-size: 13px;
         }
 
         .footer-links a {
-            color: var(--orange);
+            color: var(--pp-blue);
             text-decoration: none;
-            margin: 0 10px;
+            margin: 0 12px;
+            font-weight: 600;
+            transition: all 0.3s;
         }
 
         .footer-links a:hover {
+            color: var(--pp-blue-dark);
             text-decoration: underline;
         }
 
+        .footer-note {
+            text-align: center;
+            margin-top: 16px;
+            font-size: 11px;
+            color: #9ca3af;
+            line-height: 1.6;
+        }
+
+        /* ===== RESPONSIVE ===== */
         @media (max-width: 600px) {
             .container-subscription {
-                padding: 30px 20px;
+                border-radius: 16px;
+            }
+
+            .header {
+                padding: 32px 24px;
+            }
+
+            .content-body {
+                padding: 24px;
             }
 
             .form-row {
@@ -344,11 +506,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
 
             .title {
-                font-size: 22px;
+                font-size: 26px;
             }
 
             .pricing-amount {
-                font-size: 28px;
+                font-size: 40px;
+            }
+
+            .logo {
+                font-size: 48px;
             }
         }
     </style>
@@ -361,19 +527,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <div class="header">
         <div class="logo">💳</div>
         <div class="title">Abonnement Mensuel</div>
-        <div class="subtitle">Accès complet - 30 jours</div>
+        <div class="subtitle">Accès complet pendant 30 jours</div>
     </div>
+
+    <div class="content-body">
 
     <?php if (!$success_message): ?>
 
         <div class="pricing-box">
             <div class="pricing-label">Tarif Standard</div>
-            <div class="pricing-amount">10 $ USD</div>
+            <div class="pricing-amount">10 $</div>
             <div class="pricing-period">pour 1 mois complet</div>
         </div>
 
         <div class="benefits">
-            <div class="benefits-title">Inclus dans votre abonnement</div>
+            <div class="benefits-title">✨ Inclus dans votre abonnement</div>
             <div class="benefit-item">Gestion complète des ventes POS</div>
             <div class="benefit-item">Dashboard administrateur illimité</div>
             <div class="benefit-item">Rapports journaliers & marges avancées</div>
@@ -389,38 +557,40 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <form method="POST">
             <div class="form-row">
                 <div class="form-group">
-                    <label class="form-label">Prénom *</label>
-                    <input type="text" name="first_name" class="form-control" required>
+                    <label class="form-label">Prénom <span class="required">*</span></label>
+                    <input type="text" name="first_name" class="form-control" placeholder="Votre prénom" required>
                 </div>
                 <div class="form-group">
-                    <label class="form-label">Nom *</label>
-                    <input type="text" name="last_name" class="form-control" required>
+                    <label class="form-label">Nom <span class="required">*</span></label>
+                    <input type="text" name="last_name" class="form-control" placeholder="Votre nom" required>
                 </div>
             </div>
 
             <div class="form-group">
-                <label class="form-label">Email *</label>
-                <input type="email" name="email" class="form-control" required>
+                <label class="form-label">Email <span class="required">*</span></label>
+                <input type="email" name="email" class="form-control" placeholder="votre@email.com" required>
             </div>
 
             <div class="form-row">
                 <div class="form-group">
                     <label class="form-label">Téléphone</label>
-                    <input type="tel" name="phone" class="form-control">
+                    <input type="tel" name="phone" class="form-control" placeholder="+243 xxx xxx xxx">
                 </div>
                 <div class="form-group">
-                    <label class="form-label">Entreprise *</label>
-                    <input type="text" name="company_name" class="form-control" required>
+                    <label class="form-label">Entreprise <span class="required">*</span></label>
+                    <input type="text" name="company_name" class="form-control" placeholder="Nom entreprise" required>
                 </div>
             </div>
 
             <div class="form-group">
-                <label class="form-label">Montant (USD) *</label>
+                <label class="form-label">Montant (USD) <span class="required">*</span></label>
                 <input type="number" name="payment_amount" class="form-control" 
-                    value="10" min="1" step="0.01" required>
+                    value="10" min="1" step="0.01" required placeholder="10.00">
             </div>
 
-            <button type="submit" class="btn-submit">💰 Générer Code Abonnement</button>
+            <button type="submit" class="btn-submit">
+                <i class="fas fa-credit-card"></i> Générer Code Abonnement
+            </button>
         </form>
 
     <?php else: ?>
@@ -428,46 +598,52 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <div class="alert alert-success"><?= $success_message ?></div>
 
         <div class="code-box">
-            <div class="code-label">Votre Code d'Abonnement</div>
+            <div class="code-label">🎫 Votre Code d'Abonnement</div>
             <div class="code-display"><?= htmlspecialchars($subscription_code) ?></div>
             <button onclick="copyCode()" class="btn-submit">
-                📋 Copier le Code
+                <i class="fas fa-copy"></i> Copier le Code
             </button>
         </div>
 
         <div class="next-steps">
             <div class="step-title">📋 Prochaines Étapes</div>
             
-            <div class="step-desc" style="margin-bottom: 15px;">
-                <strong>1️⃣ Effectuer le paiement</strong><br>
-                Montant: <span style="color: var(--orange); font-weight: bold;">10 $ USD</span>
+            <div class="step-desc">
+                <strong>1️⃣ Effectuer le paiement</strong>
+                Montant: <span style="color: var(--pp-blue); font-weight: bold;">10 $ USD</span><br>
+                Envoyez le paiement via Mobile Money ou virement bancaire
             </div>
 
-            <div class="step-desc" style="margin-bottom: 15px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 15px;">
-                <strong>2️⃣ Envoyer le code</strong><br>
-                Contactez-nous avec ce code et la preuve de paiement
+            <div class="step-desc">
+                <strong>2️⃣ Envoyer le code avec preuve</strong>
+                Contactez-nous avec ce code et la capture d'écran de votre paiement
             </div>
 
-            <div class="step-desc" style="border-top: 1px solid rgba(255,255,255,0.1); padding-top: 15px;">
-                <strong>3️⃣ Validation admin</strong><br>
-                Nous validons votre paiement et votre compte est activé
+            <div class="step-desc">
+                <strong>3️⃣ Validation sous 24h</strong>
+                Notre équipe valide votre paiement et active votre compte immédiatement
             </div>
 
-            <div style="background: rgba(242, 92, 42, 0.15); padding: 12px; border-radius: 5px; margin-top: 15px; font-size: 11px; color: rgba(255, 255, 255, 0.8);">
-                📧 Contact: admin@cartelplus.cd<br>
-                📱 WhatsApp: +243 123 456 789
+            <div class="contact-box">
+                <strong style="color: var(--pp-orange);">📞 Informations de Contact</strong><br>
+                📧 Email: admin@cartelplus.cd<br>
+                📱 WhatsApp: +243 123 456 789<br>
+                ⏰ Disponible 7j/7 de 8h à 20h
             </div>
         </div>
 
-        <div style="text-align: center; margin-top: 20px; font-size: 11px; color: rgba(255, 255, 255, 0.6);">
-            <p>Votre abonnement expire automatiquement après 30 jours si non renouvelé</p>
+        <div class="footer-note">
+            Votre abonnement expire automatiquement après 30 jours.<br>
+            Renouvelez avant expiration pour éviter toute interruption de service.
         </div>
 
     <?php endif; ?>
 
     <div class="footer-links">
-        <a href="trial_form">Essayer 7 jours</a>
-        <a href="../">← Accueil</a>
+        <a href="trial_form"><i class="fas fa-gift"></i> Essayer 7 jours gratuit</a>
+        <a href="../"><i class="fas fa-home"></i> Retour Accueil</a>
+    </div>
+
     </div>
 
 </div>
@@ -476,7 +652,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 function copyCode() {
     const code = '<?= htmlspecialchars($subscription_code) ?>';
     navigator.clipboard.writeText(code).then(() => {
-        alert('✅ Code copié !');
+        const btn = event.target;
+        const originalHTML = btn.innerHTML;
+        btn.innerHTML = '<i class="fas fa-check"></i> Code Copié !';
+        btn.style.background = 'linear-gradient(135deg, var(--pp-success) 0%, #1a7a52 100%)';
+        
+        setTimeout(() => {
+            btn.innerHTML = originalHTML;
+            btn.style.background = '';
+        }, 2000);
     });
 }
 </script>
