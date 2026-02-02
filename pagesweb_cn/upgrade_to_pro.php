@@ -41,7 +41,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['request_upgrade'])) {
     try {
         $stmt = $pdo->prepare("
             INSERT INTO subscription_codes (
-                code, first_name, last_name, email, phone, company_name,
+                code, first_name, last_name, email, company_name,
                 payment_amount, status, notes
             ) VALUES (?, ?, ?, ?, ?, ?, 10, 'pending', 'Upgrade from trial')
         ");
@@ -50,7 +50,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['request_upgrade'])) {
             $client['first_name'],
             $client['last_name'],
             $client['email'],
-            $client['phone'],
             $client['company_name']
         ]);
         
