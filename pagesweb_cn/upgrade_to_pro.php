@@ -12,7 +12,7 @@ require_once __DIR__ . '/require_admin_auth.php'; // Charge $client_code
 
 // Récupérer les informations du client
 $stmt = $pdo->prepare("
-    SELECT first_name, last_name, email, phone, company_name, subscription_type, expires_at
+    SELECT first_name, last_name, email, company_name, subscription_type, expires_at
     FROM active_clients
     WHERE client_code = ? AND status = 'active'
 ");
