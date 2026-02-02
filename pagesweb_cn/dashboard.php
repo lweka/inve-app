@@ -51,6 +51,33 @@
     ");
     $stmt->execute([$client_code]);
     $global = (float)($stmt->fetchColumn() ?? 0);
+
+    // Récupérer les informations du client (type d'abonnement, date d'expiration)
+    $stmt = $pdo->prepare("
+        SELECT subscription_type, expires_at, created_at
+        FROM active_clients
+        WHERE client_code = ? AND status = 'active'
+    ");
+    $stmt->execute([$client_code]);
+    $clientInfo = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    // Déterminer le statut et les jours restants
+    $subscription_type = $clientInfo['subscription_type'] ?? 'unknown';
+    $expires_at = $clientInfo['expires_at'] ?? null;
+    $is_trial = ($subscription_type === 'trial');
+    $daysRemaining = 0;
+    $show_renewal_btn = false;
+
+    if ($expires_at) {
+        $expiresDateTime = new DateTime($expires_at);
+        $nowDateTime = new DateTime();
+        $daysRemaining = (int)$expiresDateTime->diff($nowDateTime)->days;
+        
+        // Afficher le bouton de renouvellement si ≤4 jours restants ET c'est un abonnement (pas trial)
+        if ($daysRemaining <= 4 && !$is_trial) {
+            $show_renewal_btn = true;
+        }
+    }
 ?>
 
 <?php require_once $headerPath; ?>
@@ -161,6 +188,28 @@
         transform: translateY(-2px);
         box-shadow: 0 6px 20px rgba(220, 38, 38, 0.3);
         color: #ffffff;
+    }
+
+    .btn-pp-pro {
+        background: linear-gradient(135deg, #ff6b35, #ff8c42) !important;
+        color: white !important;
+        box-shadow: 0 10px 24px rgba(255, 107, 53, 0.25) !important;
+    }
+
+    .btn-pp-pro:hover {
+        transform: translateY(-2px) !important;
+        box-shadow: 0 12px 32px rgba(255, 107, 53, 0.35) !important;
+    }
+
+    .btn-pp-renewal {
+        background: linear-gradient(135deg, #fbbf24, #f59e0b) !important;
+        color: white !important;
+        box-shadow: 0 10px 24px rgba(251, 191, 36, 0.25) !important;
+    }
+
+    .btn-pp-renewal:hover {
+        transform: translateY(-2px) !important;
+        box-shadow: 0 12px 32px rgba(251, 191, 36, 0.35) !important;
     }
 
     .btn-pp-secondary {
@@ -351,7 +400,23 @@
             <p>Suivi en temps réel de vos activités, ventes et performance globale.</p>
         </div>
         <div class="hero-actions">
-            <div class="hero-chip">Statut : Actif</div>
+            <div class="hero-chip">
+                <?php if ($is_trial): ?>
+                    ⏳ Mode Essai (<?= $daysRemaining ?> jours restants)
+                <?php else: ?>
+                    ✓ Abonnement Actif <?php if ($show_renewal_btn): ?>(<?= $daysRemaining ?> jours restants)<?php endif; ?>
+                <?php endif; ?>
+            </div>
+            <?php if ($is_trial): ?>
+                <a href="subscription_buy.php" class="btn-pp btn-pp-pro">
+                    <i class="fa-solid fa-crown"></i> Passer Pro
+                </a>
+            <?php endif; ?>
+            <?php if ($show_renewal_btn): ?>
+                <a href="subscription_buy.php" class="btn-pp btn-pp-renewal">
+                    <i class="fa-solid fa-rotate-right"></i> Renouveler
+                </a>
+            <?php endif; ?>
             <a href="<?= HOUSES_MANAGE; ?>" class="btn-pp btn-pp-secondary">
                 <i class="fa-solid fa-house"></i> Maisons
             </a>
