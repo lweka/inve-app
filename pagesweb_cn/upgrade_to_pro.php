@@ -30,32 +30,57 @@ if ($client['subscription_type'] !== 'trial') {
     exit;
 }
 
+// Vérifier s'il y a déjà une demande d'upgrade en cours
+$pending_upgrade = false;
+$stmt = $pdo->prepare("
+    SELECT code FROM subscription_codes 
+    WHERE first_name = ? AND last_name = ? AND email = ? 
+    AND status = 'pending' AND notes LIKE '%Upgrade from trial%'
+");
+$stmt->execute([$client['first_name'], $client['last_name'], $client['email']]);
+if ($stmt->fetch()) {
+    $pending_upgrade = true;
+}
+
 // Générer le code d'abonnement si le formulaire est soumis (demande upgrade)
 $upgrade_requested = false;
 $subscription_code = '';
+$error_message = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['request_upgrade'])) {
-    // Créer une demande d'upgrade dans subscription_codes
-    $subscription_code = 'SUB-UPGRADE-' . strtoupper(uniqid());
+    // Vérifier à nouveau s'il y a déjà une demande en cours
+    $stmt = $pdo->prepare("
+        SELECT code FROM subscription_codes 
+        WHERE first_name = ? AND last_name = ? AND email = ? 
+        AND status = 'pending' AND notes LIKE '%Upgrade from trial%'
+    ");
+    $stmt->execute([$client['first_name'], $client['last_name'], $client['email']]);
     
-    try {
-        $stmt = $pdo->prepare("
-            INSERT INTO subscription_codes (
-                code, first_name, last_name, email, company_name,
-                payment_amount, status, notes
-            ) VALUES (?, ?, ?, ?, ?, ?, 10, 'pending', 'Upgrade from trial')
-        ");
-        $stmt->execute([
-            $subscription_code,
-            $client['first_name'],
-            $client['last_name'],
-            $client['email'],
-            $client['company_name']
-        ]);
+    if ($stmt->fetch()) {
+        $error_message = '⏳ Vous avez déjà une demande d\'upgrade en cours. Veuillez patienter que l\'administrateur la valide.';
+    } else {
+        // Créer une demande d'upgrade dans subscription_codes
+        $subscription_code = 'SUB-UPGRADE-' . strtoupper(uniqid());
         
-        $upgrade_requested = true;
-    } catch (PDOException $e) {
-        $error_message = '❌ Erreur lors de la demande: ' . $e->getMessage();
+        try {
+            $stmt = $pdo->prepare("
+                INSERT INTO subscription_codes (
+                    code, first_name, last_name, email, company_name,
+                    payment_amount, status, notes
+                ) VALUES (?, ?, ?, ?, ?, ?, 10, 'pending', 'Upgrade from trial')
+            ");
+            $stmt->execute([
+                $subscription_code,
+                $client['first_name'],
+                $client['last_name'],
+                $client['email'],
+                $client['company_name']
+            ]);
+            
+            $upgrade_requested = true;
+        } catch (PDOException $e) {
+            $error_message = '❌ Erreur lors de la demande: ' . $e->getMessage();
+        }
     }
 }
 ?>
@@ -368,6 +393,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['request_upgrade'])) {
 
     <?php if (!$upgrade_requested): ?>
 
+        <div style="background: linear-gradient(135deg, #e8f4fd 0%, #d4e8f9 100%); border-left: 4px solid var(--pp-blue); border-radius: 12px; padding: 18px; margin-bottom: 24px;">
+            <strong style="color: var(--pp-blue);">ℹ️ Comment ça marche ?</strong><br>
+            <ol style="margin: 10px 0 0; padding-left: 20px; font-size: 14px; color: #555;">
+                <li>Vous cliquez sur "Demander l'Upgrade Pro" ci-dessous</li>
+                <li>Effectuez le paiement de 10 $ (Mobile Money, virement, espèces)</li>
+                <li>Contactez l'administrateur avec votre preuve de paiement</li>
+                <li>L'admin clique sur <strong>"✅ Valider"</strong> dans le panneau "Codes d'Abonnement"</li>
+                <li>Vous recevez un email de confirmation et votre compte devient Pro (30 jours)</li>
+            </ol>
+        </div>
+
         <div class="client-info">
             <strong>📋 Vos informations (récupérées automatiquement):</strong><br>
             Nom: <?= htmlspecialchars($client['first_name'] . ' ' . $client['last_name']) ?><br>
@@ -426,9 +462,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['request_upgrade'])) {
         </div>
 
         <form method="POST">
-            <button type="submit" name="request_upgrade" class="btn-upgrade">
-                <i class="fas fa-crown"></i> Demander l'Upgrade Pro
-            </button>
+            <?php if ($pending_upgrade): ?>
+                <div style="background: #fff3cd; border: 1px solid #ffc107; border-radius: 12px; padding: 16px; margin-bottom: 20px; color: #856404;">
+                    <strong>⏳ Demande en cours</strong><br>
+                    Vous avez déjà une demande d'upgrade Pro en attente de validation. Veuillez patienter que notre équipe la traite (généralement 24h).
+                </div>
+                <button type="button" class="btn-upgrade" disabled style="opacity: 0.6; cursor: not-allowed;">
+                    <i class="fas fa-hourglass-half"></i> Demande en attente...
+                </button>
+            <?php else: ?>
+                <button type="submit" name="request_upgrade" class="btn-upgrade">
+                    <i class="fas fa-crown"></i> Demander l'Upgrade Pro
+                </button>
+            <?php endif; ?>
         </form>
 
         <a href="dashboard.php" class="btn-secondary">
