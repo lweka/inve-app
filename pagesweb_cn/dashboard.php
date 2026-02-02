@@ -408,7 +408,7 @@
                 <?php endif; ?>
             </div>
             <?php if ($is_trial): ?>
-                <a href="subscription_buy.php" class="btn-pp btn-pp-pro">
+                <a href="upgrade_to_pro.php" class="btn-pp btn-pp-pro">
                     <i class="fa-solid fa-crown"></i> Passer Pro
                 </a>
             <?php endif; ?>

@@ -49,7 +49,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $username = trim($_POST['username'] ?? '');
     $password = $_POST['password'] ?? '';
     $password_confirm = $_POST['password_confirm'] ?? '';
-    $full_name = trim($_POST['full_name'] ?? '');
+    $full_name = $client['first_name'] . ' ' . $client['last_name']; // Auto-rempli depuis les données du client
     $recaptcha_token = $_POST['g-recaptcha-token'] ?? '';
 
     // Vérifier le token reCAPTCHA
@@ -368,22 +368,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             </div>
 
             <div class="subscription-info">
-                <strong>ℹ️ Informations:</strong><br>
+                <strong>ℹ️ Informations de votre compte:</strong><br>
                 Email: <?= htmlspecialchars($client['email']) ?><br>
+                Nom: <?= htmlspecialchars($client['first_name'] . ' ' . $client['last_name']) ?><br>
                 Type: <?= $client['subscription_type'] === 'trial' ? '📅 Essai 7 jours' : '💳 Abonnement 1 mois' ?><br>
                 Expire: <?= date('d/m/Y H:i', strtotime($client['expires_at'])) ?>
             </div>
 
             <form method="POST">
                 <div class="form-group">
-                    <label class="form-label">Nom Complet *</label>
-                    <input type="text" name="full_name" class="form-control" placeholder="Votre nom complet" required>
-                    <div class="help-text">Votre nom d'administrateur</div>
+                    <label class="form-label">Nom Complet</label>
+                    <input type="text" name="full_name" class="form-control" 
+                        value="<?= htmlspecialchars($client['first_name'] . ' ' . $client['last_name']) ?>" 
+                        readonly style="background: #f5f7fb; cursor: not-allowed;">
+                    <div class="help-text">✓ Récupéré automatiquement de votre inscription</div>
                 </div>
 
                 <div class="form-group">
                     <label class="form-label">Nom d'utilisateur *</label>
-                    <input type="text" name="username" class="form-control" placeholder="Minimum 4 caractères" minlength="4" required>
+                    <input type="text" name="username" class="form-control" placeholder="Minimum 4 caractères" minlength="4" required autofocus>
                     <div class="help-text">Utilisé pour la connexion</div>
                 </div>
 
