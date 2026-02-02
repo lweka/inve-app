@@ -679,7 +679,7 @@ $active_clients = $stmt_clients->fetchAll(PDO::FETCH_ASSOC);
                     <div class="table-section">
                         <div class="section-title">
                             <span class="section-title-icon">📋</span>
-                            Codes d'Essai Gratuit (7 jours)
+                            Code d'Essai
                         </div>
 
                         <?php if (empty($trial_codes)): ?>
@@ -741,7 +741,7 @@ $active_clients = $stmt_clients->fetchAll(PDO::FETCH_ASSOC);
                     <div class="table-section">
                         <div class="section-title">
                             <span class="section-title-icon">💳</span>
-                            Codes d'Abonnement Payants (1 mois)
+                            Code d'Abonnement
                         </div>
 
                         <?php if (empty($subscription_codes)): ?>
@@ -817,7 +817,7 @@ $active_clients = $stmt_clients->fetchAll(PDO::FETCH_ASSOC);
                     <div class="table-section">
                         <div class="section-title">
                             <span class="section-title-icon">👥</span>
-                            Clients Actuellement Actifs
+                            Client Actif
                         </div>
 
                         <?php if (empty($active_clients)): ?>
