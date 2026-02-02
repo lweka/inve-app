@@ -60,12 +60,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 // Créer directement le client actif
                 $stmt = $pdo->prepare("
                     INSERT INTO active_clients (
-                        client_code, first_name, last_name, email, phone, company_name,
+                        client_code, first_name, last_name, email, company_name,
                         subscription_type, trial_code_id, status, created_at, expires_at
-                    ) VALUES (?, ?, ?, ?, ?, ?, 'trial', ?, 'active', NOW(), ?)
+                    ) VALUES (?, ?, ?, ?, ?, 'trial', ?, 'active', NOW(), ?)
                 ");
                 $stmt->execute([
-                    $client_code, $first_name, $last_name, $email, $phone, $company_name,
+                    $client_code, $first_name, $last_name, $email, $company_name,
                     $trial_id, $expires_at
                 ]);
                 
