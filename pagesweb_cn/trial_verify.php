@@ -129,18 +129,60 @@ if ($trial_code && !$error_message && !$success_message) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Valider Code Essai | CartelPlus Congo</title>
     <link href="../css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
     <style>
         :root {
-            --blue: #0A6FB7;
-            --orange: #F25C2A;
-            --dark: #0B0E14;
-            --white: #ffffff;
+            --pp-blue: #0070e0;
+            --pp-blue-dark: #003087;
+            --pp-cyan: #00a8ff;
+            --pp-bg: #f5f7fb;
+            --pp-white: #ffffff;
+            --pp-text: #0b1f3a;
+            --pp-orange: #ff6b35;
+            --pp-success: #28a745;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        @keyframes fadeSlide {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes slideInRight {
+            from {
+                opacity: 0;
+                transform: translateX(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                box-shadow: 0 0 0 0 rgba(0, 112, 224, 0.7);
+            }
+            50% {
+                box-shadow: 0 0 0 10px rgba(0, 112, 224, 0);
+            }
         }
 
         body {
-            background: linear-gradient(135deg, #0B0E14 0%, #1a1f2e 100%);
-            color: var(--white);
-            font-family: "Segoe UI", system-ui, sans-serif;
+            background: linear-gradient(135deg, var(--pp-bg) 0%, #f0f2f7 100%);
+            color: var(--pp-text);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
             min-height: 100vh;
             display: flex;
             align-items: center;
@@ -150,71 +192,97 @@ if ($trial_code && !$error_message && !$success_message) {
 
         .container-verify {
             width: 100%;
-            max-width: 450px;
-            background: rgba(255, 255, 255, 0.08);
-            backdrop-filter: blur(20px);
-            border: 1px solid rgba(10, 111, 183, 0.3);
-            border-radius: 20px;
+            max-width: 480px;
+            background: var(--pp-white);
+            border-radius: 24px;
             padding: 50px;
+            box-shadow: 0 20px 60px rgba(11, 31, 58, 0.08), 0 0 1px rgba(11, 31, 58, 0.1);
+            animation: fadeSlide 0.8s ease-out;
         }
 
         .header {
             text-align: center;
             margin-bottom: 40px;
+            animation: fadeSlide 0.8s ease-out 0.1s both;
+        }
+
+        .header::after {
+            content: '';
+            display: block;
+            width: 60px;
+            height: 4px;
+            background: linear-gradient(90deg, var(--pp-blue) 0%, var(--pp-cyan) 100%);
+            border-radius: 2px;
+            margin: 20px auto 0;
         }
 
         .icon {
             font-size: 48px;
             margin-bottom: 15px;
+            animation: pulse 2s infinite;
         }
 
         .title {
-            font-size: 26px;
+            font-size: 32px;
             font-weight: 700;
             margin-bottom: 8px;
+            background: linear-gradient(135deg, var(--pp-blue) 0%, var(--pp-blue-dark) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
         }
 
         .subtitle {
-            font-size: 13px;
-            color: rgba(255, 255, 255, 0.6);
+            font-size: 14px;
+            color: #7d8fa3;
         }
 
         .form-group {
             margin-bottom: 25px;
+            animation: fadeSlide 0.6s ease-out forwards;
         }
+
+        .form-group:nth-child(1) { animation-delay: 0.3s; }
+        .form-group:nth-child(2) { animation-delay: 0.4s; }
 
         .form-label {
             display: block;
-            font-size: 13px;
+            font-size: 12px;
             font-weight: 600;
             text-transform: uppercase;
-            color: rgba(255, 255, 255, 0.8);
+            color: var(--pp-text);
             margin-bottom: 8px;
+            letter-spacing: 0.5px;
         }
 
         .form-control {
             width: 100%;
-            padding: 14px 15px;
-            background: rgba(255, 255, 255, 0.08);
-            border: 1px solid rgba(10, 111, 183, 0.3);
+            padding: 12px 14px;
+            background: var(--pp-bg);
+            border: 2px solid #e0e4e9;
             border-radius: 8px;
-            color: var(--white);
+            color: var(--pp-text);
             font-size: 14px;
-            font-family: 'Courier New', monospace;
+            font-family: 'Monaco', 'Courier New', monospace;
             letter-spacing: 2px;
             transition: all 0.3s;
         }
 
         .form-control:focus {
             outline: none;
-            border-color: var(--orange);
-            background: rgba(255, 255, 255, 0.12);
+            border-color: var(--pp-blue);
+            background: var(--pp-white);
+            box-shadow: 0 0 0 4px rgba(0, 112, 224, 0.1);
+        }
+
+        .form-control::placeholder {
+            color: #a8b4c1;
         }
 
         .btn-submit {
             width: 100%;
-            padding: 12px;
-            background: linear-gradient(135deg, var(--orange) 0%, #E84A1F 100%);
+            padding: 14px;
+            background: linear-gradient(135deg, var(--pp-blue) 0%, var(--pp-blue-dark) 100%);
             border: none;
             border-radius: 8px;
             color: white;
@@ -223,68 +291,87 @@ if ($trial_code && !$error_message && !$success_message) {
             cursor: pointer;
             text-transform: uppercase;
             transition: all 0.3s;
+            letter-spacing: 0.5px;
+            box-shadow: 0 4px 15px rgba(0, 112, 224, 0.2);
+            margin-top: 10px;
+            animation: fadeSlide 0.6s ease-out 0.5s both;
         }
 
         .btn-submit:hover {
             transform: translateY(-2px);
-            box-shadow: 0 10px 30px rgba(242, 92, 42, 0.3);
+            box-shadow: 0 8px 25px rgba(0, 112, 224, 0.35);
+        }
+
+        .btn-submit:active {
+            transform: translateY(0);
         }
 
         .alert {
-            padding: 15px;
+            padding: 14px 16px;
             border-radius: 10px;
             margin-bottom: 20px;
             font-size: 13px;
+            border-left: 4px solid;
+            animation: fadeSlide 0.4s ease-out;
         }
 
         .alert-error {
-            background: rgba(220, 53, 69, 0.2);
-            border-left: 4px solid #dc3545;
-            color: #ff6b6b;
+            background: rgba(220, 53, 69, 0.08);
+            border-left-color: #dc3545;
+            color: #c71c1c;
         }
 
         .alert-success {
-            background: rgba(40, 167, 69, 0.2);
-            border-left: 4px solid #28a745;
-            color: #90EE90;
+            background: rgba(40, 167, 69, 0.08);
+            border-left-color: var(--pp-success);
+            color: #155724;
         }
 
         .info-box {
-            background: rgba(10, 111, 183, 0.1);
-            border-left: 4px solid var(--blue);
-            padding: 15px;
-            border-radius: 8px;
-            font-size: 12px;
+            background: linear-gradient(135deg, rgba(0, 112, 224, 0.08) 0%, rgba(0, 168, 255, 0.08) 100%);
+            border-left: 4px solid var(--pp-blue);
+            padding: 16px;
+            border-radius: 12px;
+            font-size: 13px;
             line-height: 1.6;
-            color: rgba(255, 255, 255, 0.8);
+            color: var(--pp-text);
             margin-bottom: 20px;
+            animation: slideInRight 0.6s ease-out 0.2s both;
         }
 
         .success-details {
-            background: rgba(40, 167, 69, 0.15);
-            border: 1px solid rgba(40, 167, 69, 0.3);
-            padding: 20px;
-            border-radius: 10px;
+            background: linear-gradient(135deg, rgba(40, 167, 69, 0.08) 0%, rgba(40, 167, 69, 0.05) 100%);
+            border: 2px solid rgba(40, 167, 69, 0.15);
+            padding: 24px;
+            border-radius: 12px;
             margin-top: 20px;
             text-align: center;
+            animation: fadeSlide 0.6s ease-out 0.2s both;
+        }
+
+        .success-details h5 {
+            color: var(--pp-success);
+            margin-bottom: 10px;
+            font-size: 18px;
         }
 
         .client-code {
-            background: rgba(10, 111, 183, 0.2);
-            padding: 15px;
+            background: var(--pp-bg);
+            padding: 14px;
             border-radius: 8px;
-            font-family: 'Courier New', monospace;
+            font-family: 'Monaco', 'Courier New', monospace;
             font-weight: bold;
-            color: var(--orange);
-            letter-spacing: 1px;
+            color: var(--pp-blue);
+            letter-spacing: 2px;
             margin: 15px 0;
+            user-select: all;
         }
 
         .btn-redirect {
             display: inline-block;
             width: 100%;
             padding: 12px;
-            background: var(--blue);
+            background: linear-gradient(135deg, var(--pp-blue) 0%, var(--pp-blue-dark) 100%);
             border: none;
             border-radius: 8px;
             color: white;
@@ -293,28 +380,40 @@ if ($trial_code && !$error_message && !$success_message) {
             text-align: center;
             margin-top: 15px;
             cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s;
+            box-shadow: 0 4px 15px rgba(0, 112, 224, 0.2);
         }
 
         .btn-redirect:hover {
-            opacity: 0.9;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 112, 224, 0.35);
+            text-decoration: none;
+            color: white;
+        }
+
+        .btn-redirect:active {
+            transform: translateY(0);
         }
 
         .steps {
-            margin-top: 30px;
+            margin-top: 25px;
             padding-top: 20px;
-            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            border-top: 1px solid #e0e4e9;
+            animation: slideInRight 0.6s ease-out 0.3s both;
         }
 
         .step {
             display: flex;
             margin-bottom: 12px;
+            align-items: flex-start;
         }
 
         .step-number {
-            background: var(--orange);
+            background: linear-gradient(135deg, var(--pp-blue) 0%, var(--pp-blue-dark) 100%);
             color: white;
-            width: 24px;
-            height: 24px;
+            width: 28px;
+            height: 28px;
             border-radius: 50%;
             display: flex;
             align-items: center;
@@ -322,27 +421,49 @@ if ($trial_code && !$error_message && !$success_message) {
             font-weight: bold;
             margin-right: 12px;
             flex-shrink: 0;
-            font-size: 12px;
+            font-size: 13px;
+            box-shadow: 0 4px 10px rgba(0, 112, 224, 0.2);
         }
 
         .step-text {
-            font-size: 12px;
-            color: rgba(255, 255, 255, 0.8);
+            font-size: 13px;
+            color: var(--pp-text);
+            padding-top: 4px;
         }
 
         .footer-link {
             text-align: center;
             margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid #e0e4e9;
         }
 
         .footer-link a {
-            color: var(--orange);
+            color: var(--pp-blue);
             text-decoration: none;
-            font-size: 12px;
+            font-size: 13px;
+            font-weight: 600;
+            margin: 0 10px;
+            transition: all 0.3s;
         }
 
         .footer-link a:hover {
+            color: var(--pp-cyan);
             text-decoration: underline;
+        }
+
+        @media (max-width: 600px) {
+            .container-verify {
+                padding: 30px 20px;
+            }
+
+            .title {
+                font-size: 26px;
+            }
+
+            .icon {
+                font-size: 40px;
+            }
         }
     </style>
 </head>
@@ -353,16 +474,14 @@ if ($trial_code && !$error_message && !$success_message) {
 
     <div class="header">
         <div class="icon">🔑</div>
-        <div class="title">Activer Essai</div>
+        <div class="title">Valider Essai</div>
         <div class="subtitle">Entrez votre code pour commencer</div>
     </div>
 
     <?php if (!$success_message): ?>
 
         <?php if ($error_message): ?>
-        <div class="alert alert-error">
-            <?= $error_message ?>
-        </div>
+        <div class="alert alert-error"><?= $error_message ?></div>
         <?php endif; ?>
 
         <div class="info-box">
@@ -379,7 +498,7 @@ if ($trial_code && !$error_message && !$success_message) {
             </div>
 
             <button type="submit" class="btn-submit">
-                ✅ Valider et Activer
+                <i class="fas fa-check-circle"></i> Valider et Activer
             </button>
         </form>
 
@@ -403,24 +522,24 @@ if ($trial_code && !$error_message && !$success_message) {
         <div class="alert alert-success"><?= $success_message ?></div>
 
         <div class="success-details">
-            <h5 style="color: #90EE90; margin-bottom: 10px;">✅ Essai Activé !</h5>
+            <h5>✅ Essai Activé avec Succès !</h5>
             
-            <p style="font-size: 12px; color: rgba(255, 255, 255, 0.8); margin-bottom: 10px;">
+            <p style="font-size: 13px; color: var(--pp-text); margin: 12px 0;">
                 Votre code client unique:
             </p>
             
             <div class="client-code"><?= htmlspecialchars($client_code) ?></div>
 
-            <p style="font-size: 11px; color: rgba(255, 255, 255, 0.6); margin-bottom: 15px;">
-                Valid jusqu'au: <strong><?= date('d/m/Y', strtotime('+7 days')) ?></strong>
+            <p style="font-size: 12px; color: #7d8fa3; margin-bottom: 15px;">
+                ⏰ Valide jusqu'au: <strong><?= date('d/m/Y', strtotime('+7 days')) ?></strong>
             </p>
 
             <a href="../" class="btn-redirect">
-                🚀 Accéder à l'Application
+                <i class="fas fa-arrow-right"></i> Accéder à l'Application
             </a>
 
-            <button onclick="copyCode('<?= htmlspecialchars($client_code) ?>')" class="btn-redirect" style="background: rgba(10, 111, 183, 0.6); margin-top: 10px;">
-                📋 Copier le Code Client
+            <button onclick="copyCode('<?= htmlspecialchars($client_code) ?>')" class="btn-redirect" style="background: linear-gradient(135deg, rgba(0, 112, 224, 0.8) 0%, rgba(0, 112, 224, 0.6) 100%); margin-top: 10px;">
+                <i class="fas fa-copy"></i> Copier le Code Client
             </button>
         </div>
 
@@ -442,8 +561,8 @@ if ($trial_code && !$error_message && !$success_message) {
     <?php endif; ?>
 
     <div class="footer-link">
-        <a href="trial_form">← Retour Inscription</a>
-        <a href="../" style="margin-left: 15px;">Accueil →</a>
+        <a href="trial_form"><i class="fas fa-undo"></i> Nouvelle Inscription</a>
+        <a href="../"><i class="fas fa-home"></i> Accueil</a>
     </div>
 
 </div>
@@ -451,7 +570,15 @@ if ($trial_code && !$error_message && !$success_message) {
 <script>
 function copyCode(code) {
     navigator.clipboard.writeText(code).then(() => {
-        alert('✅ Code copié !');
+        const btn = event.target;
+        const originalHTML = btn.innerHTML;
+        btn.innerHTML = '<i class="fas fa-check"></i> Code Copié !';
+        btn.style.background = 'linear-gradient(135deg, var(--pp-success) 0%, #1a7a52 100%)';
+        
+        setTimeout(() => {
+            btn.innerHTML = originalHTML;
+            btn.style.background = '';
+        }, 2000);
     });
 }
 </script>
