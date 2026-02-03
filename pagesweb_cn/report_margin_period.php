@@ -12,7 +12,7 @@ SELECT
     SUM(pm.qty * (pm.unit_sell_price_cdf - pm.unit_buy_price_cdf)) AS marge_cdf
 FROM product_movements pm
 JOIN products p ON p.id = pm.product_id
-WHERE pm.type='sale'
+WHERE pm.type='out' OR pm.type='sale'
 ";
 
 $params = [];

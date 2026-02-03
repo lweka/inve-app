@@ -73,7 +73,7 @@ if($isKit) {
     SELECT p.name, pm.qty, pm.unit_sell_price, pm.sell_currency
     FROM product_movements pm
     LEFT JOIN products p ON p.id = pm.product_id
-    WHERE pm.agent_id = ? AND pm.house_id = ? AND pm.type = 'sale' AND pm.is_kit = 0
+    WHERE pm.agent_id = ? AND pm.house_id = ? AND (pm.type = 'out' OR pm.type = 'sale') AND pm.is_kit = 0
     AND DATE(pm.created_at) = DATE(?)
     AND pm.created_at <= (SELECT created_at FROM product_movements WHERE id = ?)
     ORDER BY pm.created_at DESC

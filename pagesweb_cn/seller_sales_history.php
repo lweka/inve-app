@@ -39,7 +39,7 @@ FROM product_movements pm
 LEFT JOIN products p ON p.id = pm.product_id
 WHERE pm.house_id = ?
   AND pm.agent_id = ?
-  AND pm.type = 'sale'
+  AND (pm.type = 'out' OR pm.type = 'sale')
 ORDER BY
   COALESCE(pm.kit_id, pm.id) DESC,
   pm.is_kit DESC
@@ -55,7 +55,7 @@ function getKitTotalsByCurrency($pdo, $kit_id) {
       SUM(pm.unit_sell_price * pm.qty) AS subtotal
     FROM product_movements pm
     WHERE pm.kit_id = ?
-      AND pm.type = 'sale'
+      AND (pm.type = 'out' OR pm.type = 'sale')
     GROUP BY pm.sell_currency
   ");
   $stmt->execute([$kit_id]);
@@ -79,7 +79,7 @@ FROM product_movements pm
 JOIN products p ON p.id = pm.product_id
 WHERE pm.house_id = ?
   AND pm.agent_id = ?
-  AND pm.type = 'sale'
+  AND (pm.type = 'out' OR pm.type = 'sale')
 ORDER BY pm.created_at DESC
 ");
 $stmt->execute([$house_id, $agent_id]);
