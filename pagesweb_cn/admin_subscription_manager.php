@@ -165,9 +165,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
    =============================== */
 // Codes d'essai
 $stmt_trials = $pdo->query("
-    SELECT * FROM trial_codes 
-    WHERE status != 'expired'
-    ORDER BY created_at DESC
+        SELECT * FROM trial_codes 
+        WHERE status != 'expired'
+            AND email NOT IN (SELECT email FROM active_clients WHERE subscription_type = 'monthly')
+        ORDER BY created_at DESC
 ");
 $trial_codes = $stmt_trials->fetchAll(PDO::FETCH_ASSOC);
 
