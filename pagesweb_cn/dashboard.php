@@ -27,30 +27,57 @@
         SUM((pm.unit_sell_price_cdf - pm.unit_buy_price_cdf) * pm.qty) AS marge_cdf
         FROM product_movements pm
         JOIN products p ON p.id = pm.product_id
-        WHERE pm.type = 'sale' AND pm.client_code = ?
+        WHERE (pm.type = 'out' OR pm.type = 'sale') AND pm.client_code = ?
         GROUP BY pm.product_id
         ORDER BY marge_cdf DESC
     ");
     $stmt->execute([$client_code]);
     $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    // Profit d'aujourd'hui pour ce client
+    // Profit d'aujourd'hui pour ce client (CDF)
     $stmt = $pdo->prepare("
         SELECT SUM((unit_sell_price_cdf - unit_buy_price_cdf) * qty)
         FROM product_movements
-        WHERE type = 'sale' AND DATE(created_at) = CURDATE() AND client_code = ?
+        WHERE (type = 'out' OR type = 'sale') AND DATE(created_at) = CURDATE() AND client_code = ?
     ");
     $stmt->execute([$client_code]);
-    $todayProfit = (float)($stmt->fetchColumn() ?? 0);
+    $todayProfitCDF = (float)($stmt->fetchColumn() ?? 0);
 
-    // Profit global pour ce client
+    // Profit d'aujourd'hui pour ce client (USD)
+    $stmt = $pdo->prepare("
+        SELECT SUM((unit_sell_price - unit_buy_price) * qty)
+        FROM product_movements
+        WHERE (type = 'out' OR type = 'sale') AND sell_currency = 'USD' AND DATE(created_at) = CURDATE() AND client_code = ?
+    ");
+    $stmt->execute([$client_code]);
+    $todayProfitUSD = (float)($stmt->fetchColumn() ?? 0);
+
+    // Profit global pour ce client (CDF)
     $stmt = $pdo->prepare("
         SELECT SUM((unit_sell_price_cdf - unit_buy_price_cdf) * qty)
         FROM product_movements
-        WHERE type = 'sale' AND client_code = ?
+        WHERE (type = 'out' OR type = 'sale') AND client_code = ?
     ");
     $stmt->execute([$client_code]);
-    $global = (float)($stmt->fetchColumn() ?? 0);
+    $globalCDF = (float)($stmt->fetchColumn() ?? 0);
+
+    // Profit global pour ce client (USD)
+    $stmt = $pdo->prepare("
+        SELECT SUM((unit_sell_price - unit_buy_price) * qty)
+        FROM product_movements
+        WHERE (type = 'out' OR type = 'sale') AND sell_currency = 'USD' AND client_code = ?
+    ");
+    $stmt->execute([$client_code]);
+    $globalUSD = (float)($stmt->fetchColumn() ?? 0);
+
+    // Ventes en KIT aujourd'hui
+    $stmt = $pdo->prepare("
+        SELECT SUM(qty)
+        FROM product_movements
+        WHERE (type = 'out' OR type = 'sale') AND is_kit = 1 AND DATE(created_at) = CURDATE() AND client_code = ?
+    ");
+    $stmt->execute([$client_code]);
+    $todayKitQty = (int)($stmt->fetchColumn() ?? 0);
 
     // Récupérer les informations du client (type d'abonnement, date d'expiration)
     $stmt = $pdo->prepare("
@@ -471,12 +498,14 @@
         </div>
         <div class="kpi-card" style="animation-delay: 0.2s;">
             <div class="kpi-title">Profit du jour</div>
-            <div class="kpi-value"><?= number_format($todayProfit, 0) ?> CDF</div>
+            <div class="kpi-value"><?= number_format($todayProfitCDF, 0) ?> CDF</div>
+            <div class="kpi-value" style="font-size: 18px; color: var(--pp-muted); margin-top: 4px;"><?= number_format($todayProfitUSD, 2) ?> USD</div>
             <div class="kpi-trend">Mise à jour automatique</div>
         </div>
         <div class="kpi-card" style="animation-delay: 0.25s;">
             <div class="kpi-title">Profit global</div>
-            <div class="kpi-value"><?= number_format($global, 0) ?> CDF</div>
+            <div class="kpi-value"><?= number_format($globalCDF, 0) ?> CDF</div>
+            <div class="kpi-value" style="font-size: 18px; color: var(--pp-muted); margin-top: 4px;"><?= number_format($globalUSD, 2) ?> USD</div>
             <div class="kpi-trend">Cumul des ventes</div>
         </div>
     </div>
@@ -497,8 +526,16 @@
             <p>Indicateurs rapides pour suivre l’activité et prioriser les actions.</p>
             <ul class="insight-list">
                 <li class="insight-item">
-                    Ventes aujourd’hui
-                    <span class="insight-badge"><?= number_format($todayProfit, 0) ?> CDF</span>
+                    Ventes aujourd'hui (CDF)
+                    <span class="insight-badge"><?= number_format($todayProfitCDF, 0) ?> CDF</span>
+                </li>
+                <li class="insight-item">
+                    Ventes aujourd'hui (USD)
+                    <span class="insight-badge"><?= number_format($todayProfitUSD, 2) ?> USD</span>
+                </li>
+                <li class="insight-item">
+                    Ventes aujourd'hui (KIT)
+                    <span class="insight-badge"><?= $todayKitQty ?> KIT</span>
                 </li>
                 <li class="insight-item">
                     Produits actifs
