@@ -17,10 +17,15 @@ if(!isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'admin'){
 
 // Recuperer le client_code de l'admin connecte
 $admin_id = $_SESSION['user_id'] ?? null;
-$stmt = $pdo->prepare("SELECT client_code FROM active_clients WHERE id = ? LIMIT 1");
-$stmt->execute([$admin_id]);
-$admin = $stmt->fetch();
-$admin_client_code = $admin['client_code'] ?? null;
+$admin_client_code = $_SESSION['client_code'] ?? null;
+
+// Si pas de client_code en session, chercher dans active_clients
+if (!$admin_client_code) {
+    $stmt = $pdo->prepare("SELECT client_code FROM active_clients WHERE id = ? LIMIT 1");
+    $stmt->execute([$admin_id]);
+    $admin = $stmt->fetch();
+    $admin_client_code = $admin['client_code'] ?? null;
+}
 
 /* ===============================
    RECUPERATION DES PARAMETRES FILTRE
@@ -46,10 +51,14 @@ SELECT
 FROM products p
 LEFT JOIN houses h ON h.id = p.house_id
 LEFT JOIN product_movements pm ON p.id = pm.product_id AND (pm.type = 'out' OR pm.type = 'sale')
-WHERE h.client_code = ?
+WHERE 1=1
 ";
 
-$params = [$admin_client_code];
+$params = [];
+if ($admin_client_code) {
+    $sql .= " AND h.client_code = ? ";
+    $params[] = $admin_client_code;
+}
 if ($filter_house) {
     $sql .= " AND pm.house_id = ? ";
     $params[] = $filter_house;
@@ -88,10 +97,14 @@ SELECT
 FROM agents a
 LEFT JOIN houses h ON a.house_id = h.id
 LEFT JOIN product_movements pm ON a.id = pm.agent_id AND (pm.type = 'out' OR pm.type = 'sale')
-WHERE h.client_code = ?
+WHERE 1=1
 ";
 
-$params_vendeur = [$admin_client_code];
+$params_vendeur = [];
+if ($admin_client_code) {
+    $sql_vendeur .= " AND h.client_code = ? ";
+    $params_vendeur[] = $admin_client_code;
+}
 if ($filter_house) {
     $sql_vendeur .= " AND a.house_id = ? ";
     $params_vendeur[] = $filter_house;
@@ -118,13 +131,21 @@ $vendeurs_marge = $stmt_vendeur->fetchAll(PDO::FETCH_ASSOC);
 /* ===============================
    LISTES POUR FILTRES
    =============================== */
-$stmt_houses = $pdo->prepare("SELECT id, name FROM houses WHERE client_code = ? ORDER BY name");
-$stmt_houses->execute([$admin_client_code]);
-$houses = $stmt_houses->fetchAll(PDO::FETCH_ASSOC);
+if ($admin_client_code) {
+    $stmt_houses = $pdo->prepare("SELECT id, name FROM houses WHERE client_code = ? ORDER BY name");
+    $stmt_houses->execute([$admin_client_code]);
+    $houses = $stmt_houses->fetchAll(PDO::FETCH_ASSOC);
 
-$stmt_agents = $pdo->prepare("SELECT a.id, a.fullname FROM agents a LEFT JOIN houses h ON a.house_id = h.id WHERE h.client_code = ? ORDER BY a.fullname");
-$stmt_agents->execute([$admin_client_code]);
-$agents = $stmt_agents->fetchAll(PDO::FETCH_ASSOC);
+    $stmt_agents = $pdo->prepare("SELECT a.id, a.fullname FROM agents a LEFT JOIN houses h ON a.house_id = h.id WHERE h.client_code = ? ORDER BY a.fullname");
+    $stmt_agents->execute([$admin_client_code]);
+    $agents = $stmt_agents->fetchAll(PDO::FETCH_ASSOC);
+} else {
+    $stmt_houses = $pdo->query("SELECT id, name FROM houses ORDER BY name");
+    $houses = $stmt_houses->fetchAll(PDO::FETCH_ASSOC);
+
+    $stmt_agents = $pdo->query("SELECT id, fullname FROM agents ORDER BY fullname");
+    $agents = $stmt_agents->fetchAll(PDO::FETCH_ASSOC);
+}
 ?>
 
 <!DOCTYPE html>
