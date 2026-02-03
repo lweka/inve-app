@@ -90,7 +90,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             
             $stmt_update = $pdo->prepare("
                 UPDATE active_clients 
-                SET subscription_type = 'monthly', expires_at = ?, updated_at = NOW()
+                SET subscription_type = 'monthly', expires_at = ?
                 WHERE id = ?
             ");
             $stmt_update->execute([$new_expires_at, $client_id]);
@@ -125,7 +125,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             
             $stmt_update = $pdo->prepare("
                 UPDATE active_clients 
-                SET expires_at = ?, status = 'active', updated_at = NOW()
+                SET expires_at = ?, status = 'active'
                 WHERE id = ?
             ");
             $stmt_update->execute([$new_expires_at, $client_id]);
