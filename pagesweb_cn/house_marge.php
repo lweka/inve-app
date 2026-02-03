@@ -314,7 +314,7 @@ if ($admin_client_code) {
 <div class="page-wrap">
     <div class="page-hero">
         <h2>Dashboard Marges - Maison vs Vendeur</h2>
-        <a href="dashboard.php" class="btn-pp btn-pp-secondary"><- Retour Admin</a>
+        <a href="dashboard.php" class="btn-pp btn-pp-secondary">← Retour Admin</a>
     </div>
     <!-- FILTRES -->
     <div class="filter-card">

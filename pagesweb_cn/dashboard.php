@@ -351,6 +351,13 @@
         border-color: var(--pp-border);
     }
 
+    .btn-pp-secondary:hover {
+        background: #f0f7ff;
+        color: var(--pp-blue-dark) !important;
+        border-color: var(--pp-blue);
+        transform: translateY(-1px);
+    }
+
     .btn-pp-accent {
         background: linear-gradient(135deg, var(--pp-cyan), var(--pp-blue));
         color: #fff;
@@ -359,7 +366,6 @@
 
     .btn-pp:hover {
         transform: translateY(-1px);
-        opacity: 0.95;
     }
 
     .insight-list {
