@@ -182,10 +182,10 @@ require_once __DIR__ . '/require_admin_auth.php'; // charge $client_code
 /* ===============================
    RÉCUPÉRATION DES PARAMÈTRES FILTRE
    =============================== */
-$filter_date_from = isset($_GET['date_from']) ? $_GET['date_from'] : date('Y-m-d');
-$filter_date_to = isset($_GET['date_to']) ? $_GET['date_to'] : date('Y-m-d');
-$filter_house = isset($_GET['house']) ? (int)$_GET['house'] : null;
-$filter_agent = isset($_GET['agent']) ? (int)$_GET['agent'] : null;
+$filter_date_from = isset($_REQUEST['date_from']) ? $_REQUEST['date_from'] : date('Y-m-d');
+$filter_date_to = isset($_REQUEST['date_to']) ? $_REQUEST['date_to'] : date('Y-m-d');
+$filter_house = isset($_REQUEST['house']) ? (int)$_REQUEST['house'] : null;
+$filter_agent = isset($_REQUEST['agent']) ? (int)$_REQUEST['agent'] : null;
 
 /* ===============================
    REQUÊTE : TOUTES LES VENTES
@@ -604,7 +604,7 @@ if (isset($_POST['send_email'])) {
     <!-- FILTRES -->
     <div class="filter-card">
         <h5 style="margin-bottom: 15px;">🔍 Filtres & Export</h5>
-        <form method="GET" class="row g-3 align-items-end">
+        <form method="POST" class="row g-3 align-items-end">
             <div class="col-md-2">
                 <label class="form-label">Depuis</label>
                 <input type="date" name="date_from" class="form-control form-control-sm" 
