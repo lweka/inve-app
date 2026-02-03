@@ -36,27 +36,44 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         $sub_code = $stmt->fetch(PDO::FETCH_ASSOC);
         
         if ($sub_code && $sub_code['status'] === 'pending') {
-            // Générer code client unique
-            $client_code = 'CLI-' . strtoupper(uniqid());
-            
-            // Créer le client actif
+            // Durée Pro +30 jours
             $expires_at = date('Y-m-d H:i:s', strtotime('+30 days'));
-            
-            $stmt_insert = $pdo->prepare("
-                INSERT INTO active_clients (
-                    client_code, first_name, last_name, email, company_name,
-                    subscription_type, subscription_code_id, status, created_at, expires_at
-                ) VALUES (?, ?, ?, ?, ?, 'monthly', ?, 'active', NOW(), ?)
-            ");
-            $stmt_insert->execute([
-                $client_code,
-                $sub_code['first_name'],
-                $sub_code['last_name'],
-                $sub_code['email'],
-                $sub_code['company_name'],
-                $sub_code_id,
-                $expires_at
-            ]);
+
+            // Si un client trial existe déjà, on le bascule en Pro
+            $stmt_existing = $pdo->prepare("SELECT id, client_code FROM active_clients WHERE email = ? AND subscription_type = 'trial'");
+            $stmt_existing->execute([$sub_code['email']]);
+            $existing_trial = $stmt_existing->fetch(PDO::FETCH_ASSOC);
+
+            if ($existing_trial) {
+                $client_code = $existing_trial['client_code'];
+
+                $stmt_update_client = $pdo->prepare("
+                    UPDATE active_clients
+                    SET subscription_type = 'monthly', subscription_code_id = ?, expires_at = ?, status = 'active'
+                    WHERE id = ?
+                ");
+                $stmt_update_client->execute([$sub_code_id, $expires_at, $existing_trial['id']]);
+            } else {
+                // Générer code client unique
+                $client_code = 'CLI-' . strtoupper(uniqid());
+
+                // Créer le client actif
+                $stmt_insert = $pdo->prepare("
+                    INSERT INTO active_clients (
+                        client_code, first_name, last_name, email, company_name,
+                        subscription_type, subscription_code_id, status, created_at, expires_at
+                    ) VALUES (?, ?, ?, ?, ?, 'monthly', ?, 'active', NOW(), ?)
+                ");
+                $stmt_insert->execute([
+                    $client_code,
+                    $sub_code['first_name'],
+                    $sub_code['last_name'],
+                    $sub_code['email'],
+                    $sub_code['company_name'],
+                    $sub_code_id,
+                    $expires_at
+                ]);
+            }
             
             // Marquer le code comme validé
             $stmt_update = $pdo->prepare("
@@ -66,6 +83,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             ");
             $stmt_update->execute([$sub_code_id]);
             
+            // Marquer le code d'essai comme expiré si existant
+            $stmt_trial_expire = $pdo->prepare("UPDATE trial_codes SET status = 'expired', expired_at = NOW() WHERE email = ? AND status != 'expired'");
+            $stmt_trial_expire->execute([$sub_code['email']]);
+
             // Envoyer l'email d'activation
             require_once __DIR__ . '/send_email.php';
             sendActivationEmail($sub_code['email'], $sub_code['first_name'] . ' ' . $sub_code['last_name'], $client_code, 'subscription');
@@ -94,6 +115,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 WHERE id = ?
             ");
             $stmt_update->execute([$new_expires_at, $client_id]);
+
+            // Marquer le code d'essai comme expiré si existant
+            $stmt_trial_expire = $pdo->prepare("UPDATE trial_codes SET status = 'expired', expired_at = NOW() WHERE email = ? AND status != 'expired'");
+            $stmt_trial_expire->execute([$client['email']]);
             
             // Envoyer email de confirmation upgrade Pro
             require_once __DIR__ . '/send_email.php';
@@ -141,6 +166,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
 // Codes d'essai
 $stmt_trials = $pdo->query("
     SELECT * FROM trial_codes 
+    WHERE status != 'expired'
     ORDER BY created_at DESC
 ");
 $trial_codes = $stmt_trials->fetchAll(PDO::FETCH_ASSOC);
