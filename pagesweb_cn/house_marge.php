@@ -15,6 +15,13 @@ if(!isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'admin'){
     exit;
 }
 
+// Recuperer le client_code de l'admin connecte
+$admin_id = $_SESSION['user_id'] ?? null;
+$stmt = $pdo->prepare("SELECT client_code FROM active_clients WHERE id = ? LIMIT 1");
+$stmt->execute([$admin_id]);
+$admin = $stmt->fetch();
+$admin_client_code = $admin['client_code'] ?? null;
+
 /* ===============================
    RECUPERATION DES PARAMETRES FILTRE
    =============================== */
@@ -32,16 +39,17 @@ SELECT
     p.name,
     p.buy_price,
     p.sell_price,
-    SUM(CASE WHEN pm.type = 'sale' THEN pm.qty ELSE 0 END) as qty_sold,
-    SUM(CASE WHEN pm.type = 'sale' THEN (pm.qty * (p.sell_price - p.buy_price)) ELSE 0 END) as profit_maison,
+    SUM(CASE WHEN (pm.type = 'out' OR pm.type = 'sale') THEN pm.qty ELSE 0 END) as qty_sold,
+    SUM(CASE WHEN (pm.type = 'out' OR pm.type = 'sale') THEN (pm.qty * (p.sell_price - p.buy_price)) ELSE 0 END) as profit_maison,
     ROUND((SELECT SUM(qty) FROM agent_stock WHERE product_id = p.id), 2) as stock_available,
     COUNT(DISTINCT pm.agent_id) as nb_vendeurs
 FROM products p
-LEFT JOIN product_movements pm ON p.id = pm.product_id AND pm.type = 'sale'
-WHERE 1=1
+LEFT JOIN houses h ON h.id = p.house_id
+LEFT JOIN product_movements pm ON p.id = pm.product_id AND (pm.type = 'out' OR pm.type = 'sale')
+WHERE h.client_code = ?
 ";
 
-$params = [];
+$params = [$admin_client_code];
 if ($filter_house) {
     $sql .= " AND pm.house_id = ? ";
     $params[] = $filter_house;
@@ -79,11 +87,11 @@ SELECT
     )) as profit_vendeur
 FROM agents a
 LEFT JOIN houses h ON a.house_id = h.id
-LEFT JOIN product_movements pm ON a.id = pm.agent_id AND pm.type = 'sale'
-WHERE 1=1
+LEFT JOIN product_movements pm ON a.id = pm.agent_id AND (pm.type = 'out' OR pm.type = 'sale')
+WHERE h.client_code = ?
 ";
 
-$params_vendeur = [];
+$params_vendeur = [$admin_client_code];
 if ($filter_house) {
     $sql_vendeur .= " AND a.house_id = ? ";
     $params_vendeur[] = $filter_house;
@@ -110,10 +118,12 @@ $vendeurs_marge = $stmt_vendeur->fetchAll(PDO::FETCH_ASSOC);
 /* ===============================
    LISTES POUR FILTRES
    =============================== */
-$stmt_houses = $pdo->query("SELECT id, name FROM houses ORDER BY name");
+$stmt_houses = $pdo->prepare("SELECT id, name FROM houses WHERE client_code = ? ORDER BY name");
+$stmt_houses->execute([$admin_client_code]);
 $houses = $stmt_houses->fetchAll(PDO::FETCH_ASSOC);
 
-$stmt_agents = $pdo->query("SELECT id, fullname FROM agents ORDER BY fullname");
+$stmt_agents = $pdo->prepare("SELECT a.id, a.fullname FROM agents a LEFT JOIN houses h ON a.house_id = h.id WHERE h.client_code = ? ORDER BY a.fullname");
+$stmt_agents->execute([$admin_client_code]);
 $agents = $stmt_agents->fetchAll(PDO::FETCH_ASSOC);
 ?>
 
