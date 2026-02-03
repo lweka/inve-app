@@ -24,10 +24,10 @@
     // Récupérer les marges par produit pour ce client
     $stmt = $pdo->prepare("
         SELECT p.name,
-        SUM((pm.unit_sell_price_cdf - pm.unit_buy_price_cdf) * pm.qty) AS marge_cdf
+        SUM((pm.unit_sell_price - p.buy_price) * pm.qty) AS marge_cdf
         FROM product_movements pm
         JOIN products p ON p.id = pm.product_id
-        WHERE (pm.type = 'out' OR pm.type = 'sale') AND pm.client_code = ?
+        WHERE (pm.type = 'out' OR pm.type = 'sale') AND pm.client_code = ? AND pm.sell_currency = 'CDF'
         GROUP BY pm.product_id
         ORDER BY marge_cdf DESC
     ");
@@ -36,36 +36,40 @@
 
     // Profit d'aujourd'hui pour ce client (CDF)
     $stmt = $pdo->prepare("
-        SELECT SUM((unit_sell_price_cdf - unit_buy_price_cdf) * qty)
-        FROM product_movements
-        WHERE (type = 'out' OR type = 'sale') AND DATE(created_at) = CURDATE() AND client_code = ?
+        SELECT SUM((pm.unit_sell_price - p.buy_price) * pm.qty)
+        FROM product_movements pm
+        LEFT JOIN products p ON p.id = pm.product_id
+        WHERE (pm.type = 'out' OR pm.type = 'sale') AND DATE(pm.created_at) = CURDATE() AND pm.client_code = ? AND pm.sell_currency = 'CDF'
     ");
     $stmt->execute([$client_code]);
     $todayProfitCDF = (float)($stmt->fetchColumn() ?? 0);
 
     // Profit d'aujourd'hui pour ce client (USD)
     $stmt = $pdo->prepare("
-        SELECT SUM((unit_sell_price - unit_buy_price) * qty)
-        FROM product_movements
-        WHERE (type = 'out' OR type = 'sale') AND sell_currency = 'USD' AND DATE(created_at) = CURDATE() AND client_code = ?
+        SELECT SUM((pm.unit_sell_price - p.buy_price) * pm.qty)
+        FROM product_movements pm
+        LEFT JOIN products p ON p.id = pm.product_id
+        WHERE (pm.type = 'out' OR pm.type = 'sale') AND pm.sell_currency = 'USD' AND DATE(pm.created_at) = CURDATE() AND pm.client_code = ?
     ");
     $stmt->execute([$client_code]);
     $todayProfitUSD = (float)($stmt->fetchColumn() ?? 0);
 
     // Profit global pour ce client (CDF)
     $stmt = $pdo->prepare("
-        SELECT SUM((unit_sell_price_cdf - unit_buy_price_cdf) * qty)
-        FROM product_movements
-        WHERE (type = 'out' OR type = 'sale') AND client_code = ?
+        SELECT SUM((pm.unit_sell_price - p.buy_price) * pm.qty)
+        FROM product_movements pm
+        LEFT JOIN products p ON p.id = pm.product_id
+        WHERE (pm.type = 'out' OR pm.type = 'sale') AND pm.client_code = ? AND pm.sell_currency = 'CDF'
     ");
     $stmt->execute([$client_code]);
     $globalCDF = (float)($stmt->fetchColumn() ?? 0);
 
     // Profit global pour ce client (USD)
     $stmt = $pdo->prepare("
-        SELECT SUM((unit_sell_price - unit_buy_price) * qty)
-        FROM product_movements
-        WHERE (type = 'out' OR type = 'sale') AND sell_currency = 'USD' AND client_code = ?
+        SELECT SUM((pm.unit_sell_price - p.buy_price) * pm.qty)
+        FROM product_movements pm
+        LEFT JOIN products p ON p.id = pm.product_id
+        WHERE (pm.type = 'out' OR pm.type = 'sale') AND pm.client_code = ? AND pm.sell_currency = 'USD'
     ");
     $stmt->execute([$client_code]);
     $globalUSD = (float)($stmt->fetchColumn() ?? 0);
@@ -562,6 +566,14 @@
     </div>
 
 </div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+// Auto-refresh toutes les 30 secondes pour garder les données à jour
+setInterval(function() {
+    location.reload();
+}, 30000);
+</script>
 
 </body>
 </html>
