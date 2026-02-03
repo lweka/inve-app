@@ -406,21 +406,14 @@ $message = isset($_GET['message']) ? $_GET['message'] : '';
                 </a>
             </div>
 
-            <!-- CARTE 3: JE M'INSCRIS -->
-            <div class="card-option card-secondary">
-                <div class="card-icon">✅</div>
-                <div class="card-title">J'ai un Code</div>
-                <p class="card-desc">Vous avez reçu un code d'accès?</p>
-                <div class="card-features">
-                    <li>Code d'essai (TRIAL-...)</li>
-                    <li>Code d'abonnement (SUB-...)</li>
-                    <li>Activation instantanée</li>
-                </div>
-                <a href="pagesweb_cn/trial_verify.php" class="card-button">
-                    🔑 Valider Mon Code
-                </a>
-            </div>
+        </div>
 
+        <!-- MESSAGE AIDE EMAIL -->
+        <div style="text-align: center; margin-top: 40px; padding: 25px; background: rgba(251, 191, 36, 0.1); border-radius: 12px; border: 1px solid rgba(251, 191, 36, 0.3);">
+            <p style="color: rgba(255, 255, 255, 0.95); font-size: 15px; margin: 0;">
+                📧 <strong>Vous n'avez pas reçu votre email d'activation ?</strong><br>
+                <span style="font-size: 13px; color: rgba(255, 255, 255, 0.8);">→ Vérifiez vos spams ou contactez-nous pour obtenir de l'aide</span>
+            </p>
         </div>
 
         <!-- INFO SUPPLÉMENTAIRE -->
