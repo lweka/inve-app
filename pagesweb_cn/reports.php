@@ -8,8 +8,12 @@
  */
 
 require_once __DIR__ . '/connectDb.php';
-require_once __DIR__ . '/send_email.php';
+require_once __DIR__ . '/require_admin_auth.php';
 require_once __DIR__ . '/../vendor/autoload.php';
+
+// Charger PHPMailer pour l'email (optionnel)
+use PHPMailer\PHPMailer\PHPMailer;
+use PHPMailer\PHPMailer\Exception;
 
 /* ===============================
    FONCTION : GENERER PDF
@@ -258,14 +262,14 @@ if (isset($_GET['send_email'])) {
         file_put_contents($temp_file, $pdf_content);
         
         // Envoyer l'email
-        $mail = new PHPMailer\PHPMailer\PHPMailer(true);
+        $mail = new PHPMailer(true);
         try {
             $mail->isSMTP();
             $mail->Host = 'smtp.titan.email';
             $mail->SMTPAuth = true;
             $mail->Username = 'cartelplus-congo@cartelplus.site';
             $mail->Password = 'Jo@Kin243';
-            $mail->SMTPSecure = PHPMailer\PHPMailer\PHPMailer::ENCRYPTION_STARTTLS;
+            $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
             $mail->Port = 587;
             
             $mail->setFrom('cartelplus-congo@cartelplus.site', 'Cartelplus Congo');
