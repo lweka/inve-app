@@ -19,117 +19,119 @@ use PHPMailer\PHPMailer\Exception;
    FONCTION : GENERER PDF
    =============================== */
 function generateReportPDF($pdo, $client_code, $filter_date_from, $filter_date_to, $filter_house, $sales, $total_sales, $total_discount, $qty_total) {
-    $pdf = new TCPDF('P', 'mm', 'A4', true, 'UTF-8', false);
-    $pdf->SetMargins(10, 10, 10);
-    $pdf->SetAutoPageBreak(true, 15);
-    
-    $pdf->AddPage();
-    
-    // Récupérer le nom de la maison
-    $house_name = 'RAPPORT JOURNALIER';
-    if ($filter_house) {
-        $stmt_house = $pdo->prepare("SELECT name FROM houses WHERE id = ? AND client_code = ?");
-        $stmt_house->execute([$filter_house, $client_code]);
-        $house = $stmt_house->fetch(PDO::FETCH_ASSOC);
-        if ($house) {
-            $house_name = 'RAPPORT JOURNALIER - ' . strtoupper($house['name']);
-        }
-    } else {
-        $house_name = 'RAPPORT JOURNALIER - TOUTES LES MAISONS';
-    }
-    
-    // Header
-    $pdf->SetFillColor(0, 112, 224);
-    $pdf->SetTextColor(255, 255, 255);
-    $pdf->SetFont('helvetica', 'B', 16);
-    $pdf->Cell(0, 12, $house_name, 0, 1, 'C', true);
-    
-    $pdf->SetFont('helvetica', '', 10);
-    $pdf->Cell(0, 6, 'Cartelplus Congo - Rapport de Ventes', 0, 1, 'C');
-    
-    $pdf->SetTextColor(48, 48, 48);
-    $pdf->SetFont('helvetica', '', 9);
-    $pdf->Cell(0, 5, 'Période: ' . date('d/m/Y', strtotime($filter_date_from)) . ' au ' . date('d/m/Y', strtotime($filter_date_to)), 0, 1, 'C');
-    $pdf->Cell(0, 4, 'Généré le: ' . date('d/m/Y H:i'), 0, 1, 'C');
-    $pdf->Ln(3);
-    
-    // Statistiques
-    $pdf->SetFont('helvetica', 'B', 11);
-    $pdf->SetTextColor(0, 112, 224);
-    $pdf->Cell(0, 6, 'RESUME STATISTIQUES', 0, 1);
-    
-    $pdf->SetFillColor(230, 240, 255);
-    $pdf->SetDrawColor(0, 112, 224);
-    $pdf->SetLineWidth(0.5);
-    $pdf->SetFont('helvetica', 'B', 10);
-    $pdf->SetTextColor(0, 48, 135);
-    
-    $col_width = 45;
-    $pdf->Cell($col_width, 7, 'Total Ventes', 1, 0, 'C', true);
-    $pdf->Cell($col_width, 7, 'Remises Accordées', 1, 0, 'C', true);
-    $pdf->Cell($col_width, 7, 'Qté Vendue', 1, 0, 'C', true);
-    $pdf->Cell($col_width, 7, 'Nb Transactions', 1, 1, 'C', true);
-    
-    $pdf->SetFont('helvetica', 'B', 11);
-    $pdf->SetTextColor(0, 0, 0);
-    $pdf->SetFillColor(245, 250, 255);
-    $pdf->Cell($col_width, 8, number_format($total_sales, 0) . ' FC', 1, 0, 'R', true);
-    $pdf->Cell($col_width, 8, number_format($total_discount, 0) . ' FC', 1, 0, 'R', true);
-    $pdf->Cell($col_width, 8, $qty_total, 1, 0, 'C', true);
-    $pdf->Cell($col_width, 8, count($sales), 1, 1, 'C', true);
-    $pdf->Ln(4);
-    
-    // Tableau
-    $pdf->SetFont('helvetica', 'B', 10);
-    $pdf->SetTextColor(0, 112, 224);
-    $pdf->Cell(0, 6, 'DETAIL DES VENTES', 0, 1);
-    
-    $pdf->SetFillColor(0, 112, 224);
-    $pdf->SetTextColor(255, 255, 255);
-    $pdf->SetFont('helvetica', 'B', 9);
-    $pdf->SetLineWidth(0.5);
-    
-    $pdf->Cell(18, 6, 'Date', 1, 0, 'C', true);
-    $pdf->Cell(32, 6, 'Produit', 1, 0, 'L', true);
-    $pdf->Cell(12, 6, 'Qté', 1, 0, 'C', true);
-    $pdf->Cell(18, 6, 'P.U.', 1, 0, 'R', true);
-    $pdf->Cell(20, 6, 'Total', 1, 0, 'R', true);
-    $pdf->Cell(12, 6, 'Rem.', 1, 0, 'C', true);
-    $pdf->Cell(28, 6, 'Vendeur', 1, 1, 'L', true);
-    
-    $pdf->SetFont('helvetica', '', 8);
-    $pdf->SetTextColor(0, 0, 0);
-    $pdf->SetLineWidth(0.3);
-    
-    $alt = 0;
-    foreach ($sales as $s) {
-        if ($s['is_kit']) continue;
+    try {
+        $pdf = new TCPDF(PDF_PAGE_ORIENTATION, PDF_UNIT, PDF_PAGE_FORMAT, true, 'UTF-8', false);
+        $pdf->SetDefaultMonospacedFont(PDF_FONT_MONOSPACED);
+        $pdf->SetMargins(12, 12, 12);
+        $pdf->SetAutoPageBreak(true, 15);
+        $pdf->SetFont('helvetica', '', 10);
         
-        $row_amount = ($s['qty'] * $s['unit_sell_price']) - (float)$s['discount'];
+        $pdf->AddPage();
         
-        if ($alt++ % 2 == 0) {
-            $pdf->SetFillColor(240, 248, 255);
+        // Récupérer le nom de la maison
+        $house_name = 'RAPPORT JOURNALIER';
+        if ($filter_house) {
+            $stmt_house = $pdo->prepare("SELECT name FROM houses WHERE id = ? AND client_code = ?");
+            $stmt_house->execute([$filter_house, $client_code]);
+            $house = $stmt_house->fetch(PDO::FETCH_ASSOC);
+            if ($house) {
+                $house_name = 'RAPPORT JOURNALIER - ' . strtoupper($house['name']);
+            }
         } else {
-            $pdf->SetFillColor(255, 255, 255);
+            $house_name = 'RAPPORT JOURNALIER - TOUTES LES MAISONS';
         }
         
-        $pdf->Cell(18, 5, date('d/m/Y', strtotime($s['created_at'])), 1, 0, 'C', true);
-        $pdf->Cell(32, 5, substr($s['product_name'] ?? 'N/A', 0, 15), 1, 0, 'L', true);
-        $pdf->Cell(12, 5, $s['qty'], 1, 0, 'C', true);
-        $pdf->Cell(18, 5, number_format($s['unit_sell_price'], 0), 1, 0, 'R', true);
-        $pdf->Cell(20, 5, number_format($row_amount, 0), 1, 0, 'R', true);
-        $pdf->Cell(12, 5, number_format($s['discount'] ?? 0, 0), 1, 0, 'C', true);
-        $pdf->Cell(28, 5, substr($s['agent_fullname'] ?? 'N/A', 0, 12), 1, 1, 'L', true);
+        // Header
+        $pdf->SetFillColor(0, 112, 224);
+        $pdf->SetTextColor(255, 255, 255);
+        $pdf->SetFont('helvetica', 'B', 15);
+        $pdf->Cell(0, 10, $house_name, 0, 1, 'C', true);
+        
+        $pdf->SetFont('helvetica', '', 9);
+        $pdf->SetTextColor(255, 255, 255);
+        $pdf->Cell(0, 5, 'Cartelplus Congo - Rapport de Ventes', 0, 1, 'C');
+        
+        $pdf->SetTextColor(200, 220, 240);
+        $pdf->Cell(0, 4, 'Periode: ' . date('d/m/Y', strtotime($filter_date_from)) . ' au ' . date('d/m/Y', strtotime($filter_date_to)) . ' | Genere: ' . date('d/m/Y H:i'), 0, 1, 'C');
+        $pdf->Ln(4);
+        
+        // Statistiques
+        $pdf->SetFont('helvetica', 'B', 10);
+        $pdf->SetTextColor(0, 112, 224);
+        $pdf->Cell(0, 5, 'RESUME STATISTIQUES', 0, 1, 'L');
+        
+        $pdf->SetFillColor(230, 240, 255);
+        $pdf->SetDrawColor(0, 112, 224);
+        $pdf->SetLineWidth(0.4);
+        $pdf->SetFont('helvetica', 'B', 9);
+        $pdf->SetTextColor(0, 48, 135);
+        
+        $w = array(47, 47, 47, 47);
+        $header = array('Total Ventes', 'Remises Accordees', 'Qte Vendue', 'Nb Transactions');
+        for($i = 0; $i < count($header); $i++)
+            $pdf->Cell($w[$i], 7, $header[$i], 1, 0, 'C', true);
+        $pdf->Ln();
+        
+        $pdf->SetFont('helvetica', '', 9);
+        $pdf->SetTextColor(0, 0, 0);
+        $pdf->SetFillColor(245, 250, 255);
+        $pdf->Cell($w[0], 7, number_format($total_sales, 0) . ' FC', 1, 0, 'R', true);
+        $pdf->Cell($w[1], 7, number_format($total_discount, 0) . ' FC', 1, 0, 'R', true);
+        $pdf->Cell($w[2], 7, $qty_total, 1, 0, 'C', true);
+        $pdf->Cell($w[3], 7, count($sales), 1, 0, 'C', true);
+        $pdf->Ln();
+        $pdf->Ln(3);
+        
+        // Tableau ventes
+        $pdf->SetFont('helvetica', 'B', 10);
+        $pdf->SetTextColor(0, 112, 224);
+        $pdf->Cell(0, 5, 'DETAIL DES VENTES', 0, 1, 'L');
+        
+        $pdf->SetFillColor(0, 112, 224);
+        $pdf->SetTextColor(255, 255, 255);
+        $pdf->SetFont('helvetica', 'B', 8);
+        $pdf->SetLineWidth(0.4);
+        
+        $w2 = array(15, 30, 10, 15, 18, 10, 30);
+        $header2 = array('Date', 'Produit', 'Qte', 'P.U.', 'Total', 'Rem.', 'Vendeur');
+        for($i = 0; $i < count($header2); $i++)
+            $pdf->Cell($w2[$i], 6, $header2[$i], 1, 0, 'C', true);
+        $pdf->Ln();
+        
+        $pdf->SetFont('helvetica', '', 7);
+        $pdf->SetTextColor(0, 0, 0);
+        
+        $alt = 0;
+        foreach ($sales as $s) {
+            if ($s['is_kit']) continue;
+            
+            $row_amount = ($s['qty'] * $s['unit_sell_price']) - (float)$s['discount'];
+            
+            if ($alt++ % 2 == 0) {
+                $pdf->SetFillColor(240, 248, 255);
+            } else {
+                $pdf->SetFillColor(255, 255, 255);
+            }
+            
+            $pdf->Cell($w2[0], 5, date('d/m', strtotime($s['created_at'])), 1, 0, 'C', true);
+            $pdf->Cell($w2[1], 5, substr($s['product_name'] ?? '-', 0, 20), 1, 0, 'L', true);
+            $pdf->Cell($w2[2], 5, $s['qty'], 1, 0, 'C', true);
+            $pdf->Cell($w2[3], 5, number_format($s['unit_sell_price'], 0), 1, 0, 'R', true);
+            $pdf->Cell($w2[4], 5, number_format($row_amount, 0), 1, 0, 'R', true);
+            $pdf->Cell($w2[5], 5, number_format($s['discount'] ?? 0, 0), 1, 0, 'C', true);
+            $pdf->Cell($w2[6], 5, substr($s['agent_fullname'] ?? '-', 0, 16), 1, 0, 'L', true);
+            $pdf->Ln();
+        }
+        
+        $pdf->Ln(4);
+        $pdf->SetFont('helvetica', '', 7);
+        $pdf->SetTextColor(150, 150, 150);
+        $pdf->Cell(0, 3, 'Cartelplus Congo - Rapport genere automatiquement le ' . date('d/m/Y H:i'), 0, 1, 'C');
+        
+        return $pdf;
+    } catch (Exception $e) {
+        die('Erreur PDF: ' . $e->getMessage());
     }
-    
-    $pdf->Ln(5);
-    
-    // Footer
-    $pdf->SetFont('helvetica', '', 8);
-    $pdf->SetTextColor(128, 128, 128);
-    $pdf->Cell(0, 4, 'Cartelplus Congo © 2026 - Rapport généré automatiquement', 0, 1, 'C');
-    
-    return $pdf;
 }
 require_once __DIR__ . '/require_admin_auth.php'; // charge $client_code
 
@@ -236,7 +238,7 @@ $admin_email = $admin_data['email'] ?? null;
 /* ===============================
    EXPORT PDF
    =============================== */
-if (isset($_GET['export_pdf'])) {
+if (isset($_POST['export_pdf'])) {
     $pdf = generateReportPDF($pdo, $client_code, $filter_date_from, $filter_date_to, $filter_house, $sales, $total_sales, $total_discount, $qty_total);
     
     header('Content-Type: application/pdf');
@@ -248,7 +250,7 @@ if (isset($_GET['export_pdf'])) {
 /* ===============================
    ENVOYER PAR EMAIL
    =============================== */
-if (isset($_GET['send_email'])) {
+if (isset($_POST['send_email'])) {
     if (!$admin_email) {
         $error_msg = "Email de l'administrateur non trouvé.";
     } else {
@@ -491,9 +493,11 @@ if (isset($_GET['send_email'])) {
         }
 
         .btn-pp-success {
-            background: linear-gradient(135deg, #10b981, #059669);
-            color: #fff;
-            box-shadow: 0 10px 24px rgba(16, 185, 129, 0.25);
+            background: linear-gradient(135deg, #10b981, #059669) !important;
+            color: #fff !important;
+            box-shadow: 0 10px 24px rgba(16, 185, 129, 0.25) !important;
+            display: inline-block !important;
+            visibility: visible !important;
         }
 
         .btn-pp:hover {
@@ -597,7 +601,7 @@ if (isset($_GET['send_email'])) {
                 <button type="submit" class="btn-pp btn-pp-primary">Filtrer</button>
                 <a href="reports.php" class="btn-pp btn-pp-secondary" style="text-decoration: none;">Réinitialiser</a>
                 <button type="submit" name="export_pdf" value="1" class="btn-pp btn-pp-accent">📄 PDF</button>
-                <a href="?date_from=<?= htmlspecialchars($filter_date_from) ?>&date_to=<?= htmlspecialchars($filter_date_to) ?>&house=<?= $filter_house ?? '' ?>&agent=<?= $filter_agent ?? '' ?>&send_email=1" class="btn-pp btn-pp-success" style="text-decoration: none;">✉️ Email</a>
+                <button type="submit" name="send_email" value="1" class="btn-pp btn-pp-success">✉️ Email</button>
             </div>
         </form>
         
