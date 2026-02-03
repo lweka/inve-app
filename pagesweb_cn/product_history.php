@@ -115,7 +115,20 @@ body {
 <?php foreach($rows as $r): ?>
 <tr>
   <td><?= $r['created_at'] ?></td>
-  <td><?= strtoupper($r['type']) ?></td>
+  <td>
+    <?php 
+      $type = strtoupper($r['type'] ?? '');
+      if ($type === 'IN') {
+        echo '<span style="background: #d4edda; color: #155724; padding: 4px 10px; border-radius: 6px; font-weight: 600; font-size: 12px;">📥 IN</span>';
+      } elseif ($type === 'OUT' || $type === 'SALE') {
+        echo '<span style="background: #f8d7da; color: #721c24; padding: 4px 10px; border-radius: 6px; font-weight: 600; font-size: 12px;">📤 OUT</span>';
+      } elseif ($type === 'TRANSFER') {
+        echo '<span style="background: #cce5ff; color: #003087; padding: 4px 10px; border-radius: 6px; font-weight: 600; font-size: 12px;">🔄 TRANSFER</span>';
+      } else {
+        echo '<span style="background: #e2e3e5; color: #383d41; padding: 4px 10px; border-radius: 6px; font-weight: 600; font-size: 12px;">❓ ' . htmlspecialchars($type) . '</span>';
+      }
+    ?>
+  </td>
   <td><?= (int)$r['qty'] ?></td>
   <td><?= number_format((float)$r['unit_buy_price'],2).' '.$product['sell_currency'] ?></td>
   <td><?= number_format((float)$r['unit_sell_price'],2).' '.$product['sell_currency'] ?></td>
