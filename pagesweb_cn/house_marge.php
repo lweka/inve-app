@@ -4,19 +4,19 @@
  * DASHBOARD MARGES - MAISON VS VENDEUR
  * ===================================
  * Pour l'administrateur
- * Affiche : bénéfices maison, marges vendeurs, stock disponible
+ * Affiche : benefices maison, marges vendeurs, stock disponible
  */
 
 require_once __DIR__ . '/connectDb.php';
 
-// Vérifier si admin
+// Verifier si admin
 if(!isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'admin'){
     header("Location: admin_login.php");
     exit;
 }
 
 /* ===============================
-   RÉCUPÉRATION DES PARAMÈTRES FILTRE
+   RECUPERATION DES PARAMETRES FILTRE
    =============================== */
 $filter_house = isset($_GET['house']) ? (int)$_GET['house'] : null;
 $filter_agent = isset($_GET['agent']) ? (int)$_GET['agent'] : null;
@@ -24,7 +24,7 @@ $filter_date_from = isset($_GET['date_from']) ? $_GET['date_from'] : null;
 $filter_date_to = isset($_GET['date_to']) ? $_GET['date_to'] : null;
 
 /* ===============================
-   REQUÊTE : MARGES PAR PRODUIT
+   REQUETE : MARGES PAR PRODUIT
    =============================== */
 $sql = "
 SELECT
@@ -62,7 +62,7 @@ $stmt->execute($params);
 $products_marge = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 /* ===============================
-   REQUÊTE : MARGES PAR VENDEUR
+   REQUETE : MARGES PAR VENDEUR
    =============================== */
 $sql_vendeur = "
 SELECT
@@ -136,6 +136,7 @@ $agents = $stmt_agents->fetchAll(PDO::FETCH_ASSOC);
             --pp-border: #e5e9f2;
             --pp-shadow: 0 12px 30px rgba(0, 48, 135, 0.08);
             --pp-success: #1f8f6a;
+            --pp-orange: #d47000;
         }
 
         body {
@@ -279,19 +280,14 @@ $agents = $stmt_agents->fetchAll(PDO::FETCH_ASSOC);
 </head>
 
 <body>
-
 <div class="page-wrap">
-
     <div class="page-hero">
-        <h2>📊 Dashboard Marges - Maison vs Vendeur</h2>
-        <a href="dashboard.php" class="btn-pp btn-pp-secondary">← Retour Admin</a>
+        <h2>Dashboard Marges - Maison vs Vendeur</h2>
+        <a href="dashboard.php" class="btn-pp btn-pp-secondary"><- Retour Admin</a>
     </div>
-
-<div class="page-wrap">
-
     <!-- FILTRES -->
     <div class="filter-card">
-        <h5 style="margin-bottom: 15px;">🔍 Filtres</h5>
+        <h5 style="margin-bottom: 15px;">Filtres</h5>
         <form method="GET" class="row g-3">
             <div class="col-md-3">
                 <label class="form-label">Maison</label>
@@ -299,7 +295,7 @@ $agents = $stmt_agents->fetchAll(PDO::FETCH_ASSOC);
                     <option value="">Toutes les maisons</option>
                     <?php foreach($houses as $h): ?>
                         <option value="<?= $h['id'] ?>" <?= $filter_house == $h['id'] ? 'selected' : '' ?>>
-                            <?= htmlspecialchars($h['house_name']) ?>
+                            <?= htmlspecialchars($h['name']) ?>
                         </option>
                     <?php endforeach; ?>
                 </select>
@@ -331,14 +327,13 @@ $agents = $stmt_agents->fetchAll(PDO::FETCH_ASSOC);
 
             <div class="col-md-2" style="display: flex; align-items: flex-end; gap: 5px;">
                 <button type="submit" class="btn-pp btn-pp-primary w-100">Filtrer</button>
-                <a href="house_marge.php" class="btn-pp btn-pp-secondary" style="text-decoration: none; text-align: center;">Réinitialiser</a>
+                <a href="house_marge.php" class="btn-pp btn-pp-secondary" style="text-decoration: none; text-align: center;">Reinitialiser</a>
             </div>
         </form>
     </div>
 
     <!-- SECTION: MARGES PAR PRODUIT -->
-    <div class="section-title">💼 Bénéfices Maison par Produit</div>
-
+    <div class="section-title">Benefices Maison par Produit</div>
     <div class="table-container">
         <table class="table table-striped table-hover">
             <thead>
@@ -347,7 +342,7 @@ $agents = $stmt_agents->fetchAll(PDO::FETCH_ASSOC);
                     <th class="text-center">PU Achat</th>
                     <th class="text-center">PU Vente</th>
                     <th class="text-center">Marge/Unit</th>
-                    <th class="text-center">Quantité Vendue</th>
+                    <th class="text-center">Quantite Vendue</th>
                     <th class="text-end">Profit Maison</th>
                     <th class="text-center">Stock Dispo</th>
                     <th class="text-center">Nb Vendeurs</th>
@@ -356,7 +351,7 @@ $agents = $stmt_agents->fetchAll(PDO::FETCH_ASSOC);
             <tbody>
                 <?php if(empty($products_marge)): ?>
                     <tr>
-                        <td colspan="8" class="text-center py-4 text-muted">Aucune donnée</td>
+                        <td colspan="8" class="text-center py-4 text-muted">Aucune donnee</td>
                     </tr>
                 <?php endif; ?>
 
@@ -374,7 +369,7 @@ $agents = $stmt_agents->fetchAll(PDO::FETCH_ASSOC);
                         </span>
                     </td>
                     <td class="text-center"><?= $p['qty_sold'] ?? 0 ?></td>
-                    <td class="text-end fw-bold" style="color: var(--success);">
+                    <td class="text-end fw-bold" style="color: var(--pp-success);">
                         <?= number_format($p['profit_maison'] ?? 0, 0) ?> FC
                     </td>
                     <td class="text-center"><?= number_format($p['stock_available'] ?? 0, 0) ?></td>
@@ -386,8 +381,7 @@ $agents = $stmt_agents->fetchAll(PDO::FETCH_ASSOC);
     </div>
 
     <!-- SECTION: MARGES PAR VENDEUR -->
-    <div class="section-title">👥 Marges par Vendeur</div>
-
+    <div class="section-title">Marges par Vendeur</div>
     <div class="table-container">
         <table class="table table-striped table-hover">
             <thead>
@@ -395,7 +389,7 @@ $agents = $stmt_agents->fetchAll(PDO::FETCH_ASSOC);
                     <th>Vendeur</th>
                     <th class="text-center">Maison</th>
                     <th class="text-center">Nb Ventes</th>
-                    <th class="text-center">Quantité Vendue</th>
+                    <th class="text-center">Quantite Vendue</th>
                     <th class="text-end">Montant Total (HT)</th>
                     <th class="text-end">Profit Vendeur</th>
                 </tr>
@@ -403,7 +397,7 @@ $agents = $stmt_agents->fetchAll(PDO::FETCH_ASSOC);
             <tbody>
                 <?php if(empty($vendeurs_marge)): ?>
                     <tr>
-                        <td colspan="6" class="text-center py-4 text-muted">Aucune donnée</td>
+                        <td colspan="6" class="text-center py-4 text-muted">Aucune donnee</td>
                     </tr>
                 <?php endif; ?>
 
@@ -416,7 +410,7 @@ $agents = $stmt_agents->fetchAll(PDO::FETCH_ASSOC);
                     <td class="text-center"><?= $v['nb_ventes'] ?? 0 ?></td>
                     <td class="text-center"><?= $v['qty_total'] ?? 0 ?></td>
                     <td class="text-end"><?= number_format($v['montant_total'] ?? 0, 0) ?> FC</td>
-                    <td class="text-end fw-bold" style="color: var(--orange);">
+                    <td class="text-end fw-bold" style="color: var(--pp-orange);">
                         <?= number_format($v['profit_vendeur'] ?? 0, 0) ?> FC
                     </td>
                 </tr>
