@@ -20,12 +20,15 @@ use PHPMailer\PHPMailer\Exception;
    =============================== */
 function generateReportPDF($pdo, $client_code, $filter_date_from, $filter_date_to, $filter_house, $sales, $total_sales, $total_discount, $qty_total) {
     try {
-        $pdf = new TCPDF(PDF_PAGE_ORIENTATION, PDF_UNIT, PDF_PAGE_FORMAT, true, 'UTF-8', false);
-        $pdf->SetDefaultMonospacedFont(PDF_FONT_MONOSPACED);
-        $pdf->SetMargins(12, 12, 12);
-        $pdf->SetAutoPageBreak(true, 15);
-        $pdf->SetFont('helvetica', '', 10);
+        $pdf = new TCPDF('P', 'mm', 'A4', true, 'UTF-8', false);
         
+        // Configuration PDF
+        $pdf->SetDefaultMonospacedFont(PDF_FONT_MONOSPACED);
+        $pdf->SetMargins(14, 16, 14);
+        $pdf->SetAutoPageBreak(true, 18);
+        $pdf->SetFont('helvetica', '', 9);
+        
+        // Titre de la page
         $pdf->AddPage();
         
         // Récupérer le nom de la maison
@@ -41,92 +44,133 @@ function generateReportPDF($pdo, $client_code, $filter_date_from, $filter_date_t
             $house_name = 'RAPPORT JOURNALIER - TOUTES LES MAISONS';
         }
         
-        // Header
+        // === HEADER PRINCIPAL ===
         $pdf->SetFillColor(0, 112, 224);
         $pdf->SetTextColor(255, 255, 255);
-        $pdf->SetFont('helvetica', 'B', 15);
+        $pdf->SetFont('helvetica', 'B', 14);
         $pdf->Cell(0, 10, $house_name, 0, 1, 'C', true);
         
-        $pdf->SetFont('helvetica', '', 9);
-        $pdf->SetTextColor(255, 255, 255);
-        $pdf->Cell(0, 5, 'Cartelplus Congo - Rapport de Ventes', 0, 1, 'C');
+        $pdf->SetFont('helvetica', '', 8);
+        $pdf->Cell(0, 4, 'Cartelplus Congo - Systeme de Gestion des Ventes', 0, 1, 'C');
         
         $pdf->SetTextColor(200, 220, 240);
-        $pdf->Cell(0, 4, 'Periode: ' . date('d/m/Y', strtotime($filter_date_from)) . ' au ' . date('d/m/Y', strtotime($filter_date_to)) . ' | Genere: ' . date('d/m/Y H:i'), 0, 1, 'C');
-        $pdf->Ln(4);
+        $date_str = 'Periode: ' . date('d/m/Y', strtotime($filter_date_from)) . ' au ' . date('d/m/Y', strtotime($filter_date_to)) . '   |   Genere le: ' . date('d/m/Y H:i');
+        $pdf->Cell(0, 4, $date_str, 0, 1, 'C');
+        $pdf->Ln(2);
         
-        // Statistiques
-        $pdf->SetFont('helvetica', 'B', 10);
-        $pdf->SetTextColor(0, 112, 224);
-        $pdf->Cell(0, 5, 'RESUME STATISTIQUES', 0, 1, 'L');
-        
-        $pdf->SetFillColor(230, 240, 255);
-        $pdf->SetDrawColor(0, 112, 224);
-        $pdf->SetLineWidth(0.4);
+        // === SECTION STATISTIQUES ===
         $pdf->SetFont('helvetica', 'B', 9);
-        $pdf->SetTextColor(0, 48, 135);
-        
-        $w = array(47, 47, 47, 47);
-        $header = array('Total Ventes', 'Remises Accordees', 'Qte Vendue', 'Nb Transactions');
-        for($i = 0; $i < count($header); $i++)
-            $pdf->Cell($w[$i], 7, $header[$i], 1, 0, 'C', true);
-        $pdf->Ln();
-        
-        $pdf->SetFont('helvetica', '', 9);
-        $pdf->SetTextColor(0, 0, 0);
-        $pdf->SetFillColor(245, 250, 255);
-        $pdf->Cell($w[0], 7, number_format($total_sales, 0) . ' FC', 1, 0, 'R', true);
-        $pdf->Cell($w[1], 7, number_format($total_discount, 0) . ' FC', 1, 0, 'R', true);
-        $pdf->Cell($w[2], 7, $qty_total, 1, 0, 'C', true);
-        $pdf->Cell($w[3], 7, count($sales), 1, 0, 'C', true);
-        $pdf->Ln();
-        $pdf->Ln(3);
-        
-        // Tableau ventes
-        $pdf->SetFont('helvetica', 'B', 10);
         $pdf->SetTextColor(0, 112, 224);
-        $pdf->Cell(0, 5, 'DETAIL DES VENTES', 0, 1, 'L');
+        $pdf->Cell(0, 5, 'STATISTIQUES GLOBALES', 0, 1);
+        $pdf->Ln(1);
         
+        // Boite stats avec bordures
+        $pdf->SetDrawColor(0, 112, 224);
+        $pdf->SetLineWidth(0.5);
+        $pdf->SetFillColor(230, 242, 255);
+        $pdf->SetTextColor(0, 48, 135);
+        $pdf->SetFont('helvetica', 'B', 8);
+        
+        $stat_width = 46;
+        $stats = array(
+            array('label' => 'Total Ventes', 'value' => number_format($total_sales, 0) . ' FC'),
+            array('label' => 'Remises', 'value' => number_format($total_discount, 0) . ' FC'),
+            array('label' => 'Quantite', 'value' => $qty_total . ' u'),
+            array('label' => 'Transactions', 'value' => count($sales))
+        );
+        
+        foreach ($stats as $stat) {
+            $pdf->SetFillColor(245, 251, 255);
+            $pdf->Cell($stat_width, 6, $stat['label'], 1, 0, 'L', true);
+            $pdf->SetFillColor(220, 237, 255);
+            $pdf->Cell($stat_width, 6, $stat['value'], 1, 1, 'R', true);
+        }
+        
+        $pdf->Ln(2);
+        
+        // === TABLEAU DES VENTES ===
+        $pdf->SetFont('helvetica', 'B', 9);
+        $pdf->SetTextColor(0, 112, 224);
+        $pdf->Cell(0, 5, 'DETAIL DES VENTES', 0, 1);
+        $pdf->Ln(1);
+        
+        // Headers du tableau
+        $pdf->SetDrawColor(0, 112, 224);
+        $pdf->SetLineWidth(0.5);
         $pdf->SetFillColor(0, 112, 224);
         $pdf->SetTextColor(255, 255, 255);
-        $pdf->SetFont('helvetica', 'B', 8);
-        $pdf->SetLineWidth(0.4);
+        $pdf->SetFont('helvetica', 'B', 7.5);
         
-        $w2 = array(15, 30, 10, 15, 18, 10, 30);
-        $header2 = array('Date', 'Produit', 'Qte', 'P.U.', 'Total', 'Rem.', 'Vendeur');
-        for($i = 0; $i < count($header2); $i++)
-            $pdf->Cell($w2[$i], 6, $header2[$i], 1, 0, 'C', true);
+        $col_widths = array(14, 28, 10, 14, 16, 8, 27);
+        $headers = array('Date', 'Produit', 'Qte', 'PU', 'Total', 'Rem', 'Vendeur');
+        
+        for ($i = 0; $i < count($headers); $i++) {
+            $pdf->Cell($col_widths[$i], 5.5, $headers[$i], 1, 0, 'C', true);
+        }
         $pdf->Ln();
         
-        $pdf->SetFont('helvetica', '', 7);
+        // Donnees du tableau
+        $pdf->SetFont('helvetica', '', 7.5);
         $pdf->SetTextColor(0, 0, 0);
         
         $alt = 0;
+        $line_count = 0;
+        
         foreach ($sales as $s) {
             if ($s['is_kit']) continue;
             
+            // Verifier l'espace disponible sur la page
+            if ($pdf->GetY() > 250) {
+                $pdf->AddPage();
+                // Re-afficher les headers
+                $pdf->SetDrawColor(0, 112, 224);
+                $pdf->SetFillColor(0, 112, 224);
+                $pdf->SetTextColor(255, 255, 255);
+                $pdf->SetFont('helvetica', 'B', 7.5);
+                for ($i = 0; $i < count($headers); $i++) {
+                    $pdf->Cell($col_widths[$i], 5.5, $headers[$i], 1, 0, 'C', true);
+                }
+                $pdf->Ln();
+                $pdf->SetFont('helvetica', '', 7.5);
+                $pdf->SetTextColor(0, 0, 0);
+            }
+            
             $row_amount = ($s['qty'] * $s['unit_sell_price']) - (float)$s['discount'];
             
+            // Alternance de couleurs
             if ($alt++ % 2 == 0) {
                 $pdf->SetFillColor(240, 248, 255);
             } else {
                 $pdf->SetFillColor(255, 255, 255);
             }
             
-            $pdf->Cell($w2[0], 5, date('d/m', strtotime($s['created_at'])), 1, 0, 'C', true);
-            $pdf->Cell($w2[1], 5, substr($s['product_name'] ?? '-', 0, 20), 1, 0, 'L', true);
-            $pdf->Cell($w2[2], 5, $s['qty'], 1, 0, 'C', true);
-            $pdf->Cell($w2[3], 5, number_format($s['unit_sell_price'], 0), 1, 0, 'R', true);
-            $pdf->Cell($w2[4], 5, number_format($row_amount, 0), 1, 0, 'R', true);
-            $pdf->Cell($w2[5], 5, number_format($s['discount'] ?? 0, 0), 1, 0, 'C', true);
-            $pdf->Cell($w2[6], 5, substr($s['agent_fullname'] ?? '-', 0, 16), 1, 0, 'L', true);
-            $pdf->Ln();
+            $pdf->SetDrawColor(200, 220, 240);
+            $pdf->SetLineWidth(0.3);
+            
+            $pdf->Cell($col_widths[0], 4.5, date('d/m', strtotime($s['created_at'])), 1, 0, 'C', true);
+            $product_name = substr(htmlspecialchars($s['product_name'] ?? '-', ENT_QUOTES, 'UTF-8'), 0, 18);
+            $pdf->Cell($col_widths[1], 4.5, $product_name, 1, 0, 'L', true);
+            $pdf->Cell($col_widths[2], 4.5, $s['qty'], 1, 0, 'C', true);
+            $pdf->Cell($col_widths[3], 4.5, number_format($s['unit_sell_price'], 0), 1, 0, 'R', true);
+            $pdf->Cell($col_widths[4], 4.5, number_format($row_amount, 0), 1, 0, 'R', true);
+            $pdf->Cell($col_widths[5], 4.5, number_format($s['discount'] ?? 0, 0), 1, 0, 'C', true);
+            $agent_name = substr(htmlspecialchars($s['agent_fullname'] ?? '-', ENT_QUOTES, 'UTF-8'), 0, 15);
+            $pdf->Cell($col_widths[6], 4.5, $agent_name, 1, 1, 'L', true);
+            
+            $line_count++;
         }
         
-        $pdf->Ln(4);
+        // Footer
+        $pdf->Ln(3);
         $pdf->SetFont('helvetica', '', 7);
         $pdf->SetTextColor(150, 150, 150);
-        $pdf->Cell(0, 3, 'Cartelplus Congo - Rapport genere automatiquement le ' . date('d/m/Y H:i'), 0, 1, 'C');
+        $pdf->SetDrawColor(200, 200, 200);
+        $pdf->SetLineWidth(0.2);
+        $pdf->Line(14, $pdf->GetY(), 196, $pdf->GetY());
+        
+        $pdf->Ln(1);
+        $pdf->Cell(0, 3, 'Cartelplus Congo © 2026 | Rapport genere automatiquement', 0, 1, 'C');
+        $pdf->Cell(0, 2, 'Nombre de lignes: ' . $line_count, 0, 1, 'C');
         
         return $pdf;
     } catch (Exception $e) {
