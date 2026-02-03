@@ -255,14 +255,30 @@ $message = isset($_GET['message']) ? $_GET['message'] : '';
             font-weight: 700;
             font-size: 13px;
             text-transform: uppercase;
-            transition: all 0.3s;
+            transition: transform 0.25s ease, box-shadow 0.25s ease, background 0.25s ease, color 0.25s ease;
             border: none;
             cursor: pointer;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 10px 24px rgba(242, 92, 42, 0.25);
+        }
+
+        .card-button::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(circle at var(--x, 50%) var(--y, 50%), rgba(255, 255, 255, 0.3), transparent 60%);
+            opacity: 0;
+            transition: opacity 0.25s ease;
         }
 
         .card-button:hover {
-            transform: scale(1.05);
-            box-shadow: 0 10px 30px rgba(242, 92, 42, 0.3);
+            transform: translateY(-2px) scale(1.01);
+            box-shadow: 0 16px 32px rgba(242, 92, 42, 0.3);
+        }
+
+        .card-button:hover::before {
+            opacity: 1;
         }
 
         .card-button:active {
@@ -276,6 +292,83 @@ $message = isset($_GET['message']) ? $_GET['message'] : '';
 
         .card-secondary .card-button {
             background: var(--blue);
+        }
+
+        .cta-trial {
+            background: linear-gradient(135deg, var(--blue) 0%, #0a4f8f 100%);
+            box-shadow: 0 12px 26px rgba(10, 111, 183, 0.3);
+        }
+
+        .cta-trial:hover {
+            background: linear-gradient(135deg, #1690e0 0%, #083b6a 100%);
+            color: var(--white);
+        }
+
+        .cta-subscribe {
+            background: linear-gradient(135deg, var(--orange) 0%, #E84A1F 100%);
+            color: var(--white);
+        }
+
+        .cta-subscribe:hover {
+            background: linear-gradient(135deg, #ff6a3d 0%, #d6451c 100%);
+            color: var(--white);
+        }
+
+        .reveal {
+            opacity: 0;
+            transform: translateY(16px);
+            transition: opacity 0.6s ease, transform 0.6s ease;
+        }
+
+        .reveal.is-visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .reveal.delay-1 {
+            transition-delay: 0.08s;
+        }
+
+        .reveal.delay-2 {
+            transition-delay: 0.16s;
+        }
+
+        .contact-info {
+            text-align: center;
+            margin-top: 60px;
+            padding: 40px;
+            background: rgba(10, 111, 183, 0.1);
+            border-radius: 15px;
+            border: 1px solid rgba(10, 111, 183, 0.3);
+        }
+
+        .contact-info .contact-details {
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.85);
+        }
+
+        .contact-info .contact-details strong {
+            color: #ffffff;
+        }
+
+        @media (max-width: 768px) {
+            .cards-grid {
+                gap: 18px;
+            }
+
+            .card-option {
+                padding: 30px 22px;
+            }
+
+            .card-button {
+                width: 100%;
+                text-align: center;
+                padding: 14px 22px;
+            }
+
+            .hero-title {
+                font-size: 32px;
+            }
         }
 
         /* ALERT */
@@ -355,7 +448,7 @@ $message = isset($_GET['message']) ? $_GET['message'] : '';
     <div class="hero-container">
 
         <!-- HERO HEADER -->
-        <div class="hero-header">
+        <div class="hero-header reveal">
             <div class="hero-icon">💼</div>
             <h1 class="hero-title">Système de Gestion Commerciale</h1>
             <p class="hero-subtitle">Gérez vos ventes, stocks et profits</p>
@@ -375,7 +468,7 @@ $message = isset($_GET['message']) ? $_GET['message'] : '';
         <div class="cards-grid">
 
             <!-- CARTE 1: ESSAI GRATUIT -->
-            <div class="card-option">
+            <div class="card-option reveal delay-1">
                 <div class="card-icon">🎁</div>
                 <div class="card-title">Essai Gratuit</div>
                 <p class="card-desc">Testez le système pendant 7 jours</p>
@@ -385,13 +478,13 @@ $message = isset($_GET['message']) ? $_GET['message'] : '';
                     <li>Support technique inclus</li>
                     <li>Durée: 7 jours</li>
                 </div>
-                <a href="pagesweb_cn/trial_form.php" class="card-button">
+                <a href="pagesweb_cn/trial_form.php" class="card-button cta-trial">
                     🚀 Commencer Essai
                 </a>
             </div>
 
             <!-- CARTE 2: ACHAT ABONNEMENT -->
-            <div class="card-option">
+            <div class="card-option reveal delay-2">
                 <div class="card-icon">💳</div>
                 <div class="card-title">Abonnement</div>
                 <p class="card-desc">Accès illimité pendant 1 mois</p>
@@ -401,7 +494,7 @@ $message = isset($_GET['message']) ? $_GET['message'] : '';
                     <li>Renouvellement flexible</li>
                     <li>Assistance prioritaire</li>
                 </div>
-                <a href="pagesweb_cn/subscription_buy" class="card-button">
+                <a href="pagesweb_cn/subscription_buy" class="card-button cta-subscribe">
                     💰 Acheter Abonnement
                 </a>
             </div>
@@ -409,7 +502,7 @@ $message = isset($_GET['message']) ? $_GET['message'] : '';
         </div>
 
         <!-- MESSAGE AIDE EMAIL -->
-        <div style="text-align: center; margin-top: 40px; padding: 25px; background: rgba(251, 191, 36, 0.1); border-radius: 12px; border: 1px solid rgba(251, 191, 36, 0.3);">
+        <div class="reveal" style="text-align: center; margin-top: 40px; padding: 25px; background: rgba(251, 191, 36, 0.1); border-radius: 12px; border: 1px solid rgba(251, 191, 36, 0.3);">
             <p style="color: rgba(255, 255, 255, 0.95); font-size: 15px; margin: 0;">
                 📧 <strong>Vous n'avez pas reçu votre email d'activation ?</strong><br>
                 <span style="font-size: 13px; color: rgba(255, 255, 255, 0.8);">→ Vérifiez vos spams ou contactez-nous pour obtenir de l'aide</span>
@@ -417,13 +510,13 @@ $message = isset($_GET['message']) ? $_GET['message'] : '';
         </div>
 
         <!-- INFO SUPPLÉMENTAIRE -->
-        <div style="text-align: center; margin-top: 60px; padding: 40px; background: rgba(10, 111, 183, 0.1); border-radius: 15px; border: 1px solid rgba(10, 111, 183, 0.3);">
+        <div class="contact-info reveal">
             <h3 style="margin-bottom: 15px; font-size: 18px;">❓ Questions ?</h3>
             <p style="color: rgba(255, 255, 255, 0.8); margin-bottom: 10px;">Contactez-nous pour plus d'informations</p>
-            <p style="font-size: 12px; color: rgba(255, 255, 255, 0.6);">
-                📧 Email: <strong>admin@cartelplus.cd</strong><br>
-                📱 WhatsApp: <strong>+243 123 456 789</strong><br>
-                📞 Téléphone: <strong>+243 123 456 789</strong>
+            <p class="contact-details">
+                📧 Email: <strong>cartelplus-congo@cartelplus.site</strong><br>
+                📱 WhatsApp: <strong>+243 858756470</strong><br>
+                📞 Téléphone: <strong>+243 856525518</strong>
             </p>
         </div>
 
@@ -441,6 +534,36 @@ $message = isset($_GET['message']) ? $_GET['message'] : '';
 </footer>
 
 <script src="js/bootstrap.min.js"></script>
+
+<script>
+    const revealItems = document.querySelectorAll('.reveal');
+    const revealObserver = new IntersectionObserver((entries) => {
+        entries.forEach((entry) => {
+            if (entry.isIntersecting) {
+                entry.target.classList.add('is-visible');
+                revealObserver.unobserve(entry.target);
+            }
+        });
+    }, { threshold: 0.15 });
+
+    revealItems.forEach((item) => revealObserver.observe(item));
+
+    const ctaButtons = document.querySelectorAll('.card-button');
+    ctaButtons.forEach((btn) => {
+        btn.addEventListener('mousemove', (event) => {
+            const rect = btn.getBoundingClientRect();
+            const x = ((event.clientX - rect.left) / rect.width) * 100;
+            const y = ((event.clientY - rect.top) / rect.height) * 100;
+            btn.style.setProperty('--x', `${x}%`);
+            btn.style.setProperty('--y', `${y}%`);
+        });
+
+        btn.addEventListener('mouseleave', () => {
+            btn.style.setProperty('--x', '50%');
+            btn.style.setProperty('--y', '50%');
+        });
+    });
+</script>
 
 </body>
 </html>
