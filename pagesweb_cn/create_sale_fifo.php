@@ -32,11 +32,12 @@ foreach($items as $it){
 
         $pdo->prepare("
             INSERT INTO product_movements
-            (house_id, product_id, type, qty,
+            (client_code, house_id, product_id, type, qty,
              unit_buy_price, currency, note)
-            VALUES (?,?,?,?,?,?,?)
+            VALUES (?,?,?,?,?,?,?,?)
         ")->execute([
-            $house_id,$pid,'sale',$use,
+            $client_code,
+            $house_id,$pid,'out',$use,
             $lot['unit_buy_price'],$lot['currency'],'Vente FIFO'
         ]);
     }
