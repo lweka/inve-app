@@ -39,7 +39,7 @@ FROM product_movements pm
 LEFT JOIN products p ON p.id = pm.product_id
 LEFT JOIN agents a ON a.id = pm.agent_id
 LEFT JOIN houses h ON h.id = pm.house_id
-WHERE pm.type = 'sale'
+WHERE (pm.type = 'out' OR pm.type = 'sale')
     AND pm.client_code = ?
     AND DATE(pm.created_at) >= ?
     AND DATE(pm.created_at) <= ?
