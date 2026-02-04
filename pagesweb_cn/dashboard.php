@@ -916,11 +916,6 @@ overlay.addEventListener('click', hideGuide);
 if (!localStorage.getItem('guideSkipped')) {
     setTimeout(() => showGuide(0), 3000);
 }
-
-// Auto-refresh toutes les 30 secondes pour garder les données à jour
-setInterval(function() {
-    location.reload();
-}, 30000);
 </script>
 
 </body>
