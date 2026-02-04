@@ -433,6 +433,184 @@
         50% { box-shadow: 0 6px 24px rgba(255, 215, 0, 0.6); }
     }
 
+    /* ===== GUIDE INTERACTIF ===== */
+    .guide-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0);
+        z-index: 999;
+        pointer-events: none;
+        transition: background 0.3s ease;
+    }
+
+    .guide-overlay.active {
+        background: rgba(0, 0, 0, 0.65);
+        pointer-events: auto;
+    }
+
+    .guide-modal {
+        position: fixed;
+        background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+        border: 1px solid #e5e9f2;
+        border-radius: 16px;
+        padding: 28px 32px;
+        z-index: 1000;
+        box-shadow: 0 25px 50px rgba(0, 48, 135, 0.2);
+        opacity: 0;
+        transform: scale(0.85) translateY(-20px);
+        pointer-events: none;
+        transition: all 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+        max-width: 420px;
+        min-width: 320px;
+    }
+
+    .guide-modal.active {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+        pointer-events: auto;
+    }
+
+    .guide-close {
+        position: absolute;
+        top: 12px;
+        right: 12px;
+        background: none;
+        border: none;
+        font-size: 32px;
+        color: #6b7a90;
+        cursor: pointer;
+        padding: 0;
+        width: 36px;
+        height: 36px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s ease;
+        border-radius: 8px;
+    }
+
+    .guide-close:hover {
+        background: rgba(0, 112, 224, 0.1);
+        color: #0070e0;
+        transform: rotate(90deg);
+    }
+
+    .guide-header {
+        margin-bottom: 16px;
+    }
+
+    .guide-step-counter {
+        font-size: 12px;
+        font-weight: 600;
+        color: #0070e0;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 8px;
+    }
+
+    .guide-modal h3 {
+        font-size: 20px;
+        font-weight: 700;
+        color: var(--pp-text);
+        margin: 0;
+        line-height: 1.4;
+    }
+
+    .guide-desc {
+        font-size: 14px;
+        color: #6b7a90;
+        line-height: 1.6;
+        margin: 16px 0 24px;
+    }
+
+    .guide-actions {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+
+    .guide-btn {
+        padding: 10px 18px;
+        border: none;
+        border-radius: 12px;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.25s ease;
+        flex: 1;
+        min-width: 100px;
+    }
+
+    .guide-btn-primary {
+        background: linear-gradient(135deg, #0070e0, #003087);
+        color: white;
+        box-shadow: 0 8px 16px rgba(0, 112, 224, 0.25);
+    }
+
+    .guide-btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 12px 24px rgba(0, 112, 224, 0.35);
+    }
+
+    .guide-btn-secondary {
+        background: #f0f4f9;
+        color: #0070e0;
+        border: 1px solid #e5e9f2;
+    }
+
+    .guide-btn-secondary:hover {
+        background: #e5edf5;
+        border-color: #0070e0;
+    }
+
+    .guide-btn-skip {
+        background: transparent;
+        color: #6b7a90;
+        border: 1px solid #e5e9f2;
+        flex: 0.8;
+    }
+
+    .guide-btn-skip:hover {
+        background: #f8fafc;
+        color: #0b1f3a;
+    }
+
+    .guide-highlight {
+        position: absolute;
+        border: 3px solid #0070e0;
+        border-radius: 12px;
+        box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.65), 0 0 24px rgba(0, 112, 224, 0.5);
+        pointer-events: none;
+        z-index: 998;
+        animation: pulseHighlight 2s ease-in-out infinite;
+    }
+
+    @keyframes pulseHighlight {
+        0%, 100% {
+            box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.65), 0 0 24px rgba(0, 112, 224, 0.5);
+        }
+        50% {
+            box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.65), 0 0 32px rgba(0, 112, 224, 0.7);
+        }
+    }
+
+    @media (max-width: 768px) {
+        .guide-modal {
+            max-width: calc(100vw - 32px);
+            min-width: unset;
+            margin: 0 16px;
+        }
+
+        .guide-actions {
+            flex-direction: column-reverse;
+        }
+
+        .guide-btn {
+            flex: 1;
+            min-width: unset;
+        }
+    }
+
     @media (max-width: 768px) {
         .dashboard-hero {
             padding: 22px;
@@ -573,8 +751,172 @@
 
 </div>
 
+<!-- GUIDE INTERACTIF -->
+<div id="guideOverlay" class="guide-overlay"></div>
+<div id="guideModal" class="guide-modal">
+    <button class="guide-close" id="guideClose">&times;</button>
+    <div class="guide-content">
+        <div class="guide-header">
+            <div class="guide-step-counter"><span id="currentStep">1</span> / <span id="totalSteps">6</span></div>
+            <h3 id="guideTitle">Bienvenue sur votre Dashboard</h3>
+        </div>
+        <p id="guideDescription" class="guide-desc">Nous allons vous montrer comment utiliser cette interface. Cliquez sur « Suivant » pour continuer.</p>
+        <div class="guide-actions">
+            <button class="guide-btn guide-btn-secondary" id="guidePrev" style="display:none;">← Précédent</button>
+            <button class="guide-btn guide-btn-skip" id="guideSkip">Passer le guide</button>
+            <button class="guide-btn guide-btn-primary" id="guideNext">Suivant →</button>
+        </div>
+    </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 <script>
+// ===== GUIDE INTERACTIF =====
+const guideSteps = [
+    {
+        title: "Bienvenue sur votre Dashboard 👋",
+        description: "Cet espace centralise tous vos KPIs et indicateurs clés pour piloter votre business en temps réel.",
+        target: ".dashboard-hero",
+        position: "bottom"
+    },
+    {
+        title: "Profit Journalier 📊",
+        description: "Consultez vos profits du jour en CDF et en USD. Ces chiffres se mettent à jour automatiquement toutes les 30 secondes.",
+        target: ".kpi-grid",
+        position: "bottom"
+    },
+    {
+        title: "Actions Rapides ⚡",
+        description: "Accédez directement aux modules essentiels : gestion des maisons, analyse de marge, et rapports de ventes.",
+        target: ".panel-grid",
+        position: "bottom"
+    },
+    {
+        title: "Insights Clés 💡",
+        description: "Suivi en temps réel de vos ventes, KIT vendus et insights pour optimiser votre rentabilité.",
+        target: ".insight-list",
+        position: "left"
+    },
+    {
+        title: "Renouvellement d'Abonnement 🔄",
+        description: "Consultez votre statut d'abonnement et le nombre de jours restants. Un bouton de renouvellement apparaît si nécessaire.",
+        target: ".hero-chip",
+        position: "bottom"
+    },
+    {
+        title: "C'est parti ! 🚀",
+        description: "Vous êtes prêt à utiliser le dashboard. Le guide se réouvrira au prochain refresh. Bonne gestion !",
+        target: null,
+        position: "center"
+    }
+];
+
+let currentStep = 0;
+const overlay = document.getElementById('guideOverlay');
+const modal = document.getElementById('guideModal');
+const prevBtn = document.getElementById('guidePrev');
+const nextBtn = document.getElementById('guideNext');
+const skipBtn = document.getElementById('guideSkip');
+const closeBtn = document.getElementById('guideClose');
+
+function showGuide(step) {
+    currentStep = step;
+    const data = guideSteps[step];
+    
+    document.getElementById('guideTitle').textContent = data.title;
+    document.getElementById('guideDescription').textContent = data.description;
+    document.getElementById('currentStep').textContent = step + 1;
+    document.getElementById('totalSteps').textContent = guideSteps.length;
+    
+    prevBtn.style.display = step > 0 ? 'inline-block' : 'none';
+    
+    if (step === guideSteps.length - 1) {
+        nextBtn.textContent = 'Fermer';
+    } else {
+        nextBtn.textContent = 'Suivant →';
+    }
+    
+    // Highlight target element
+    if (data.target) {
+        const target = document.querySelector(data.target);
+        if (target) {
+            highlightElement(target, data.position);
+        } else {
+            removeHighlight();
+        }
+    } else {
+        removeHighlight();
+    }
+    
+    modal.classList.add('active');
+    overlay.classList.add('active');
+}
+
+function highlightElement(el, position) {
+    removeHighlight();
+    const rect = el.getBoundingClientRect();
+    const scrollTop = window.scrollY;
+    
+    const highlight = document.createElement('div');
+    highlight.className = 'guide-highlight';
+    highlight.style.top = (rect.top + scrollTop - 10) + 'px';
+    highlight.style.left = (rect.left - 10) + 'px';
+    highlight.style.width = (rect.width + 20) + 'px';
+    highlight.style.height = (rect.height + 20) + 'px';
+    document.body.appendChild(highlight);
+    
+    // Positionner le modal à côté
+    const modalRect = modal.getBoundingClientRect();
+    let top, left;
+    
+    if (position === 'bottom') {
+        top = rect.top + scrollTop + rect.height + 20;
+        left = Math.max(20, rect.left - (modalRect.width - rect.width) / 2);
+    } else if (position === 'left') {
+        top = rect.top + scrollTop;
+        left = rect.left - modalRect.width - 20;
+    } else {
+        top = window.innerHeight / 2 - modalRect.height / 2;
+        left = window.innerWidth / 2 - modalRect.width / 2;
+    }
+    
+    modal.style.top = Math.max(20, top) + 'px';
+    modal.style.left = Math.max(20, Math.min(left, window.innerWidth - modalRect.width - 20)) + 'px';
+}
+
+function removeHighlight() {
+    const highlight = document.querySelector('.guide-highlight');
+    if (highlight) highlight.remove();
+}
+
+function hideGuide() {
+    modal.classList.remove('active');
+    overlay.classList.remove('active');
+    removeHighlight();
+    localStorage.setItem('guideSkipped', 'true');
+}
+
+nextBtn.addEventListener('click', () => {
+    if (currentStep === guideSteps.length - 1) {
+        hideGuide();
+    } else {
+        showGuide(currentStep + 1);
+    }
+});
+
+prevBtn.addEventListener('click', () => {
+    if (currentStep > 0) showGuide(currentStep - 1);
+});
+
+skipBtn.addEventListener('click', hideGuide);
+closeBtn.addEventListener('click', hideGuide);
+overlay.addEventListener('click', hideGuide);
+
+// Afficher après 3 secondes si pas déjà visible
+if (!localStorage.getItem('guideSkipped')) {
+    setTimeout(() => showGuide(0), 3000);
+}
+
 // Auto-refresh toutes les 30 secondes pour garder les données à jour
 setInterval(function() {
     location.reload();
