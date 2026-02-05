@@ -69,6 +69,11 @@ body {
     animation: fadeSlide 0.7s ease both;
 }
 
+  .page-hero > * {
+    position: relative;
+    z-index: 1;
+  }
+
 .page-hero::after {
     content: "";
     position: absolute;
@@ -77,6 +82,7 @@ body {
     height: 280px;
     background: radial-gradient(circle, rgba(255,255,255,0.25), transparent 60%);
     animation: pulseGlow 3.2s ease-in-out infinite;
+  pointer-events: none;
 }
 
 .page-hero h3 {
