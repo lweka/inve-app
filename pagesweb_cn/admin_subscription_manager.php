@@ -719,7 +719,7 @@ $active_clients = $stmt_clients->fetchAll(PDO::FETCH_ASSOC);
                     <h1><span class="header-icon">⚙️</span>Gestion des Abonnements</h1>
                     <div class="header-info">Bienvenue, <?= htmlspecialchars($_SESSION['admin_username'] ?? 'Admin') ?> • CartelPlus Congo</div>
                 </div>
-                <a href="logout.php" class="btn-logout">🚪 Déconnexion</a>
+                <a href="<?= BASE_URL ?>pagesweb_cn/logout.php" class="btn-logout">🚪 Déconnexion</a>
             </div>
         </div>
     </div>

@@ -48,7 +48,7 @@ $admins = $pdo->query("SELECT id, name, username, password_hash, created_at FROM
 
   <h3>Administration</h3>
   <p>Connecté en tant que <strong><?=htmlspecialchars($_SESSION['admin_username'] ?? '')?></strong> — 
-    <a href="logout.php">Déconnexion</a>
+    <a href="<?= BASE_URL ?>pagesweb_cn/logout.php">Déconnexion</a>
   </p>
 
   <?php foreach($messages as $m): ?>
