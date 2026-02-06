@@ -340,6 +340,77 @@ body {
   .table-pp tbody td {
     padding: 12px 8px;
   }
+
+  .table-card {
+    display: none;
+  }
+
+  .sales-cards {
+    display: grid;
+    gap: 14px;
+  }
+
+  .sales-card {
+    background: var(--pp-white);
+    border-radius: 14px;
+    padding: 16px;
+    border: 1px solid var(--pp-border);
+    box-shadow: 0 4px 18px var(--pp-shadow);
+    animation: fadeUp 0.5s ease both;
+  }
+
+  .sales-card.kit {
+    border-left: 4px solid var(--pp-warning);
+    background: linear-gradient(90deg, rgba(245, 158, 11, 0.06), #fff 55%);
+  }
+
+  .sales-card.kit-item {
+    border-left: 4px solid var(--pp-blue);
+    background: rgba(0, 112, 224, 0.03);
+  }
+
+  .sales-title {
+    font-weight: 700;
+    color: var(--pp-blue-dark);
+    font-size: 15px;
+    margin-bottom: 8px;
+  }
+
+  .sales-meta {
+    font-size: 12px;
+    color: #6b7280;
+    margin-bottom: 12px;
+  }
+
+  .sales-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 0;
+    border-bottom: 1px dashed rgba(0, 0, 0, 0.06);
+  }
+
+  .sales-row:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+  }
+
+  .sales-label {
+    font-size: 12px;
+    color: #6b7280;
+  }
+
+  .sales-value {
+    font-weight: 600;
+    font-size: 13px;
+    color: var(--pp-text);
+    text-align: right;
+  }
+}
+
+.sales-cards {
+  display: none;
 }
 
 /* ===== STAGGER ===== */
@@ -527,6 +598,144 @@ body {
       </tbody>
     </table>
   </div>
+</div>
+
+<!-- CARDS MOBILE -->
+<div class="sales-cards">
+  <?php if(!$sales): ?>
+    <div class="sales-card">
+      <div class="empty-state" style="padding: 24px 16px;">
+        <i class="fa-solid fa-receipt"></i>
+        <p>Aucune vente enregistrée</p>
+      </div>
+    </div>
+  <?php endif; ?>
+
+  <?php
+  $currentKit = null;
+  foreach($sales as $s):
+
+  if($s['is_kit'] && !$s['kit_id']):
+    $currentKit = $s['id'];
+  ?>
+    <div class="sales-card kit">
+      <div class="sales-title"><i class="fa-solid fa-boxes-stacked"></i> Kit Produits</div>
+      <div class="sales-meta"><?= htmlspecialchars($s['created_at']) ?></div>
+
+      <div class="sales-row">
+        <span class="sales-label">Paiement</span>
+        <span class="sales-value">
+          <?php
+            $methods = ['cash' => '💵 Espèces', 'mobile' => '📱 Mobile', 'credit' => '💳 Crédit'];
+            echo $methods[$s['payment_method']] ?? ucfirst($s['payment_method']);
+          ?>
+        </span>
+      </div>
+      <div class="sales-row">
+        <span class="sales-label">Client</span>
+        <span class="sales-value"><?= htmlspecialchars($s['customer_name'] ?: '—') ?></span>
+      </div>
+      <div class="sales-row">
+        <span class="sales-label">Remise</span>
+        <span class="sales-value">
+          <?php if($s['discount'] > 0): ?>
+            -<?= number_format((float)$s['discount'], 2) ?> <?= htmlspecialchars($s['sell_currency']) ?>
+          <?php else: ?>
+            —
+          <?php endif; ?>
+        </span>
+      </div>
+      <div class="sales-row">
+        <span class="sales-label">Total</span>
+        <span class="sales-value price-high">
+          <?php
+            $hasDiscount = (float)$s['discount'] > 0;
+            $isMultiCurrency = strpos($s['sell_currency'], '/') !== false;
+
+            if ($hasDiscount && $isMultiCurrency) {
+              echo number_format((float)$s['unit_sell_price'], 2) . ' CDF';
+            } else {
+              $kit_totals = getKitTotalsByCurrency($pdo, $s['id']);
+              $total_parts = [];
+              foreach($kit_totals as $kt) {
+                $subtotal = (float)$kt['subtotal'];
+                if ($hasDiscount && count($kit_totals) == 1) {
+                  $subtotal -= (float)$s['discount'];
+                }
+                $total_parts[] = number_format($subtotal, 2) . ' ' . htmlspecialchars($kt['sell_currency']);
+              }
+              echo implode(' + ', $total_parts);
+            }
+          ?>
+        </span>
+      </div>
+    </div>
+  <?php continue; endif; ?>
+
+  <?php if($s['kit_id'] && $s['kit_id'] == $currentKit): ?>
+    <div class="sales-card kit-item">
+      <div class="sales-title"><i class="fa-solid fa-arrow-right"></i> <?= htmlspecialchars($s['product_name']) ?></div>
+      <div class="sales-row">
+        <span class="sales-label">Quantité</span>
+        <span class="sales-value">× <?= (int)$s['qty'] ?></span>
+      </div>
+      <div class="sales-row">
+        <span class="sales-label">Prix unitaire</span>
+        <span class="sales-value"><?= number_format($s['unit_sell_price'], 2) ?> <?= htmlspecialchars($s['sell_currency']) ?></span>
+      </div>
+      <div class="sales-row">
+        <span class="sales-label">Sous-total</span>
+        <span class="sales-value price-medium">
+          <?= number_format($s['unit_sell_price'] * $s['qty'], 2) ?> <?= htmlspecialchars($s['sell_currency']) ?>
+        </span>
+      </div>
+    </div>
+  <?php continue; endif; ?>
+
+  <?php $currentKit = null; ?>
+  <div class="sales-card">
+    <div class="sales-title"><?= htmlspecialchars($s['product_name']) ?></div>
+    <div class="sales-meta"><?= htmlspecialchars($s['created_at']) ?></div>
+
+    <div class="sales-row">
+      <span class="sales-label">Quantité</span>
+      <span class="sales-value"><?= (int)$s['qty'] ?></span>
+    </div>
+    <div class="sales-row">
+      <span class="sales-label">Prix unitaire</span>
+      <span class="sales-value"><?= number_format($s['unit_sell_price'], 2) ?> <?= htmlspecialchars($s['sell_currency']) ?></span>
+    </div>
+    <div class="sales-row">
+      <span class="sales-label">Remise</span>
+      <span class="sales-value">
+        <?php if($s['discount'] > 0): ?>
+          -<?= number_format((float)$s['discount'], 2) ?> <?= htmlspecialchars($s['sell_currency']) ?>
+        <?php else: ?>
+          —
+        <?php endif; ?>
+      </span>
+    </div>
+    <div class="sales-row">
+      <span class="sales-label">Paiement</span>
+      <span class="sales-value">
+        <?php
+          $methods = ['cash' => '💵 Espèces', 'mobile' => '📱 Mobile', 'credit' => '💳 Crédit'];
+          echo $methods[$s['payment_method']] ?? ucfirst($s['payment_method']);
+        ?>
+      </span>
+    </div>
+    <div class="sales-row">
+      <span class="sales-label">Client</span>
+      <span class="sales-value"><?= htmlspecialchars($s['customer_name'] ?: '—') ?></span>
+    </div>
+    <div class="sales-row">
+      <span class="sales-label">Total</span>
+      <span class="sales-value price-high">
+        <?= number_format(($s['unit_sell_price'] * $s['qty']) - (float)$s['discount'], 2) ?> <?= htmlspecialchars($s['sell_currency']) ?>
+      </span>
+    </div>
+  </div>
+  <?php endforeach; ?>
 </div>
 
 </div>
