@@ -498,7 +498,6 @@ body {
 
 <body>
 
-<body>
 
 <div class="container-fluid" style="max-width: 1400px;">
 
