@@ -706,6 +706,7 @@
                 <a href="<?= HOUSES_MANAGE; ?>" class="btn-pp btn-pp-primary">Gérer les maisons</a>
                 <a href="<?= MARGE_PAR_MAISON; ?>" class="btn-pp btn-pp-accent">Marge par maison</a>
                 <a href="<?= REPORTS_INVENTORY; ?>" class="btn-pp btn-pp-secondary">Rapports / Inventaire</a>
+                <a href="<?= EXPENSES_MANAGE; ?>" class="btn-pp btn-pp-secondary">Mes dépenses</a>
             </div>
         </div>
 
@@ -840,16 +841,27 @@ function showGuide(step) {
     if (data.target) {
         const target = document.querySelector(data.target);
         if (target) {
-            highlightElement(target, data.position);
+            target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            setTimeout(() => highlightElement(target, data.position), 350);
         } else {
             removeHighlight();
+            positionModalCenter();
         }
     } else {
         removeHighlight();
+        positionModalCenter();
     }
     
     modal.classList.add('active');
     overlay.classList.add('active');
+}
+
+function positionModalCenter() {
+    const modalRect = modal.getBoundingClientRect();
+    const top = window.innerHeight / 2 - modalRect.height / 2;
+    const left = window.innerWidth / 2 - modalRect.width / 2;
+    modal.style.top = Math.max(20, top) + 'px';
+    modal.style.left = Math.max(20, Math.min(left, window.innerWidth - modalRect.width - 20)) + 'px';
 }
 
 function highlightElement(el, position) {

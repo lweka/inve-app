@@ -74,6 +74,7 @@ define('AGENTS_DELETE', BASE_URL . 'pagesweb_cn/agent_delete'); // Suppression v
 
 define('PRODUCTS_MANAGE', BASE_URL . 'pagesweb_cn/products'); // Gestion produits
 define('REPORTS_INVENTORY', BASE_URL . 'pagesweb_cn/reports'); // Rapports / Inventaire (PDF)
+define('EXPENSES_MANAGE', BASE_URL . 'pagesweb_cn/expenses'); // Gestion des dépenses
 define('HOUSES_CREATE', BASE_URL . 'pagesweb_cn/houses_create'); // Créer une maison
 define('CHECK_HOUSECODE', BASE_URL. 'pagesweb_cn/check_house_code');
 define('ADMIN_CHECK_HOUSE', BASE_URL. 'pagesweb_cn/admin_check_password');
