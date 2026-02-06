@@ -128,6 +128,10 @@
                 </form>
             <?php endif; ?>
 
+            <div class="back-link text-center mt-3">
+                <a href="<?= BASE_URL ?>">← Retour à la page d'accueil</a>
+            </div>
+
         </div>
     </div>
 </div>
