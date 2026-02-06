@@ -48,12 +48,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
-    if ($action === 'delete') {
+    if ($action === 'update') {
         $id = (int)($_POST['id'] ?? 0);
-        if ($id > 0) {
-            $stmt = $pdo->prepare("DELETE FROM expenses WHERE id = ? AND client_code = ?");
-            $stmt->execute([$id, $client_code]);
-            header('Location: expenses.php?msg=deleted');
+        $expense_date = $_POST['expense_date'] ?? '';
+        $title = trim($_POST['title'] ?? '');
+        $category = trim($_POST['category'] ?? '');
+        $amount = (float)($_POST['amount'] ?? 0);
+        $currency = strtoupper(trim($_POST['currency'] ?? 'CDF'));
+        $notes = trim($_POST['notes'] ?? '');
+
+        if ($id <= 0) $errors[] = 'Depense invalide.';
+        if (!$expense_date) $errors[] = 'La date est obligatoire.';
+        if ($title === '' || strlen($title) < 3) $errors[] = 'Le titre doit contenir au moins 3 caracteres.';
+        if ($amount <= 0) $errors[] = 'Le montant doit etre superieur a 0.';
+        if (!in_array($currency, ['CDF', 'USD'], true)) $errors[] = 'La devise doit etre CDF ou USD.';
+
+        if (!$errors) {
+            $stmt = $pdo->prepare("UPDATE expenses SET expense_date = ?, title = ?, category = ?, amount = ?, currency = ?, notes = ?
+                                   WHERE id = ? AND client_code = ?");
+            $stmt->execute([$expense_date, $title, $category, $amount, $currency, $notes, $id, $client_code]);
+            header('Location: expenses.php?msg=updated');
             exit;
         }
     }
@@ -258,6 +272,43 @@ body {
     font-weight: 600;
     font-size: 12px;
 }
+
+@media (max-width: 768px) {
+    .table-expenses thead {
+        display: none;
+    }
+    .table-expenses,
+    .table-expenses tbody,
+    .table-expenses tr,
+    .table-expenses td {
+        display: block;
+        width: 100%;
+    }
+    .table-expenses tr {
+        margin-bottom: 14px;
+        border: 1px solid var(--pp-border);
+        border-radius: 12px;
+        box-shadow: var(--pp-shadow);
+        background: #fff;
+        padding: 8px 12px;
+    }
+    .table-expenses td {
+        border: none;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 8px 0;
+    }
+    .table-expenses td::before {
+        content: attr(data-label);
+        font-weight: 600;
+        color: var(--pp-muted);
+        margin-right: 12px;
+    }
+    .table-expenses td:last-child {
+        padding-bottom: 4px;
+    }
+}
 </style>
 </head>
 
@@ -272,8 +323,8 @@ body {
     <?php if (isset($_GET['msg']) && $_GET['msg'] === 'created'): ?>
         <div class="alert alert-success">Depense ajoutee avec succes.</div>
     <?php endif; ?>
-    <?php if (isset($_GET['msg']) && $_GET['msg'] === 'deleted'): ?>
-        <div class="alert alert-success">Depense supprimee.</div>
+    <?php if (isset($_GET['msg']) && $_GET['msg'] === 'updated'): ?>
+        <div class="alert alert-success">Depense modifiee avec succes.</div>
     <?php endif; ?>
     <?php if ($errors): ?>
         <div class="alert alert-danger">
@@ -375,7 +426,7 @@ body {
     <div class="card-panel">
         <h5 class="mb-3">Liste des depenses</h5>
         <div class="table-responsive">
-            <table class="table table-hover align-middle">
+            <table class="table table-hover align-middle table-expenses">
                 <thead>
                     <tr>
                         <th>Date</th>
@@ -392,19 +443,26 @@ body {
                 <?php else: ?>
                     <?php foreach ($expenses as $e): ?>
                         <tr>
-                            <td><?= htmlspecialchars($e['expense_date']) ?></td>
-                            <td><?= htmlspecialchars($e['title']) ?></td>
-                            <td><?= htmlspecialchars($e['category'] ?: '-') ?></td>
-                            <td>
+                            <td data-label="Date"><?= htmlspecialchars($e['expense_date']) ?></td>
+                            <td data-label="Titre"><?= htmlspecialchars($e['title']) ?></td>
+                            <td data-label="Categorie"><?= htmlspecialchars($e['category'] ?: '-') ?></td>
+                            <td data-label="Montant">
                                 <span class="badge-currency"><?= number_format((float)$e['amount'], $e['currency'] === 'USD' ? 2 : 0) ?> <?= htmlspecialchars($e['currency']) ?></span>
                             </td>
-                            <td><?= htmlspecialchars($e['notes'] ?: '-') ?></td>
-                            <td>
-                                <form method="POST" onsubmit="return confirm('Supprimer cette depense ?');" style="display:inline-block;">
-                                    <input type="hidden" name="action" value="delete">
-                                    <input type="hidden" name="id" value="<?= (int)$e['id'] ?>">
-                                    <button class="btn-pp btn-pp-danger btn-sm" type="submit">Supprimer</button>
-                                </form>
+                            <td data-label="Notes"><?= htmlspecialchars($e['notes'] ?: '-') ?></td>
+                            <td data-label="Action">
+                                <button
+                                    class="btn-pp btn-pp-secondary btn-sm"
+                                    data-bs-toggle="modal"
+                                    data-bs-target="#editExpenseModal"
+                                    data-id="<?= (int)$e['id'] ?>"
+                                    data-date="<?= htmlspecialchars($e['expense_date']) ?>"
+                                    data-title="<?= htmlspecialchars($e['title']) ?>"
+                                    data-category="<?= htmlspecialchars($e['category']) ?>"
+                                    data-amount="<?= htmlspecialchars($e['amount']) ?>"
+                                    data-currency="<?= htmlspecialchars($e['currency']) ?>"
+                                    data-notes="<?= htmlspecialchars($e['notes']) ?>"
+                                >Modifier</button>
                             </td>
                         </tr>
                     <?php endforeach; ?>
@@ -415,6 +473,71 @@ body {
     </div>
 </div>
 
+<!-- Modal modification -->
+<div class="modal fade" id="editExpenseModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Modifier une depense</h5>
+                <button class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST">
+                <input type="hidden" name="action" value="update">
+                <input type="hidden" name="id" id="edit_id">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Date</label>
+                        <input type="date" name="expense_date" id="edit_date" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Titre</label>
+                        <input type="text" name="title" id="edit_title" class="form-control" required minlength="3" maxlength="200">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Categorie</label>
+                        <input type="text" name="category" id="edit_category" class="form-control" maxlength="120">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Montant</label>
+                        <input type="number" name="amount" id="edit_amount" class="form-control" step="0.01" min="0" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Devise</label>
+                        <select name="currency" id="edit_currency" class="form-select">
+                            <option value="CDF">CDF</option>
+                            <option value="USD">USD</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Notes</label>
+                        <input type="text" name="notes" id="edit_notes" class="form-control" maxlength="255">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn-pp btn-pp-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="submit" class="btn-pp btn-pp-primary">Enregistrer</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+const editModal = document.getElementById('editExpenseModal');
+if (editModal) {
+        editModal.addEventListener('show.bs.modal', function (event) {
+                const button = event.relatedTarget;
+                if (!button) return;
+                document.getElementById('edit_id').value = button.getAttribute('data-id') || '';
+                document.getElementById('edit_date').value = button.getAttribute('data-date') || '';
+                document.getElementById('edit_title').value = button.getAttribute('data-title') || '';
+                document.getElementById('edit_category').value = button.getAttribute('data-category') || '';
+                document.getElementById('edit_amount').value = button.getAttribute('data-amount') || '';
+                document.getElementById('edit_currency').value = button.getAttribute('data-currency') || 'CDF';
+                document.getElementById('edit_notes').value = button.getAttribute('data-notes') || '';
+        });
+}
+</script>
 </body>
 </html>
