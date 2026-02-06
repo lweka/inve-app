@@ -491,6 +491,24 @@ body {
   }
 }
 
+@media (max-width: 576px) {
+  .seller-header .d-flex {
+    flex-direction: column;
+    align-items: flex-start !important;
+    gap: 14px;
+  }
+
+  .seller-actions {
+    width: 100%;
+    flex-direction: column;
+  }
+
+  .seller-actions .btn-pp {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
 /* ===== STAGGER ANIMATIONS ===== */
 .card-pp:nth-child(1) { animation-delay: 0s; }
 .card-pp:nth-child(2) { animation-delay: 0.15s; }
