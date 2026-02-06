@@ -11,7 +11,7 @@ try {
 
     $product_id = (int)($_POST['product_id'] ?? 0);
     $house_id   = (int)($_POST['house_id'] ?? 0);
-    $type       = $_POST['type'] ?? '';
+    $type       = strtolower(trim($_POST['type'] ?? ''));
     $qty        = (int)($_POST['qty'] ?? 0);
     $note       = trim($_POST['note'] ?? '');
     $agent_id   = (int)($_POST['agent_id'] ?? 0);
@@ -20,9 +20,17 @@ try {
         $product_id <= 0 ||
         $house_id <= 0 ||
         $qty <= 0 ||
-        !in_array($type, ['in','out','transfer'])
+        !in_array($type, ['in','out','transfer','transfert'])
     ){
         throw new Exception('Paramètres invalides');
+    }
+
+    if ($type === 'transfert') {
+        $type = 'transfer';
+    }
+
+    if ($type === 'out' && $agent_id > 0) {
+        $type = 'transfer';
     }
 
     // vérifier maison du client
