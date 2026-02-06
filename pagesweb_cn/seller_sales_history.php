@@ -409,8 +409,10 @@ body {
   }
 }
 
-.sales-cards {
-  display: none;
+@media (min-width: 769px) {
+  .sales-cards {
+    display: none;
+  }
 }
 
 /* ===== STAGGER ===== */
