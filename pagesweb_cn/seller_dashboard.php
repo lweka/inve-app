@@ -803,10 +803,30 @@ function showMsg(title, message){
     const item = cart[i];
     const prod = products.find(p => p.id == item.product_id);
 
-    if(delta > 0 && item.qty >= prod.stock){
-      showMsg("Stock insuffisant",
-        "Vous ne pouvez pas dépasser le stock disponible.");
-      return;
+    if(delta > 0){
+      // Calculer la quantité déjà dans le panier pour ce produit
+      let qtyInCart = 0;
+      cart.forEach((cartItem, idx) => {
+        if(cartItem.is_kit && cartItem.items){
+          // Si c'est un kit, vérifier les produits dans le kit
+          cartItem.items.forEach(kitProd => {
+            if(kitProd.product_id == item.product_id){
+              qtyInCart += kitProd.qty;
+            }
+          });
+        } else if(cartItem.product_id == item.product_id){
+          // Si c'est un produit simple
+          qtyInCart += cartItem.qty;
+        }
+      });
+
+      // Vérifier si on peut augmenter la quantité
+      if(qtyInCart >= prod.stock){
+        showMsg("Stock insuffisant",
+          `Stock disponible: <strong>${prod.stock}</strong><br>` +
+          `Déjà dans le panier: <strong>${qtyInCart}</strong>`);
+        return;
+      }
     }
 
     item.qty += delta;
@@ -963,6 +983,41 @@ function addKitToCart(){
   if(currentKit.length === 0){
     showMsg("Kit vide","Ajoutez des produits au kit");
     return;
+  }
+
+  // Vérifier le stock disponible pour chaque produit du kit
+  for(let k of currentKit){
+    const p = products.find(x => x.id == k.product_id);
+    if(!p){
+      showMsg("Erreur", `Produit ${k.name} introuvable`);
+      return;
+    }
+
+    // Calculer la quantité déjà dans le panier pour ce produit
+    let qtyInCart = 0;
+    cart.forEach(cartItem => {
+      if(cartItem.is_kit && cartItem.items){
+        // Si c'est un kit, vérifier les produits dans le kit
+        cartItem.items.forEach(kitProd => {
+          if(kitProd.product_id == k.product_id){
+            qtyInCart += kitProd.qty;
+          }
+        });
+      } else if(cartItem.product_id == k.product_id){
+        // Si c'est un produit simple
+        qtyInCart += cartItem.qty;
+      }
+    });
+
+    // Vérifier si le stock est suffisant
+    if((qtyInCart + k.qty) > p.stock){
+      showMsg("Stock insuffisant", 
+        `Le produit <strong>${k.name}</strong> n'a que <strong>${p.stock}</strong> en stock.<br>` +
+        `Déjà dans le panier: <strong>${qtyInCart}</strong><br>` +
+        `Demandé dans le kit: <strong>${k.qty}</strong>`
+      );
+      return;
+    }
   }
 
   // Calculer le total du kit (chaque produit avec sa devise)
