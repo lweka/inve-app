@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../configUrlcn.php';
 require_once __DIR__ . '/connectDb.php';
 
 if(!isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'agent'){
