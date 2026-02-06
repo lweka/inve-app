@@ -131,6 +131,21 @@ $message = isset($_GET['message']) ? $_GET['message'] : '';
         .hero-icon {
             font-size: 72px;
             margin-bottom: 20px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            animation: heroFloat 6s ease-in-out infinite, heroHue 10s linear infinite;
+            filter: drop-shadow(0 10px 25px rgba(242, 92, 42, 0.3));
+            will-change: transform, filter;
+        }
+        @keyframes heroFloat {
+            0%, 100% { transform: translateY(0) rotate(0deg) scale(1); }
+            50% { transform: translateY(-10px) rotate(-4deg) scale(1.04); }
+        }
+        @keyframes heroHue {
+            0% { filter: hue-rotate(0deg) drop-shadow(0 10px 25px rgba(242, 92, 42, 0.3)); }
+            50% { filter: hue-rotate(35deg) drop-shadow(0 12px 28px rgba(0, 168, 255, 0.35)); }
+            100% { filter: hue-rotate(0deg) drop-shadow(0 10px 25px rgba(242, 92, 42, 0.3)); }
         }
 
         .hero-title {
@@ -563,6 +578,16 @@ $message = isset($_GET['message']) ? $_GET['message'] : '';
             btn.style.setProperty('--y', '50%');
         });
     });
+
+    const heroIcon = document.querySelector('.hero-icon');
+    if (heroIcon) {
+        const icons = ['💼', '📊', '📈', '💹', '🧾', '🏪'];
+        let iconIndex = 0;
+        setInterval(() => {
+            iconIndex = (iconIndex + 1) % icons.length;
+            heroIcon.textContent = icons[iconIndex];
+        }, 2200);
+    }
 </script>
 
 </body>

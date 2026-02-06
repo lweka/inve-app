@@ -228,6 +228,11 @@ $message = isset($_GET['message']) ? $_GET['message'] : '';
             transform: translateY(-1px);
             box-shadow: 0 10px 24px rgba(0,112,186,0.28);
             opacity: 0.95;
+            color: var(--white);
+        }
+        .btn-account:focus,
+        .btn-account:active {
+            color: var(--white);
         }
         .navbar-logo {
             height: 45px;
@@ -287,6 +292,21 @@ $message = isset($_GET['message']) ? $_GET['message'] : '';
         .hero-icon {
             font-size: 72px;
             margin-bottom: 20px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            animation: heroFloat 6s ease-in-out infinite, heroHue 10s linear infinite;
+            filter: drop-shadow(0 10px 25px rgba(0, 112, 186, 0.25));
+            will-change: transform, filter;
+        }
+        @keyframes heroFloat {
+            0%, 100% { transform: translateY(0) rotate(0deg) scale(1); }
+            50% { transform: translateY(-10px) rotate(-4deg) scale(1.04); }
+        }
+        @keyframes heroHue {
+            0% { filter: hue-rotate(0deg) drop-shadow(0 10px 25px rgba(0, 112, 186, 0.25)); }
+            50% { filter: hue-rotate(35deg) drop-shadow(0 12px 28px rgba(244, 91, 42, 0.35)); }
+            100% { filter: hue-rotate(0deg) drop-shadow(0 10px 25px rgba(0, 112, 186, 0.25)); }
         }
         .hero-title {
             font-size: 48px;
@@ -746,6 +766,16 @@ $message = isset($_GET['message']) ? $_GET['message'] : '';
             btn.style.setProperty('--y', '50%');
         });
     });
+
+    const heroIcon = document.querySelector('.hero-icon');
+    if (heroIcon) {
+        const icons = ['💼', '📊', '📈', '💹', '🧾', '🏪'];
+        let iconIndex = 0;
+        setInterval(() => {
+            iconIndex = (iconIndex + 1) % icons.length;
+            heroIcon.textContent = icons[iconIndex];
+        }, 2200);
+    }
 </script>
 
 </body>
