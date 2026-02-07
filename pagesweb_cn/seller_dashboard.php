@@ -430,6 +430,15 @@ body {
   border-top: 1px solid var(--pp-border);
 }
 
+/* Message modal - priorité élevée pour s'afficher au-dessus des autres modales */
+#msgModal {
+  z-index: 1060;
+}
+
+#msgModal .modal-backdrop {
+  z-index: 1059;
+}
+
 /* ===== KIT PRODUCTS ===== */
 #kitProducts {
   max-height: 300px;
@@ -772,7 +781,26 @@ body {
 function showMsg(title, message){
   document.getElementById('msgTitle').textContent = title;
   document.getElementById('msgBody').innerHTML = message;
-  new bootstrap.Modal(document.getElementById('msgModal')).show();
+  
+  const msgModalEl = document.getElementById('msgModal');
+  const msgModal = new bootstrap.Modal(msgModalEl);
+  
+  // Écouter l'événement d'affichage pour ajuster le z-index
+  msgModalEl.addEventListener('shown.bs.modal', function () {
+    // Trouver le backdrop et le modal
+    const backdrops = document.querySelectorAll('.modal-backdrop');
+    const modals = document.querySelectorAll('.modal.show');
+    
+    // S'assurer que le msgModal est au-dessus
+    if(backdrops.length > 1) {
+      backdrops[backdrops.length - 1].style.zIndex = '1059';
+    }
+    if(modals.length > 0) {
+      msgModalEl.style.zIndex = '1060';
+    }
+  }, { once: true });
+  
+  msgModal.show();
 }
 
 /* ===== PANIER ===== */
