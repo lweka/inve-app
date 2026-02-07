@@ -955,22 +955,45 @@ function showMsg(title, message){
 
   let currentKit = [];
 
-  function addToKit(pid, qty){
+  function addToKit(pid, qtyStr){
     const p = products.find(x => x.id == pid);
     if(!p) return;
 
-    if(qty <= 0 || qty > p.stock){
-      showMsg("Erreur", "Quantité invalide pour le kit");
+    const qty = parseInt(qtyStr);
+    if(isNaN(qty) || qty <= 0){
+      showMsg("Erreur", "Quantité invalide");
       return;
     }
 
-    currentKit.push({
-      product_id: p.id,
-      name: p.name,
-      qty: qty,
-      sell_price: p.sell_price,
-      sell_currency: p.sell_currency
-    });
+    // Vérifier si le produit existe déjà dans le kit
+    const existingItem = currentKit.find(k => k.product_id == pid);
+    
+    if(existingItem){
+      // Vérifier que la nouvelle quantité totale ne dépasse pas le stock
+      const newQty = existingItem.qty + qty;
+      if(newQty > p.stock){
+        showMsg("Stock insuffisant", 
+          `Stock disponible: <strong>${p.stock}</strong><br>` +
+          `Déjà dans le kit: <strong>${existingItem.qty}</strong><br>` +
+          `Vous ne pouvez ajouter que <strong>${p.stock - existingItem.qty}</strong> de plus`);
+        return;
+      }
+      existingItem.qty = newQty;
+    } else {
+      // Nouveau produit dans le kit
+      if(qty > p.stock){
+        showMsg("Stock insuffisant", `Stock disponible: <strong>${p.stock}</strong>`);
+        return;
+      }
+      
+      currentKit.push({
+        product_id: p.id,
+        name: p.name,
+        qty: qty,
+        sell_price: p.sell_price,
+        sell_currency: p.sell_currency
+      });
+    }
 
     renderKitPreview();
   }
@@ -1121,12 +1144,12 @@ function renderKitPreview(){
   const kitsByUnitCurrency = {};
   let grandTotal = 0;
   
-  currentKit.forEach(k => {
+  currentKit.forEach((k, idx) => {
     const cur = k.sell_currency;
     if(!kitsByUnitCurrency[cur]) {
       kitsByUnitCurrency[cur] = [];
     }
-    kitsByUnitCurrency[cur].push(k);
+    kitsByUnitCurrency[cur].push({...k, idx: idx});
   });
 
   // Afficher chaque groupe avec sa devise
@@ -1140,7 +1163,13 @@ function renderKitPreview(){
       el.innerHTML += `
         <div class="d-flex justify-content-between align-items-center" style="padding:6px 0;font-size:13px;">
           <span style="color:var(--pp-text);">${k.name} × ${k.qty}</span>
-          <span style="color:var(--pp-blue);font-weight:600;">${subtotal} ${currency}</span>
+          <div class="d-flex align-items-center gap-2">
+            <span style="color:var(--pp-blue);font-weight:600;">${subtotal} ${currency}</span>
+            <button class="btn-pp btn-pp-danger btn-sm" style="padding:2px 8px;font-size:11px;" 
+              onclick="removeFromKit(${k.idx})" title="Retirer du kit">
+              <i class="fa-solid fa-xmark"></i>
+            </button>
+          </div>
         </div>
       `;
     });
@@ -1157,6 +1186,12 @@ function renderKitPreview(){
     
     el.innerHTML += '</div>';
   }
+}
+
+// Fonction pour retirer un produit du kit
+function removeFromKit(idx){
+  currentKit.splice(idx, 1);
+  renderKitPreview();
 }
 
 
