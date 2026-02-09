@@ -803,6 +803,15 @@ function showMsg(title, message){
   msgModal.show();
 }
 
+function showPosMsg(message, type = 'success'){
+  const posMsg = document.getElementById('posMsg');
+  if(!posMsg) return;
+
+  const alertClass = (type === 'error') ? 'alert alert-danger' : 'alert alert-success';
+  posMsg.className = `mt-3 ${alertClass}`;
+  posMsg.innerHTML = message;
+}
+
 /* ===== PANIER ===== */
   function addToCart(pid){
     const p = products.find(x => x.id == pid);
@@ -1272,15 +1281,11 @@ document.getElementById('confirmSaleBtn').onclick = ()=>{
       resetSaleForm();
       loadProducts();
 
-      // 🔥 OUVERTURE IMPRESSION AUTOMATIQUE
       if(j.ok && j.sale_id){
-        setTimeout(() => {
-          openTicket(j.sale_id);
-          showMsg(
-            "Vente réussie",
-            "✅ La vente a été enregistrée avec succès.\n\nLe ticket s'ouvre pour impression..."
-          );
-        }, 300);
+        showPosMsg(
+          "Vente enregistree avec succes. Le ticket est en cours d'ouverture pour impression."
+        );
+        openTicket(j.sale_id);
       }
 
     });
@@ -1306,11 +1311,10 @@ function openTicket(saleId){
     alert('Erreur: élément d\'impression non trouvé');
     return;
   }
-  
-  frame.src = 'seller_ticket_pdf.php?sale_id=' + saleId;
-  
-  const printModal = new bootstrap.Modal(document.getElementById('printModal'));
-  
+  const ticketUrl = 'seller_ticket_pdf.php?sale_id=' + encodeURIComponent(saleId) + '&_ts=' + Date.now();
+  frame.dataset.ticketUrl = ticketUrl;
+  const printModal = bootstrap.Modal.getOrCreateInstance(document.getElementById('printModal'));
+
   frame.onload = function(){
     console.log('✅ PDF chargé, lancement de l\'impression');
     setTimeout(() => {
@@ -1320,21 +1324,45 @@ function openTicket(saleId){
       } catch(e) {
         console.error('Erreur impression:', e);
       }
-    }, 500);
+    }, 1000);
   };
   
   frame.onerror = function(){
     console.error('❌ Erreur chargement PDF');
   };
+
+  frame.src = ticketUrl;
   
   printModal.show();
 }
 
 function printTicket(){
   const frame = document.getElementById('printFrame');
-  if(frame && frame.contentWindow){
-    frame.contentWindow.focus();
-    frame.contentWindow.print();
+  if(!frame) return;
+
+  try {
+    if(frame.contentWindow){
+      frame.contentWindow.focus();
+      frame.contentWindow.print();
+      return;
+    }
+  } catch(e) {
+    console.error('Erreur impression iframe:', e);
+  }
+
+  const ticketUrl = frame.dataset.ticketUrl || frame.src;
+  if(ticketUrl){
+    const popup = window.open(ticketUrl, '_blank');
+    if(popup){
+      popup.focus();
+      setTimeout(() => {
+        try {
+          popup.print();
+        } catch(err) {
+          console.error('Erreur impression popup:', err);
+        }
+      }, 1200);
+    }
   }
 }
 
