@@ -161,6 +161,17 @@ body {
     margin-bottom: 10px;
 }
 
+.house-logo {
+    width: 72px;
+    height: 72px;
+    border-radius: 12px;
+    border: 1px solid var(--pp-border);
+    background: #fff;
+    object-fit: contain;
+    padding: 6px;
+    margin-bottom: 10px;
+}
+
 .code-mask {
     background: rgba(0,112,224,0.08);
     color: var(--pp-blue-dark);
@@ -253,6 +264,13 @@ body {
   <div class="houses-grid">
     <?php foreach($houses as $h): ?>
         <div class="card-house" style="animation-delay: 0.<?= array_search($h, $houses) * 5 ?>s;">
+          <?php if(!empty($h['logo_path'] ?? '')): ?>
+            <img
+              src="<?= IMG_DIR . htmlspecialchars($h['logo_path'] ?? '') ?>"
+              alt="Logo <?= htmlspecialchars($h['name']) ?>"
+              class="house-logo"
+            >
+          <?php endif; ?>
 
 
           <h5><?= htmlspecialchars($h['name']) ?></h5>
@@ -288,7 +306,7 @@ body {
         <button class="btn-close" data-bs-dismiss="modal"></button>
       </div>
 
-      <form id="createHouseForm" method="POST" action="<?= (defined('HOUSES_CREATE') ? HOUSES_CREATE : 'houses_create.php'); ?>" novalidate>
+      <form id="createHouseForm" method="POST" action="<?= (defined('HOUSES_CREATE') ? HOUSES_CREATE : 'houses_create.php'); ?>" enctype="multipart/form-data" novalidate>
         <div class="modal-body">
           <div class="mb-3">
             <label class="form-label">Nom <span class="text-danger">*</span></label>
@@ -314,6 +332,18 @@ body {
             <label class="form-label">Adresse <span class="text-danger">*</span></label>
             <textarea id="address" name="address" class="form-control" required minlength="5" maxlength="255"></textarea>
             <div class="invalid-feedback" id="addressFeedback"></div>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Ajouter le logo de votre maison</label>
+            <input
+              id="house_logo"
+              name="house_logo"
+              type="file"
+              class="form-control"
+              accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
+            >
+            <div class="form-text">Formats acceptes: JPG, PNG, WEBP (max 2 Mo).</div>
           </div>
         </div>
 
@@ -424,6 +454,7 @@ const nameInput = document.getElementById('name');
 const codeInput = document.getElementById('code');
 const typeInput = document.getElementById('type');
 const addressInput = document.getElementById('address');
+const logoInput = document.getElementById('house_logo');
 
 const nameFeedback = document.getElementById('nameFeedback');
 const codeFeedback = document.getElementById('codeFeedback');
@@ -533,7 +564,11 @@ openConfirmBtn.addEventListener('click', () => {
   }
 
   document.getElementById('confirmSummary').innerHTML =
-    `<strong>${escapeHtml(nameV)}</strong><br>Code: <code>${escapeHtml(codeV)}</code><br>Type: ${escapeHtml(typeInput.value)}<br>${escapeHtml(addrV)}`;
+    `<strong>${escapeHtml(nameV)}</strong><br>` +
+    `Code: <code>${escapeHtml(codeV)}</code><br>` +
+    `Type: ${escapeHtml(typeInput.value)}<br>` +
+    `${escapeHtml(addrV)}<br>` +
+    `Logo: ${escapeHtml(logoInput.files[0] ? logoInput.files[0].name : 'Aucun')}`;
 
   new bootstrap.Modal(document.getElementById('confirmModal')).show();
 });

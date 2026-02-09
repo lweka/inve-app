@@ -5,66 +5,57 @@ require_once __DIR__ . '/../vendor/autoload.php';
 use TCPDF as TCPDF_Lib;
 
 if (!isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'agent') {
-    exit('Accès refusé');
+    exit('Acces refuse');
 }
 
-// Vérifier que le vendeur est toujours actif
-$stmt_check = $pdo->prepare("SELECT status FROM agents WHERE id=? LIMIT 1");
-$stmt_check->execute([$_SESSION['user_id']]);
-$agent_status = $stmt_check->fetchColumn();
+$stmtCheck = $pdo->prepare('SELECT status FROM agents WHERE id = ? LIMIT 1');
+$stmtCheck->execute([$_SESSION['user_id']]);
+$agentStatus = $stmtCheck->fetchColumn();
 
-if($agent_status !== 'active'){
+if ($agentStatus !== 'active') {
     header('Location: account_disabled.php');
     exit;
 }
 
-$agent_id = (int)$_SESSION['user_id'];
-$sale_id  = (int)($_GET['sale_id'] ?? 0);
-if ($sale_id <= 0) exit('Vente invalide');
+$agentId = (int)$_SESSION['user_id'];
+$saleId = (int)($_GET['sale_id'] ?? 0);
+if ($saleId <= 0) {
+    exit('Vente invalide');
+}
 
-/* ===== Récupérer la vente et son receipt_id ===== */
-$stmt = $pdo->prepare("
-SELECT pm.*, a.fullname agent_name, h.name house_name
-FROM product_movements pm
-JOIN agents a ON a.id = pm.agent_id
-JOIN houses h ON h.id = pm.house_id
-WHERE pm.id = ? AND pm.agent_id = ?
-");
-$stmt->execute([$sale_id, $agent_id]);
+$houseColumns = [];
+try {
+    $houseColumns = $pdo->query('SHOW COLUMNS FROM houses')->fetchAll(PDO::FETCH_COLUMN, 0);
+} catch (Throwable $e) {
+    error_log('House columns read error: ' . $e->getMessage());
+}
+
+$selectHouseAddress = in_array('address', $houseColumns, true)
+    ? 'h.address AS house_address'
+    : "'' AS house_address";
+$selectHouseLogo = in_array('logo_path', $houseColumns, true)
+    ? 'h.logo_path AS house_logo_path'
+    : 'NULL AS house_logo_path';
+
+$stmt = $pdo->prepare("\nSELECT pm.*, a.fullname AS agent_name, h.name AS house_name,\n       {$selectHouseAddress}, {$selectHouseLogo}\nFROM product_movements pm\nJOIN agents a ON a.id = pm.agent_id\nJOIN houses h ON h.id = pm.house_id\nWHERE pm.id = ? AND pm.agent_id = ?\nLIMIT 1\n");
+$stmt->execute([$saleId, $agentId]);
 $sale = $stmt->fetch();
-if (!$sale) exit('Vente introuvable');
+if (!$sale) {
+    exit('Vente introuvable');
+}
 
-$receipt_id = $sale['receipt_id'];
+$receiptId = $sale['receipt_id'];
 
-/* ===== Récupérer TOUS les produits ===== */
-$stmt = $pdo->prepare("
-SELECT 
-    pm.id,
-    pm.is_kit,
-    pm.kit_id,
-    pm.qty,
-    pm.unit_sell_price,
-    pm.discount,
-    pm.sell_currency,
-    CASE 
-        WHEN pm.is_kit = 1 THEN 'KIT PRODUITS'
-        ELSE COALESCE(p.name, 'Produit inconnu')
-    END as name
-FROM product_movements pm
-LEFT JOIN products p ON p.id = pm.product_id
-WHERE pm.receipt_id = ?
-ORDER BY pm.is_kit DESC, pm.id ASC
-");
-$stmt->execute([$receipt_id]);
+$stmt = $pdo->prepare("\nSELECT\n    pm.id,\n    pm.is_kit,\n    pm.kit_id,\n    pm.qty,\n    pm.unit_sell_price,\n    pm.discount,\n    pm.sell_currency,\n    CASE\n        WHEN pm.is_kit = 1 THEN 'KIT PRODUITS'\n        ELSE COALESCE(p.name, 'Produit inconnu')\n    END AS name\nFROM product_movements pm\nLEFT JOIN products p ON p.id = pm.product_id\nWHERE pm.receipt_id = ?\nORDER BY pm.is_kit DESC, pm.id ASC\n");
+$stmt->execute([$receiptId]);
 $allItems = $stmt->fetchAll();
 
-// Séparer les kits des composants
 $kits = [];
 $simpleProducts = [];
 $kitComponents = [];
 
 foreach ($allItems as $item) {
-    if ($item['is_kit'] == 1) {
+    if ((int)$item['is_kit'] === 1) {
         $kits[] = $item;
     } elseif (!empty($item['kit_id'])) {
         $kitComponents[$item['kit_id']][] = $item;
@@ -73,13 +64,12 @@ foreach ($allItems as $item) {
     }
 }
 
-// Helpers
 function formatAmount($amount, $currency) {
     $decimals = ($currency === 'USD') ? 2 : 0;
     return number_format((float)$amount, $decimals) . ' ' . $currency;
 }
 
-function buildTotalsString($totalsByCurrency) {
+function buildTotalsString(array $totalsByCurrency): string {
     $parts = [];
     foreach ($totalsByCurrency as $cur => $amt) {
         $parts[] = formatAmount($amt, $cur);
@@ -87,228 +77,219 @@ function buildTotalsString($totalsByCurrency) {
     return implode(' + ', $parts);
 }
 
-/* ===== PDF 80mm PROFESSIONNEL ===== */
-$pdf = new TCPDF_Lib('P', 'mm', [80, 200]);
+function cutText($value, int $max): string {
+    $value = trim((string)$value);
+    if ($max <= 3 || strlen($value) <= $max) return $value;
+    return substr($value, 0, $max - 3) . '...';
+}
+
+function normalizeLogoPath($value): ?string {
+    $value = trim(str_replace('\\', '/', (string)$value));
+    $value = ltrim($value, '/');
+    if ($value === '') return null;
+    if (strpos($value, '..') !== false) return null;
+    if (!preg_match('#^[A-Za-z0-9_./-]+$#', $value)) return null;
+    return $value;
+}
+
+$logoPath = normalizeLogoPath($sale['house_logo_path'] ?? '');
+$logoFilePath = null;
+if ($logoPath !== null) {
+    $candidate = __DIR__ . '/../images/' . str_replace('/', DIRECTORY_SEPARATOR, $logoPath);
+    if (is_file($candidate)) {
+        $logoFilePath = $candidate;
+    }
+}
+
+$pdf = new TCPDF_Lib('P', 'mm', [80, 240], true, 'UTF-8', false);
+$pdf->setPrintHeader(false);
+$pdf->setPrintFooter(false);
 $pdf->SetMargins(3, 3, 3);
+$pdf->SetAutoPageBreak(true, 3);
 $pdf->AddPage();
 $pdf->SetDefaultMonospacedFont(PDF_FONT_MONOSPACED);
 
-/* ===== HEADER PROFESSIONNEL ===== */
+if ($logoFilePath) {
+    $logoWidth = 26;
+    $x = (80 - $logoWidth) / 2;
+    $pdf->Image($logoFilePath, $x, $pdf->GetY(), $logoWidth, 0, '', '', 'T', false, 300, '', false, false, 0, false, false, false);
+    $pdf->Ln(20);
+}
+
+$houseName = cutText($sale['house_name'] ?? 'Maison', 46);
+$houseAddress = cutText($sale['house_address'] ?? '', 120);
+
 $pdf->SetFont('helvetica', 'B', 12);
-$pdf->Cell(0, 6, 'INVE-APP', 0, 1, 'C');
+$pdf->MultiCell(0, 5, $houseName, 0, 'C', false, 1);
 
-$pdf->SetFont('helvetica', '', 9);
-$pdf->Cell(0, 4, 'CartelPlus Congo', 0, 1, 'C');
+if ($houseAddress !== '') {
+    $pdf->SetFont('helvetica', '', 8);
+    $pdf->MultiCell(0, 4, $houseAddress, 0, 'C', false, 1);
+}
+
 $pdf->SetFont('helvetica', '', 7);
-$pdf->Cell(0, 3, 'Système de Gestion Commercial', 0, 1, 'C');
+$pdf->Cell(0, 3, 'INVE-APP', 0, 1, 'C');
 
-/* ===== SÉPARATEUR ===== */
-$pdf->SetDrawColor(100, 100, 100);
+$pdf->SetDrawColor(80, 80, 80);
+$pdf->SetLineWidth(0.2);
 $pdf->Line(3, $pdf->GetY(), 77, $pdf->GetY());
 $pdf->Ln(2);
 
-/* ===== INFOS TICKET ===== */
-$pdf->SetFont('helvetica', '', 7);
-$pdf->SetFillColor(240, 240, 240);
+$paymentMethods = [
+    'cash' => 'Especes',
+    'mobile' => 'Mobile Money',
+    'credit' => 'Credit'
+];
 
-$pdf->Cell(35, 3, 'Numéro Ticket:', 0, 0);
-$pdf->SetFont('helvetica', 'B', 7);
-$pdf->Cell(35, 3, $sale['ticket_number'], 0, 1, 'R');
+$metaRows = [
+    ['Ticket', $sale['ticket_number'] ?? '-'],
+    ['Vendeur', cutText($sale['agent_name'] ?? '-', 28)],
+    ['Client', cutText($sale['customer_name'] ?? 'Client', 28)],
+    ['Paiement', $paymentMethods[$sale['payment_method']] ?? (string)$sale['payment_method']],
+    ['Date', !empty($sale['created_at']) ? date('d/m/Y H:i', strtotime($sale['created_at'])) : '-']
+];
 
-$pdf->SetFont('helvetica', '', 7);
-$pdf->Cell(35, 3, 'Maison:', 0, 0);
-$pdf->SetFont('helvetica', 'B', 7);
-$pdf->Cell(35, 3, substr($sale['house_name'], 0, 20), 0, 1, 'R');
+foreach ($metaRows as $meta) {
+    $pdf->SetFont('helvetica', '', 8);
+    $pdf->Cell(30, 4, $meta[0] . ':', 0, 0, 'L');
+    $pdf->SetFont('helvetica', 'B', 8);
+    $pdf->Cell(44, 4, cutText((string)$meta[1], 30), 0, 1, 'R');
+}
 
-$pdf->SetFont('helvetica', '', 7);
-$pdf->Cell(35, 3, 'Vendeur:', 0, 0);
-$pdf->SetFont('helvetica', 'B', 7);
-$pdf->Cell(35, 3, substr($sale['agent_name'], 0, 20), 0, 1, 'R');
-
-$pdf->SetFont('helvetica', '', 7);
-$pdf->Cell(35, 3, 'Client:', 0, 0);
-$pdf->SetFont('helvetica', 'B', 7);
-$pdf->Cell(35, 3, substr($sale['customer_name'] ?? 'Client', 0, 20), 0, 1, 'R');
-
-$pdf->SetFont('helvetica', '', 7);
-$pdf->Cell(35, 3, 'Paiement:', 0, 0);
-$pdf->SetFont('helvetica', 'B', 7);
-$paymentMethods = ['cash' => 'Espèces', 'mobile' => 'Mobile Money', 'credit' => 'Crédit'];
-$pdf->Cell(35, 3, $paymentMethods[$sale['payment_method']] ?? $sale['payment_method'], 0, 1, 'R');
-
-$pdf->SetFont('helvetica', '', 7);
-$pdf->Cell(35, 3, 'Date/Heure:', 0, 0);
-$pdf->SetFont('helvetica', 'B', 7);
-$pdf->Cell(35, 3, date('d/m/Y H:i', strtotime($sale['created_at'])), 0, 1, 'R');
-
-/* ===== SÉPARATEUR ===== */
+$pdf->SetLineWidth(0.2);
 $pdf->Line(3, $pdf->GetY(), 77, $pdf->GetY());
 $pdf->Ln(1);
 
-/* ===== EN-TÊTES TABLEAU ===== */
-$pdf->SetFont('helvetica', 'B', 7);
-$pdf->SetFillColor(230, 230, 230);
-$pdf->Cell(35, 3.5, 'ARTICLE', 0, 0, 'L', true);
-$pdf->Cell(10, 3.5, 'QTE', 0, 0, 'C', true);
-$pdf->Cell(15, 3.5, 'MONTANT', 0, 1, 'R', true);
+$pdf->SetFont('helvetica', 'B', 8);
+$pdf->SetFillColor(235, 235, 235);
+$pdf->Cell(41, 4.5, 'ARTICLE', 0, 0, 'L', true);
+$pdf->Cell(9, 4.5, 'QTE', 0, 0, 'C', true);
+$pdf->Cell(24, 4.5, 'MONTANT', 0, 1, 'R', true);
 
-$pdf->SetFont('helvetica', '', 7);
 $totalsByCurrency = [];
+$pdf->SetFont('helvetica', '', 8);
 
-/* ===== AFFICHER LES KITS AVEC COMPOSANTS ===== */
 foreach ($kits as $kit) {
-    // Si le kit a une remise ET est multi-devises, il sera affiché en CDF
     $kitDiscount = (float)($kit['discount'] ?? 0);
     $hasDiscount = $kitDiscount > 0;
     $kitCurrency = $kit['sell_currency'] ?? 'CDF';
-    $isMultiCurrency = strpos($kitCurrency, '/') !== false;
-    
+    $isMultiCurrency = strpos((string)$kitCurrency, '/') !== false;
+
     if ($hasDiscount && $isMultiCurrency) {
-        // Kit avec réduction : tout est en CDF
         $kitTotal = (float)$kit['unit_sell_price'];
         $totalsByCurrency['CDF'] = ($totalsByCurrency['CDF'] ?? 0) + $kitTotal;
-        
-        /* Afficher le KIT parent */
-        $pdf->SetFont('helvetica', 'B', 7);
-        $pdf->Cell(35, 3, 'KIT PRODUITS', 0, 0, 'L');
-        $pdf->Cell(10, 3, $kit['qty'], 0, 0, 'C');
-        $pdf->Cell(15, 3, formatAmount($kitTotal, 'CDF'), 0, 1, 'R');
-        
-        /* Afficher les composants du KIT */
-        $pdf->SetFont('helvetica', '', 6);
+
+        $pdf->SetFont('helvetica', 'B', 8);
+        $pdf->Cell(41, 4, 'KIT PRODUITS', 0, 0, 'L');
+        $pdf->Cell(9, 4, $kit['qty'], 0, 0, 'C');
+        $pdf->Cell(24, 4, cutText(formatAmount($kitTotal, 'CDF'), 20), 0, 1, 'R');
+
+        $pdf->SetFont('helvetica', '', 7);
         if (isset($kitComponents[$kit['id']])) {
             foreach ($kitComponents[$kit['id']] as $comp) {
-                $compTotal = $comp['qty'] * $comp['unit_sell_price'];
+                $compTotal = (float)$comp['qty'] * (float)$comp['unit_sell_price'];
                 $compCurrency = $comp['sell_currency'] ?? 'CDF';
-                $pdf->Cell(3, 2.5, '', 0, 0);
-                $pdf->Cell(32, 2.5, '  > ' . substr($comp['name'], 0, 21), 0, 0, 'L');
-                $pdf->Cell(10, 2.5, $comp['qty'], 0, 0, 'C');
-                $pdf->Cell(15, 2.5, formatAmount($compTotal, $compCurrency), 0, 1, 'R');
+                $pdf->Cell(41, 3.5, '  > ' . cutText($comp['name'], 24), 0, 0, 'L');
+                $pdf->Cell(9, 3.5, $comp['qty'], 0, 0, 'C');
+                $pdf->Cell(24, 3.5, cutText(formatAmount($compTotal, $compCurrency), 20), 0, 1, 'R');
             }
         }
-        
-        /* Afficher la remise du kit */
-        $pdf->SetFont('helvetica', 'B', 6);
-        $pdf->Cell(3, 2.5, '', 0, 0);
-        $pdf->Cell(32, 2.5, 'Remise appliquée', 0, 0, 'L');
-        $pdf->Cell(10, 2.5, '', 0, 0, 'C');
-        $pdf->Cell(15, 2.5, '-' . formatAmount($kitDiscount, 'CDF'), 0, 1, 'R');
-        
+
+        $pdf->SetFont('helvetica', 'B', 7);
+        $pdf->Cell(41, 3.5, 'Remise appliquee', 0, 0, 'L');
+        $pdf->Cell(9, 3.5, '', 0, 0, 'C');
+        $pdf->Cell(24, 3.5, '-' . cutText(formatAmount($kitDiscount, 'CDF'), 18), 0, 1, 'R');
     } else {
-        // Kit normal sans remise ou mono-devise
         $kitTotals = [];
         if (isset($kitComponents[$kit['id']])) {
             foreach ($kitComponents[$kit['id']] as $comp) {
                 $cur = $comp['sell_currency'] ?? 'CDF';
-                $compTotal = $comp['qty'] * $comp['unit_sell_price'];
+                $compTotal = (float)$comp['qty'] * (float)$comp['unit_sell_price'];
                 $kitTotals[$cur] = ($kitTotals[$cur] ?? 0) + $compTotal;
             }
         }
 
-        // Ajouter les totaux du kit au total global par devise
         foreach ($kitTotals as $cur => $amt) {
             $totalsByCurrency[$cur] = ($totalsByCurrency[$cur] ?? 0) + $amt;
         }
 
-        /* Afficher le KIT parent avec totaux multi-devise */
-        $pdf->SetFont('helvetica', 'B', 7);
-        $pdf->Cell(35, 3, 'KIT PRODUITS', 0, 0, 'L');
-        $pdf->Cell(10, 3, $kit['qty'], 0, 0, 'C');
-        $pdf->Cell(15, 3, buildTotalsString($kitTotals), 0, 1, 'R');
-        
-        /* Afficher les composants du KIT en indentation */
-        $pdf->SetFont('helvetica', '', 6);
+        $pdf->SetFont('helvetica', 'B', 8);
+        $pdf->Cell(41, 4, 'KIT PRODUITS', 0, 0, 'L');
+        $pdf->Cell(9, 4, $kit['qty'], 0, 0, 'C');
+        $pdf->Cell(24, 4, cutText(buildTotalsString($kitTotals), 20), 0, 1, 'R');
+
+        $pdf->SetFont('helvetica', '', 7);
         if (isset($kitComponents[$kit['id']])) {
             foreach ($kitComponents[$kit['id']] as $comp) {
-                $compTotal = $comp['qty'] * $comp['unit_sell_price'];
+                $compTotal = (float)$comp['qty'] * (float)$comp['unit_sell_price'];
                 $compCurrency = $comp['sell_currency'] ?? 'CDF';
-                $pdf->Cell(3, 2.5, '', 0, 0); // indentation
-                $pdf->Cell(32, 2.5, '  > ' . substr($comp['name'], 0, 21), 0, 0, 'L');
-                $pdf->Cell(10, 2.5, $comp['qty'], 0, 0, 'C');
-                $pdf->Cell(15, 2.5, formatAmount($compTotal, $compCurrency), 0, 1, 'R');
+                $pdf->Cell(41, 3.5, '  > ' . cutText($comp['name'], 24), 0, 0, 'L');
+                $pdf->Cell(9, 3.5, $comp['qty'], 0, 0, 'C');
+                $pdf->Cell(24, 3.5, cutText(formatAmount($compTotal, $compCurrency), 20), 0, 1, 'R');
             }
         }
-        
-        /* Si kit mono-devise avec remise */
+
         if ($hasDiscount && !$isMultiCurrency) {
-            $pdf->SetFont('helvetica', 'B', 6);
-            $pdf->Cell(3, 2.5, '', 0, 0);
-            $pdf->Cell(32, 2.5, 'Remise appliquée', 0, 0, 'L');
-            $pdf->Cell(10, 2.5, '', 0, 0, 'C');
-            $pdf->Cell(15, 2.5, '-' . formatAmount($kitDiscount, $kitCurrency), 0, 1, 'R');
-            
-            // Soustraire la remise du total
+            $pdf->SetFont('helvetica', 'B', 7);
+            $pdf->Cell(41, 3.5, 'Remise appliquee', 0, 0, 'L');
+            $pdf->Cell(9, 3.5, '', 0, 0, 'C');
+            $pdf->Cell(24, 3.5, '-' . cutText(formatAmount($kitDiscount, $kitCurrency), 18), 0, 1, 'R');
             $totalsByCurrency[$kitCurrency] = ($totalsByCurrency[$kitCurrency] ?? 0) - $kitDiscount;
         }
     }
-    
-    $pdf->SetFont('helvetica', '', 7);
+
+    $pdf->SetFont('helvetica', '', 8);
 }
 
-/* ===== AFFICHER LES PRODUITS SIMPLES ===== */
 foreach ($simpleProducts as $product) {
-    $prodTotal = $product['qty'] * $product['unit_sell_price'];
+    $prodTotal = (float)$product['qty'] * (float)$product['unit_sell_price'];
     $prodCurrency = $product['sell_currency'] ?? 'CDF';
     $totalsByCurrency[$prodCurrency] = ($totalsByCurrency[$prodCurrency] ?? 0) + $prodTotal;
-    
-    $pdf->Cell(35, 3, substr($product['name'], 0, 22), 0, 0, 'L');
-    $pdf->Cell(10, 3, $product['qty'], 0, 0, 'C');
-    $pdf->Cell(15, 3, formatAmount($prodTotal, $prodCurrency), 0, 1, 'R');
+
+    $pdf->Cell(41, 4, cutText($product['name'], 24), 0, 0, 'L');
+    $pdf->Cell(9, 4, $product['qty'], 0, 0, 'C');
+    $pdf->Cell(24, 4, cutText(formatAmount($prodTotal, $prodCurrency), 20), 0, 1, 'R');
 }
 
-/* ===== AFFICHER LA REMISE ===== */
-// Note: Pour les kits, la remise est déjà affichée dans la section kit ci-dessus
-// Cette section est uniquement pour les produits simples avec remise
 $saleDiscount = (float)($sale['discount'] ?? 0);
 if ($saleDiscount > 0 && (int)($sale['is_kit'] ?? 0) === 0) {
-    $pdf->SetFont('helvetica', 'B', 7);
-    
-    $pdf->Cell(35, 3, 'REMISE', 0, 0, 'L');
-    $pdf->Cell(10, 3, '', 0, 0, 'C');
     $discountCurrency = $sale['sell_currency'] ?? 'CDF';
-    $pdf->Cell(15, 3, '-' . formatAmount($saleDiscount, $discountCurrency), 0, 1, 'R');
-    
-    // Appliquer la remise uniquement si devise unique
+    $pdf->SetFont('helvetica', 'B', 8);
+    $pdf->Cell(41, 4, 'REMISE', 0, 0, 'L');
+    $pdf->Cell(9, 4, '', 0, 0, 'C');
+    $pdf->Cell(24, 4, '-' . cutText(formatAmount($saleDiscount, $discountCurrency), 20), 0, 1, 'R');
+
     if (strpos((string)$discountCurrency, '/') === false) {
         $totalsByCurrency[$discountCurrency] = ($totalsByCurrency[$discountCurrency] ?? 0) - $saleDiscount;
     }
 }
 
-/* ===== SÉPARATEUR FINAL ===== */
 $pdf->SetDrawColor(0, 0, 0);
-$pdf->SetLineWidth(0.5);
+$pdf->SetLineWidth(0.4);
 $pdf->Line(3, $pdf->GetY(), 77, $pdf->GetY());
 $pdf->Ln(1);
 
-/* ===== TOTAL ===== */
-$pdf->SetFont('helvetica', 'B', 9);
-$pdf->Cell(35, 5, 'TOTAL:', 0, 0, 'L');
-$pdf->Cell(10, 5, '', 0, 0, 'C');
-$pdf->Cell(15, 5, '', 0, 1, 'R');
+$pdf->SetFont('helvetica', 'B', 10);
+$pdf->Cell(41, 5, 'TOTAL', 0, 0, 'L');
+$pdf->Cell(9, 5, '', 0, 0, 'C');
+$pdf->Cell(24, 5, '', 0, 1, 'R');
 
+$pdf->SetFont('helvetica', 'B', 9);
 foreach ($totalsByCurrency as $cur => $amt) {
-    $pdf->Cell(35, 4, '', 0, 0, 'L');
-    $pdf->Cell(10, 4, '', 0, 0, 'C');
-    $pdf->Cell(15, 4, formatAmount($amt, $cur), 0, 1, 'R');
+    $pdf->Cell(41, 4.5, '', 0, 0, 'L');
+    $pdf->Cell(9, 4.5, '', 0, 0, 'C');
+    $pdf->Cell(24, 4.5, cutText(formatAmount($amt, $cur), 20), 0, 1, 'R');
 }
 
-/* ===== SÉPARATEUR ===== */
-$pdf->SetLineWidth(0.1);
+$pdf->SetLineWidth(0.15);
 $pdf->Line(3, $pdf->GetY(), 77, $pdf->GetY());
 $pdf->Ln(2);
 
-/* ===== FOOTER PROFESSIONNEL ===== */
-$pdf->SetFont('helvetica', 'B', 7);
-$pdf->Cell(0, 3, 'Merci de votre visite !', 0, 1, 'C');
+$pdf->SetFont('helvetica', 'B', 8);
+$pdf->Cell(0, 3.5, 'Merci pour votre achat', 0, 1, 'C');
 
-$pdf->SetFont('helvetica', '', 6);
-$pdf->Cell(0, 2.5, '', 0, 1, 'C');
-$pdf->Cell(0, 2.5, 'INVE-APP By Cartelplus Congo', 0, 1, 'C');
-$pdf->Cell(0, 2.5, 'La solution numérique adaptée à vos besoins', 0, 1, 'C');
-
-$pdf->Ln(1);
-$pdf->SetFont('helvetica', 'I', 5);
-$pdf->Cell(0, 2, '* Conservez ce recu *', 0, 1, 'C');
+$pdf->SetFont('helvetica', '', 7);
+$pdf->Cell(0, 3, 'Conservez ce recu pour reference', 0, 1, 'C');
 
 $pdf->Output('ticket.pdf', 'I');
 ?>

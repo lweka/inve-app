@@ -722,6 +722,9 @@ body {
 
       <div class="modal-footer">
         <button class="btn-pp btn-pp-secondary" data-bs-dismiss="modal">Fermer</button>
+        <button class="btn-pp btn-pp-secondary" type="button" onclick="downloadTicketPdf()">
+          <i class="fa-solid fa-file-pdf"></i> PDF
+        </button>
         <button class="btn-pp btn-pp-success" onclick="printTicket()">
           <i class="fa-solid fa-print"></i> Imprimer
         </button>
@@ -1265,6 +1268,20 @@ document.getElementById('confirmSaleBtn').onclick = ()=>{
   payload.append('payment_method', document.getElementById('payment_method').value);
   payload.append('customer_name', document.getElementById('customer_name').value);
 
+  let printWindow = null;
+  try {
+    printWindow = window.open('', 'ticket_print_window', 'width=420,height=760');
+    if(printWindow){
+      printWindow.document.write(
+        '<!doctype html><html><head><title>Ticket</title></head>' +
+        '<body style=\"font-family:Arial,sans-serif;padding:16px\">Generation du ticket...</body></html>'
+      );
+      printWindow.document.close();
+    }
+  } catch(e) {
+    console.error('Erreur ouverture fenetre impression:', e);
+  }
+
   fetch('create_sale.php',{method:'POST',body:payload})
     .then(r=>r.json())
     .then(j=>{
@@ -1273,6 +1290,9 @@ document.getElementById('confirmSaleBtn').onclick = ()=>{
       ).hide();
 
       if(!j.ok){
+        if(printWindow && !printWindow.closed){
+          printWindow.close();
+        }
         showMsg("Erreur", j.message);
         return;
       }
@@ -1285,9 +1305,16 @@ document.getElementById('confirmSaleBtn').onclick = ()=>{
         showPosMsg(
           "Vente enregistree avec succes. Le ticket est en cours d'ouverture pour impression."
         );
-        openTicket(j.sale_id);
+        openTicket(j.sale_id, printWindow);
       }
 
+    })
+    .catch(err => {
+      if(printWindow && !printWindow.closed){
+        printWindow.close();
+      }
+      console.error('Erreur creation vente:', err);
+      showMsg("Erreur", "Une erreur est survenue pendant l'enregistrement de la vente.");
     });
 };
 
@@ -1302,38 +1329,39 @@ document.getElementById('confirmSaleBtn').onclick = ()=>{
 
 <script>
 
-function openTicket(saleId){
-  console.log('🎫 Ouverture du ticket - Sale ID:', saleId);
-  
+function openTicket(saleId, printWindow = null){
   const frame = document.getElementById('printFrame');
   if(!frame){
-    console.error('❌ Élément printFrame non trouvé');
-    alert('Erreur: élément d\'impression non trouvé');
+    alert('Erreur: element d\'impression introuvable.');
     return;
   }
-  const ticketUrl = 'seller_ticket_pdf.php?sale_id=' + encodeURIComponent(saleId) + '&_ts=' + Date.now();
-  frame.dataset.ticketUrl = ticketUrl;
+
+  const ts = Date.now();
+  const safeSaleId = encodeURIComponent(saleId);
+  const previewUrl = 'seller_ticket_print.php?sale_id=' + safeSaleId + '&preview=1&_ts=' + ts;
+  const autoPrintUrl = 'seller_ticket_print.php?sale_id=' + safeSaleId + '&autoprint=1&_ts=' + ts;
+  const pdfUrl = 'seller_ticket_pdf.php?sale_id=' + safeSaleId + '&_ts=' + ts;
+
+  frame.dataset.ticketPreviewUrl = previewUrl;
+  frame.dataset.ticketPrintUrl = autoPrintUrl;
+  frame.dataset.ticketPdfUrl = pdfUrl;
+  frame.src = previewUrl;
+
   const printModal = bootstrap.Modal.getOrCreateInstance(document.getElementById('printModal'));
-
-  frame.onload = function(){
-    console.log('✅ PDF chargé, lancement de l\'impression');
-    setTimeout(() => {
-      try {
-        frame.contentWindow.focus();
-        frame.contentWindow.print();
-      } catch(e) {
-        console.error('Erreur impression:', e);
-      }
-    }, 1000);
-  };
-  
-  frame.onerror = function(){
-    console.error('❌ Erreur chargement PDF');
-  };
-
-  frame.src = ticketUrl;
-  
   printModal.show();
+
+  if(printWindow && !printWindow.closed){
+    printWindow.location.href = autoPrintUrl;
+    return;
+  }
+
+  const popup = window.open(autoPrintUrl, '_blank', 'width=420,height=760');
+  if(!popup){
+    showPosMsg(
+      'Popup bloquee par Chrome. Autorisez les popups puis relancez l\'impression.',
+      'error'
+    );
+  }
 }
 
 function printTicket(){
@@ -1350,24 +1378,20 @@ function printTicket(){
     console.error('Erreur impression iframe:', e);
   }
 
-  const ticketUrl = frame.dataset.ticketUrl || frame.src;
-  if(ticketUrl){
-    const popup = window.open(ticketUrl, '_blank');
-    if(popup){
-      popup.focus();
-      setTimeout(() => {
-        try {
-          popup.print();
-        } catch(err) {
-          console.error('Erreur impression popup:', err);
-        }
-      }, 1200);
-    }
+  const fallbackUrl = frame.dataset.ticketPrintUrl || frame.dataset.ticketPreviewUrl || frame.src;
+  if(fallbackUrl){
+    window.open(fallbackUrl, '_blank', 'width=420,height=760');
   }
 }
 
-
-
+function downloadTicketPdf(){
+  const frame = document.getElementById('printFrame');
+  if(!frame) return;
+  const pdfUrl = frame.dataset.ticketPdfUrl;
+  if(pdfUrl){
+    window.open(pdfUrl, '_blank');
+  }
+}
   /* //Script impression 
   let currentSaleId = null;
 

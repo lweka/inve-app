@@ -18,6 +18,8 @@ CREATE TABLE houses (
   code VARCHAR(50) NOT NULL UNIQUE, -- code maison pour attacher vendeur
   type VARCHAR(100),
   address VARCHAR(255),
+  logo_path VARCHAR(255) NULL,
+  logo_updated_at DATETIME NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
