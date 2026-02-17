@@ -20,6 +20,44 @@ $house_id = (int)$_SESSION['house_id'];
 $agent_id = (int)$_SESSION['user_id'];
 
 /* ===============================
+   FILTRE DE DATES (PAR DEFAUT: AUJOURD'HUI)
+   =============================== */
+$today = date('Y-m-d');
+$filter_notice = '';
+
+$raw_from_date = trim($_GET['from_date'] ?? '');
+$raw_to_date = trim($_GET['to_date'] ?? '');
+
+$from_date = $raw_from_date !== '' ? $raw_from_date : $today;
+$to_date = $raw_to_date !== '' ? $raw_to_date : $today;
+
+$is_valid_from = DateTime::createFromFormat('Y-m-d', $from_date);
+$is_valid_to = DateTime::createFromFormat('Y-m-d', $to_date);
+
+if (!$is_valid_from || $is_valid_from->format('Y-m-d') !== $from_date) {
+  $from_date = $today;
+}
+
+if (!$is_valid_to || $is_valid_to->format('Y-m-d') !== $to_date) {
+  $to_date = $today;
+}
+
+if ($from_date > $to_date) {
+  $tmp = $from_date;
+  $from_date = $to_date;
+  $to_date = $tmp;
+  $filter_notice = "Les dates ont ete inversees automatiquement.";
+}
+
+$from_datetime = $from_date . ' 00:00:00';
+$to_datetime = $to_date . ' 23:59:59';
+
+$period_label = date('d/m/Y', strtotime($from_date));
+if ($from_date !== $to_date) {
+  $period_label .= ' au ' . date('d/m/Y', strtotime($to_date));
+}
+
+/* ===============================
    HISTORIQUE DES VENTES VENDEUR
    =============================== */
 $stmt = $pdo->prepare("
@@ -40,11 +78,13 @@ LEFT JOIN products p ON p.id = pm.product_id
 WHERE pm.house_id = ?
   AND pm.agent_id = ?
   AND (pm.type = 'out' OR pm.type = 'sale')
+  AND pm.created_at >= ?
+  AND pm.created_at <= ?
 ORDER BY
   COALESCE(pm.kit_id, pm.id) DESC,
   pm.is_kit DESC
 ");
-$stmt->execute([$house_id, $agent_id]);
+$stmt->execute([$house_id, $agent_id, $from_datetime, $to_datetime]);
 $sales = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 // Fonction pour récupérer les totaux par devise d'un kit
@@ -177,6 +217,39 @@ body {
   font-size: 32px;
 }
 
+.history-subtitle {
+  margin-top: 8px;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 14px;
+}
+
+/* ===== FILTRE ===== */
+.filter-card {
+  background: var(--pp-white);
+  border: 1px solid var(--pp-border);
+  border-radius: 16px;
+  box-shadow: 0 4px 20px var(--pp-shadow);
+  padding: 20px 22px;
+  margin-bottom: 20px;
+  animation: fadeUp 0.6s ease both;
+}
+
+.filter-label {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #64748b;
+  margin-bottom: 6px;
+}
+
+.filter-hint {
+  font-size: 13px;
+  color: #6b7280;
+  margin-top: 8px;
+  margin-bottom: 0;
+}
+
 /* ===== BOUTONS ===== */
 .btn-pp {
   padding: 10px 22px;
@@ -201,6 +274,17 @@ body {
   background: var(--pp-bg);
   border-color: var(--pp-blue);
   transform: translateY(-2px);
+}
+
+.btn-pp-primary {
+  background: linear-gradient(135deg, var(--pp-blue), var(--pp-blue-dark));
+  color: var(--pp-white);
+}
+
+.btn-pp-primary:hover {
+  color: var(--pp-white);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(0, 112, 224, 0.18);
 }
 
 /* ===== TABLE CARD ===== */
@@ -331,6 +415,14 @@ body {
   .history-header h1 {
     font-size: 22px;
   }
+
+  .history-subtitle {
+    font-size: 13px;
+  }
+
+  .filter-card {
+    padding: 16px;
+  }
   
   .table-pp {
     font-size: 12px;
@@ -429,13 +521,47 @@ body {
 
 <!-- HEADER -->
 <div class="history-header">
-  <h1>
-    <i class="fa-solid fa-receipt"></i>
-    Historique des ventes
-  </h1>
+  <div>
+    <h1>
+      <i class="fa-solid fa-receipt"></i>
+      Historique des ventes
+    </h1>
+    <div class="history-subtitle">
+      Periode affichee: <strong><?= htmlspecialchars($period_label) ?></strong>
+    </div>
+  </div>
   <a href="seller_dashboard.php" class="btn-pp btn-pp-secondary">
     <i class="fa-solid fa-arrow-left"></i> Retour au POS
   </a>
+</div>
+
+<?php if ($filter_notice): ?>
+  <div class="alert alert-warning mb-3" role="alert">
+    <?= htmlspecialchars($filter_notice) ?>
+  </div>
+<?php endif; ?>
+
+<!-- FILTRE -->
+<div class="filter-card">
+  <form method="GET" class="row g-3 align-items-end">
+    <div class="col-12 col-md-4">
+      <label class="filter-label" for="from_date">Date debut</label>
+      <input type="date" class="form-control" id="from_date" name="from_date" value="<?= htmlspecialchars($from_date) ?>" required>
+    </div>
+    <div class="col-12 col-md-4">
+      <label class="filter-label" for="to_date">Date fin</label>
+      <input type="date" class="form-control" id="to_date" name="to_date" value="<?= htmlspecialchars($to_date) ?>" required>
+    </div>
+    <div class="col-12 col-md-4 d-flex gap-2">
+      <button type="submit" class="btn-pp btn-pp-primary">
+        <i class="fa-solid fa-filter"></i> Filtrer
+      </button>
+      <a href="seller_sales_history.php" class="btn-pp btn-pp-secondary">
+        <i class="fa-solid fa-calendar-day"></i> Aujourd'hui
+      </a>
+    </div>
+  </form>
+  <p class="filter-hint">Par defaut, seules les ventes de la date du jour sont affichees.</p>
 </div>
 
 <!-- TABLE CARD -->
@@ -460,7 +586,7 @@ body {
             <td colspan="8">
               <div class="empty-state">
                 <i class="fa-solid fa-receipt"></i>
-                <p>Aucune vente enregistrée</p>
+                <p>Aucune vente enregistree pour la periode selectionnee</p>
               </div>
             </td>
           </tr>
@@ -608,7 +734,7 @@ body {
     <div class="sales-card">
       <div class="empty-state" style="padding: 24px 16px;">
         <i class="fa-solid fa-receipt"></i>
-        <p>Aucune vente enregistrée</p>
+        <p>Aucune vente enregistree pour la periode selectionnee</p>
       </div>
     </div>
   <?php endif; ?>
