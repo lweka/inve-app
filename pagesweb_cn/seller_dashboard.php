@@ -740,6 +740,39 @@ body {
   let products=[], cart=[];
   const USD_RATE = <?= $usd_rate ?>; // Taux de change USD → CDF
 
+  function hasUsdCurrency(totals){
+    return !!(totals && Object.prototype.hasOwnProperty.call(totals, 'USD'));
+  }
+
+  function buildTotalsLabel(totals){
+    if(!totals) return '';
+    const parts = [];
+    for(const cur in totals){
+      const amount = Number(totals[cur] || 0);
+      const formatted = amount.toFixed(2);
+      parts.push(`${formatted} ${cur}`);
+    }
+    return parts.join(' + ');
+  }
+
+  function convertTotalsToCdf(totals){
+    if(!totals) return 0;
+    let totalCdf = 0;
+    for(const cur in totals){
+      const amount = Number(totals[cur] || 0);
+      if(cur === 'USD'){
+        totalCdf += amount * USD_RATE;
+      } else {
+        totalCdf += amount;
+      }
+    }
+    return totalCdf;
+  }
+
+  function formatCdf(amount){
+    return `${Number(amount || 0).toFixed(0)} CDF`;
+  }
+
   /* ===== PRODUITS ===== */
   function loadProducts(){
     fetch('seller_products.php?house_id=<?= $house_id ?>')
@@ -962,6 +995,14 @@ function finalizeSaleUiAfterPrint(){
         totals[c.sell_currency] = (totals[c.sell_currency] || 0) + (c.total_price || 0);
       }
 
+      const displayTotals = c.display_total || buildTotalsLabel(c.total_by_currency || {});
+      const convertedCdf = (typeof c.converted_total_cdf === 'number')
+        ? c.converted_total_cdf
+        : convertTotalsToCdf(c.total_by_currency || {});
+      const showConvertedTotal = (typeof c.show_converted_total === 'boolean')
+        ? c.show_converted_total
+        : hasUsdCurrency(c.total_by_currency || {});
+
       el.innerHTML += `
         <div class="cart-item">
           <div class="d-flex justify-content-between align-items-start">
@@ -976,8 +1017,9 @@ function finalizeSaleUiAfterPrint(){
                 ${c.items.map(it => `<li>${it.name} × ${it.qty} = ${(it.sell_price * it.qty).toFixed(2)} ${it.sell_currency}</li>`).join('')}
               </ul>
               <div class="cart-item-price" style="border-top:1px solid #e5e7eb;padding-top:8px;margin-top:8px;">
-                <strong>Total: ${c.display_total || Object.entries(c.total_by_currency || {}).map(([cur, tot]) => `${tot.toFixed(2)} ${cur}`).join(' + ')}</strong>
+                <strong>Total: ${displayTotals}</strong>
               </div>
+              ${showConvertedTotal ? `<div class="small" style="margin-top:4px;color:var(--pp-blue-dark);font-weight:600;">Total converti: ${formatCdf(convertedCdf)} (1 USD = ${formatCdf(USD_RATE)})</div>` : ''}
             </div>
             <button class="btn-pp btn-pp-danger btn-sm" onclick="cart.splice(${i},1); renderCart();">
               <i class="fa-solid fa-xmark"></i>
@@ -1129,7 +1171,6 @@ function addKitToCart(){
 
   // Calculer le total du kit (chaque produit avec sa devise)
   let totals = {};
-  let totalDisplay = '';
 
   currentKit.forEach(k => {
     const cur = k.sell_currency;
@@ -1137,10 +1178,9 @@ function addKitToCart(){
   });
 
   // Créer un label affichant toutes les devises
-  for(const cur in totals) {
-    totalDisplay += `${totals[cur].toFixed(2)} ${cur} + `;
-  }
-  totalDisplay = totalDisplay.slice(0, -3); // Enlever le dernier " + "
+  const totalDisplay = buildTotalsLabel(totals);
+  const convertedTotalCdf = convertTotalsToCdf(totals);
+  const showConvertedTotal = hasUsdCurrency(totals);
 
   // Ajouter le kit au panier (en gardant tous les composants)
   cart.push({
@@ -1148,6 +1188,8 @@ function addKitToCart(){
     label: "KIT PRODUITS",
     total_by_currency: totals,
     display_total: totalDisplay,
+    converted_total_cdf: convertedTotalCdf,
+    show_converted_total: showConvertedTotal,
     sell_currency: Object.keys(totals).join('/'), // ex: "CDF/USD"
     items: JSON.parse(JSON.stringify(currentKit)) // copie propre
   });
@@ -1226,7 +1268,7 @@ function renderKitPreview(){
   
   // Grouper par devise pour affichage
   const kitsByUnitCurrency = {};
-  let grandTotal = 0;
+  const currencyTotals = {};
   
   currentKit.forEach((k, idx) => {
     const cur = k.sell_currency;
@@ -1234,11 +1276,12 @@ function renderKitPreview(){
       kitsByUnitCurrency[cur] = [];
     }
     kitsByUnitCurrency[cur].push({...k, idx: idx});
+    currencyTotals[cur] = (currencyTotals[cur] || 0) + (k.sell_price * k.qty);
   });
 
   // Afficher chaque groupe avec sa devise
   for(const currency in kitsByUnitCurrency) {
-    const subtotalByCurrency = kitsByUnitCurrency[currency].reduce((sum, k) => sum + (k.sell_price * k.qty), 0);
+    const subtotalByCurrency = currencyTotals[currency] || 0;
     
     el.innerHTML += `<div style="margin-bottom:12px;padding:8px;background:rgba(0,112,224,0.05);border-left:3px solid var(--pp-blue);border-radius:6px;">`;
     
@@ -1270,6 +1313,17 @@ function renderKitPreview(){
     
     el.innerHTML += '</div>';
   }
+
+  const kitTotalLabel = buildTotalsLabel(currencyTotals);
+  el.innerHTML += `
+    <div style="margin-top:10px;padding:10px;border:1px dashed var(--pp-border);border-radius:10px;background:#fff;">
+      <div style="display:flex;justify-content:space-between;font-weight:700;color:var(--pp-text);">
+        <span>Total kit</span>
+        <span>${kitTotalLabel}</span>
+      </div>
+      ${hasUsdCurrency(currencyTotals) ? `<div style="margin-top:6px;font-size:13px;color:var(--pp-blue-dark);font-weight:600;">Total converti: ${formatCdf(convertTotalsToCdf(currencyTotals))} (1 USD = ${formatCdf(USD_RATE)})</div>` : ''}
+    </div>
+  `;
 }
 
 // Fonction pour retirer un produit du kit

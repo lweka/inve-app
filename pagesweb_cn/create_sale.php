@@ -145,10 +145,11 @@ try {
                     customer_name,
                     is_kit,
                     sell_currency,
+                    usd_rate,
                     receipt_id,
                     created_at
                 )
-                VALUES (?,?,?,?,?,?,?,?,?,1,?,?,NOW())
+                VALUES (?,?,?,?,?,?,?,?,?,1,?,?,?,NOW())
             ");
             $stmt->execute([
                 $client_code,
@@ -161,6 +162,7 @@ try {
                 $payment_method,
                 $customer_name,
                 $kit_currency,
+                $usd_rate,
                 $receipt_id
             ]);
 
@@ -196,11 +198,12 @@ try {
                         qty,
                         unit_sell_price,
                         sell_currency,
+                        usd_rate,
                         kit_id,
                         receipt_id,
                         created_at
                     )
-                    VALUES (?,?,?,?,?,?,?,?,?,?,NOW())
+                    VALUES (?,?,?,?,?,?,?,?,?,?,?,NOW())
                 ")->execute([
                     $client_code,
                     $pid,
@@ -210,6 +213,7 @@ try {
                     $qty,
                     $prix,
                     $component_currency,
+                    $usd_rate,
                     $kit_id,
                     $receipt_id
                 ]);
@@ -268,6 +272,7 @@ try {
                 qty,
                 unit_sell_price,
                 sell_currency,
+                usd_rate,
                 discount,
                 payment_method,
                 customer_name,
@@ -275,7 +280,7 @@ try {
                 receipt_id,
                 created_at
             )
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,0,?,NOW())
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,0,?,NOW())
         ")->execute([
             $client_code,
             $product_id,
@@ -285,6 +290,7 @@ try {
             $qty,
             $sell_price,
             $simple_currency,
+            $usd_rate,
             $discount,
             $payment_method,
             $customer_name,

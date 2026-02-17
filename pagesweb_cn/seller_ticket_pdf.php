@@ -44,6 +44,20 @@ if (!$sale) {
     exit('Vente introuvable');
 }
 
+$usdRate = (float)($sale['usd_rate'] ?? 0);
+if ($usdRate <= 0) {
+    try {
+        $stmtRate = $pdo->prepare("SELECT usd_rate FROM exchange_rate WHERE house_id = ? LIMIT 1");
+        $stmtRate->execute([(int)$sale['house_id']]);
+        $usdRate = (float)$stmtRate->fetchColumn();
+    } catch (Throwable $e) {
+        error_log('USD rate lookup error: ' . $e->getMessage());
+    }
+}
+if ($usdRate <= 0) {
+    $usdRate = 2500;
+}
+
 $receiptId = $sale['receipt_id'];
 
 $stmt = $pdo->prepare("\nSELECT\n    pm.id,\n    pm.is_kit,\n    pm.kit_id,\n    pm.qty,\n    pm.unit_sell_price,\n    pm.discount,\n    pm.sell_currency,\n    CASE\n        WHEN pm.is_kit = 1 THEN 'KIT PRODUITS'\n        ELSE COALESCE(p.name, 'Produit inconnu')\n    END AS name\nFROM product_movements pm\nLEFT JOIN products p ON p.id = pm.product_id\nWHERE pm.receipt_id = ?\nORDER BY pm.is_kit DESC, pm.id ASC\n");
@@ -75,6 +89,22 @@ function buildTotalsString(array $totalsByCurrency): string {
         $parts[] = formatAmount($amt, $cur);
     }
     return implode(' + ', $parts);
+}
+
+function convertAmountToCdf($amount, $currency, $usdRate): float {
+    $cur = strtoupper((string)$currency);
+    if ($cur === 'USD') {
+        return (float)$amount * (float)$usdRate;
+    }
+    return (float)$amount;
+}
+
+function convertTotalsToCdf(array $totalsByCurrency, $usdRate): float {
+    $total = 0.0;
+    foreach ($totalsByCurrency as $cur => $amt) {
+        $total += convertAmountToCdf($amt, $cur, $usdRate);
+    }
+    return $total;
 }
 
 function cutText($value, int $max): string {
@@ -227,6 +257,14 @@ foreach ($kits as $kit) {
                 $pdf->Cell(9, 3.5, $comp['qty'], 0, 0, 'C');
                 $pdf->Cell(24, 3.5, cutText(formatAmount($compTotal, $compCurrency), 20), 0, 1, 'R');
             }
+        }
+
+        if (count($kitTotals) > 1 || isset($kitTotals['USD'])) {
+            $pdf->SetFont('helvetica', 'B', 7);
+            $pdf->Cell(41, 3.5, cutText('Total converti (1$=' . number_format($usdRate, 0) . ' CDF)', 24), 0, 0, 'L');
+            $pdf->Cell(9, 3.5, '', 0, 0, 'C');
+            $pdf->Cell(24, 3.5, cutText(formatAmount(convertTotalsToCdf($kitTotals, $usdRate), 'CDF'), 20), 0, 1, 'R');
+            $pdf->SetFont('helvetica', '', 7);
         }
 
         if ($hasDiscount && !$isMultiCurrency) {
