@@ -4,7 +4,7 @@
  * Version: 1.0.0
  */
 
-const CACHE_VERSION = 'cartelplus-v1.0.1';
+const CACHE_VERSION = 'cartelplus-v1.0.2';
 const STATIC_CACHE = `${CACHE_VERSION}-static`;
 const DYNAMIC_CACHE = `${CACHE_VERSION}-dynamic`;
 const API_CACHE = `${CACHE_VERSION}-api`;
@@ -38,6 +38,12 @@ const APP_PAGES = [
 const API_ROUTES = [
     '/inve-app/codeSAvSUp/api/',
     '/inve-app/pagesweb_cn/sync_api.php'
+];
+
+// Endpoints d'ecriture critiques (POST/PUT/DELETE)
+const MUTATION_ROUTES = [
+    '/inve-app/pagesweb_cn/create_sale.php',
+    '/inve-app/pagesweb_cn/ticket_print_log.php'
 ];
 
 // ======================
@@ -95,6 +101,16 @@ self.addEventListener('fetch', event => {
 
     // Ignorer les requêtes non-HTTP
     if (!request.url.startsWith('http')) {
+        return;
+    }
+
+    // Requêtes d'écriture: ne pas appliquer les stratégies cache de pages
+    if (request.method !== 'GET') {
+        if (isAPIRequest(url) || isMutationRequest(url)) {
+            event.respondWith(networkFirstWithOfflineSupport(request));
+        } else {
+            event.respondWith(fetch(request));
+        }
         return;
     }
 
@@ -269,6 +285,10 @@ function isAPIRequest(url) {
            url.pathname.includes('/api/') ||
            url.pathname.includes('_api.php') ||
            url.search.includes('action=');
+}
+
+function isMutationRequest(url) {
+    return MUTATION_ROUTES.some(route => url.pathname.includes(route));
 }
 
 function isAppPage(url) {
