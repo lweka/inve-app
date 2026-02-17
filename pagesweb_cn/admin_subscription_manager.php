@@ -671,6 +671,54 @@ $active_clients = $stmt_clients->fetchAll(PDO::FETCH_ASSOC);
             font-size: 20px;
         }
 
+        /* ===== MODAL ===== */
+        .trial-upgrade-modal {
+            border: none;
+            border-radius: 18px;
+            box-shadow: 0 20px 50px rgba(11, 31, 58, 0.2);
+        }
+
+        .modal-question-icon {
+            width: 96px;
+            height: 96px;
+            margin: 0 auto 16px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, rgba(0, 112, 224, 0.14) 0%, rgba(0, 168, 255, 0.2) 100%);
+            color: var(--pp-blue-dark);
+            font-size: 56px;
+        }
+
+        .modal-question-text {
+            font-size: 17px;
+            font-weight: 600;
+            color: var(--pp-text);
+            line-height: 1.5;
+            margin-bottom: 8px;
+        }
+
+        .modal-client-text {
+            color: #6b7280;
+            font-size: 13px;
+            margin-bottom: 0;
+        }
+
+        .btn-modal-confirm {
+            background: linear-gradient(135deg, var(--pp-blue) 0%, var(--pp-blue-dark) 100%);
+            color: #fff;
+            border: none;
+            font-weight: 600;
+            padding: 10px 16px;
+            border-radius: 10px;
+        }
+
+        .btn-modal-confirm:hover {
+            color: #fff;
+            opacity: 0.95;
+        }
+
         /* ===== FORM ===== */
         form {
             display: contents;
@@ -986,13 +1034,13 @@ $active_clients = $stmt_clients->fetchAll(PDO::FETCH_ASSOC);
                                             <td>
                                                 <div style="display: flex; gap: 6px; flex-wrap: wrap;">
                                                     <?php if ($c['subscription_type'] === 'trial'): ?>
-                                                        <form method="POST" style="display: inline;">
-                                                            <input type="hidden" name="action" value="upgrade_to_pro">
-                                                            <input type="hidden" name="client_id" value="<?= $c['id'] ?>">
-                                                            <button type="submit" class="btn-action btn-upgrade" title="Valider paiement 10$ et activer 30 jours" onclick="return confirm('Paiement recu ? Ce compte Trial passera en abonnement 30 jours a partir d\'aujourd\'hui.')">
-                                                                <i class="fas fa-play"></i> Relancer
-                                                            </button>
-                                                        </form>
+                                                        <button
+                                                            type="button"
+                                                            class="btn-action btn-upgrade"
+                                                            title="Valider paiement 10$ et activer 30 jours"
+                                                            onclick='openTrialUpgradeModal(<?= (int)$c['id'] ?>, <?= json_encode($c['first_name'] . ' ' . $c['last_name']) ?>)'>
+                                                            <i class="fas fa-play"></i> Relancer
+                                                        </button>
                                                     <?php endif; ?>
 
                                                     <?php if ($c['subscription_type'] === 'monthly'): ?>
@@ -1020,6 +1068,37 @@ $active_clients = $stmt_clients->fetchAll(PDO::FETCH_ASSOC);
         </div>
     </div>
 
+    <!-- MODAL CONFIRMATION TRIAL -> PRO -->
+    <div class="modal fade" id="trialUpgradeModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content trial-upgrade-modal">
+                <div class="modal-header border-0 pb-0">
+                    <h5 class="modal-title fw-bold">Confirmation de Paiement</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+                </div>
+                <div class="modal-body text-center pt-2">
+                    <div class="modal-question-icon">
+                        <i class="fas fa-circle-question"></i>
+                    </div>
+                    <p class="modal-question-text">
+                        Paiement recu ? Ce compte Trial passera en abonnement 30 jours a partir d'aujourd'hui.
+                    </p>
+                    <p class="modal-client-text" id="trialUpgradeClientLabel">Client: --</p>
+                </div>
+                <div class="modal-footer border-0 pt-0">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Annuler</button>
+                    <form method="POST" style="display: inline;">
+                        <input type="hidden" name="action" value="upgrade_to_pro">
+                        <input type="hidden" name="client_id" id="trialUpgradeClientId" value="">
+                        <button type="submit" class="btn-modal-confirm">
+                            Confirmer et activer 30 jours
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="../js/bootstrap.min.js"></script>
     <script>
         function copyToClipboard(text) {
@@ -1034,6 +1113,32 @@ $active_clients = $stmt_clients->fetchAll(PDO::FETCH_ASSOC);
                     btn.style.background = '';
                 }, 2000);
             });
+        }
+
+        let trialUpgradeModalInstance = null;
+
+        function openTrialUpgradeModal(clientId, clientName) {
+            const clientIdInput = document.getElementById('trialUpgradeClientId');
+            const clientLabel = document.getElementById('trialUpgradeClientLabel');
+            const modalElement = document.getElementById('trialUpgradeModal');
+
+            if (clientIdInput) {
+                clientIdInput.value = clientId;
+            }
+
+            if (clientLabel) {
+                clientLabel.textContent = 'Client: ' + (clientName || '--');
+            }
+
+            if (!modalElement || typeof bootstrap === 'undefined') {
+                return;
+            }
+
+            if (!trialUpgradeModalInstance) {
+                trialUpgradeModalInstance = new bootstrap.Modal(modalElement);
+            }
+
+            trialUpgradeModalInstance.show();
         }
     </script>
 
