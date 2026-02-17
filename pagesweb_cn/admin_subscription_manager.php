@@ -18,6 +18,10 @@ if (!isset($_SESSION['admin_logged_in']) || $_SESSION['admin_logged_in'] !== tru
 
 require_once __DIR__ . '/connectDb.php';
 
+if (!defined('BASE_URL')) {
+    define('BASE_URL', '/');
+}
+
 // Vérifier si admin PRINCIPAL (vous)
 // À adapter selon votre système d'identification
 $admin_id = isset($_SESSION['admin_id']) ? $_SESSION['admin_id'] : null;
@@ -820,18 +824,19 @@ $active_clients = $stmt_clients->fetchAll(PDO::FETCH_ASSOC);
                                             <td><?= htmlspecialchars($t['company_name'] ?? '—') ?></td>
                                             <td>
                                                 <?php
-                                                $status_class = match($t['status']) {
+                                                $trial_status = $t['status'];
+                                                $trial_status_class_map = [
                                                     'unused' => 'badge-warning',
                                                     'activated' => 'badge-success',
-                                                    'expired' => 'badge-danger',
-                                                    default => 'badge-info'
-                                                };
-                                                $status_text = match($t['status']) {
+                                                    'expired' => 'badge-danger'
+                                                ];
+                                                $status_class = isset($trial_status_class_map[$trial_status]) ? $trial_status_class_map[$trial_status] : 'badge-info';
+                                                $trial_status_text_map = [
                                                     'unused' => 'Non utilisé',
                                                     'activated' => 'Activé',
                                                     'expired' => 'Expiré',
-                                                    default => ucfirst($t['status'])
-                                                };
+                                                ];
+                                                $status_text = isset($trial_status_text_map[$trial_status]) ? $trial_status_text_map[$trial_status] : ucfirst($trial_status);
                                                 ?>
                                                 <span class="badge <?= $status_class ?>"><?= $status_text ?></span>
                                             </td>
@@ -882,22 +887,23 @@ $active_clients = $stmt_clients->fetchAll(PDO::FETCH_ASSOC);
                                             <td><strong style="color: var(--pp-blue);">$<?= number_format($s['payment_amount'] ?? 0, 2) ?></strong></td>
                                             <td>
                                                 <?php
-                                                $status_class = match($s['status']) {
+                                                $sub_status = $s['status'];
+                                                $sub_status_class_map = [
                                                     'pending' => 'badge-warning',
                                                     'validated' => 'badge-success',
                                                     'active' => 'badge-success',
                                                     'suspended' => 'badge-danger',
-                                                    'expired' => 'badge-danger',
-                                                    default => 'badge-info'
-                                                };
-                                                $status_text = match($s['status']) {
+                                                    'expired' => 'badge-danger'
+                                                ];
+                                                $status_class = isset($sub_status_class_map[$sub_status]) ? $sub_status_class_map[$sub_status] : 'badge-info';
+                                                $sub_status_text_map = [
                                                     'pending' => 'En Attente',
                                                     'validated' => 'Validé',
                                                     'active' => 'Actif',
                                                     'suspended' => 'Suspendu',
                                                     'expired' => 'Expiré',
-                                                    default => ucfirst($s['status'])
-                                                };
+                                                ];
+                                                $status_text = isset($sub_status_text_map[$sub_status]) ? $sub_status_text_map[$sub_status] : ucfirst($sub_status);
                                                 ?>
                                                 <span class="badge <?= $status_class ?>"><?= $status_text ?></span>
                                             </td>
