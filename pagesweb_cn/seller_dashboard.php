@@ -1702,15 +1702,16 @@ window.addEventListener('message', (event) => {
   finalizeSaleUiAfterPrint();
 });
 
-window.addEventListener('afterprint', () => {
-  if(ticketPrintPending){
-    finalizeSaleUiAfterPrint();
-  }
-});
-
 document.getElementById('printModal')?.addEventListener('hidden.bs.modal', () => {
-  if(!ticketPrintPending){
-    clearPosMsg();
+  ticketPrintPending = false;
+  clearPosMsg();
+
+  const frame = document.getElementById('printFrame');
+  if(frame){
+    frame.src = '';
+    delete frame.dataset.ticketPreviewUrl;
+    delete frame.dataset.ticketPrintUrl;
+    delete frame.dataset.ticketPdfUrl;
   }
 });
   /* //Script impression 
