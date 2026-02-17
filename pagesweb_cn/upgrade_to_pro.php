@@ -67,7 +67,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['request_upgrade'])) {
                 INSERT INTO subscription_codes (
                     code, first_name, last_name, email, company_name,
                     payment_amount, status, notes
-                ) VALUES (?, ?, ?, ?, ?, ?, 10, 'pending', 'Upgrade from trial')
+                ) VALUES (?, ?, ?, ?, ?, 10, 'pending', 'Upgrade from trial')
             ");
             $stmt->execute([
                 $subscription_code,

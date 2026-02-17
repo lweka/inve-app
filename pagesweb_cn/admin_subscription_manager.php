@@ -41,7 +41,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         
         if ($sub_code && $sub_code['status'] === 'pending') {
             // Durée Pro +30 jours
-            $expires_at = date('Y-m-d H:i:s', strtotime('+30 days'));
+            $payment_date_ts = !empty($sub_code['created_at']) ? strtotime($sub_code['created_at']) : false;
+            if ($payment_date_ts === false) {
+                $payment_date_ts = time();
+            }
+            $expires_at = date('Y-m-d H:i:s', strtotime('+30 days', $payment_date_ts));
 
             // Si un client trial existe déjà, on le bascule en Pro
             $stmt_existing = $pdo->prepare("SELECT id, client_code FROM active_clients WHERE email = ? AND subscription_type = 'trial'");
@@ -105,7 +109,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     elseif ($_POST['action'] === 'upgrade_to_pro') {
         $client_id = (int)$_POST['client_id'];
         
-        $stmt = $pdo->prepare("SELECT * FROM active_clients WHERE id = ? AND subscription_type = 'trial' AND status = 'active'");
+        $stmt = $pdo->prepare("SELECT * FROM active_clients WHERE id = ? AND subscription_type = 'trial' LIMIT 1");
         $stmt->execute([$client_id]);
         $client = $stmt->fetch(PDO::FETCH_ASSOC);
         
@@ -115,7 +119,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             
             $stmt_update = $pdo->prepare("
                 UPDATE active_clients 
-                SET subscription_type = 'monthly', expires_at = ?
+                SET subscription_type = 'monthly', expires_at = ?, status = 'active'
                 WHERE id = ?
             ");
             $stmt_update->execute([$new_expires_at, $client_id]);
@@ -981,32 +985,22 @@ $active_clients = $stmt_clients->fetchAll(PDO::FETCH_ASSOC);
                                             <td><?= $c['last_login'] ? date('d/m/Y H:i', strtotime($c['last_login'])) : '—' ?></td>
                                             <td>
                                                 <div style="display: flex; gap: 6px; flex-wrap: wrap;">
-                                                    <?php if ($c['subscription_type'] === 'trial' && !$is_expired): ?>
+                                                    <?php if ($c['subscription_type'] === 'trial'): ?>
                                                         <form method="POST" style="display: inline;">
                                                             <input type="hidden" name="action" value="upgrade_to_pro">
                                                             <input type="hidden" name="client_id" value="<?= $c['id'] ?>">
-                                                            <button type="submit" class="btn-action btn-upgrade" title="Basculer en Pro" onclick="return confirm('Basculer ce compte Trial en Pro (30 jours) ?')">
-                                                                <i class="fas fa-crown"></i> Pro
+                                                            <button type="submit" class="btn-action btn-upgrade" title="Valider paiement 10$ et activer 30 jours" onclick="return confirm('Paiement recu ? Ce compte Trial passera en abonnement 30 jours a partir d\'aujourd\'hui.')">
+                                                                <i class="fas fa-play"></i> Relancer
                                                             </button>
                                                         </form>
                                                     <?php endif; ?>
-                                                    
+
                                                     <?php if ($c['subscription_type'] === 'monthly'): ?>
                                                         <form method="POST" style="display: inline;">
                                                             <input type="hidden" name="action" value="renew_subscription">
                                                             <input type="hidden" name="client_id" value="<?= $c['id'] ?>">
-                                                            <button type="submit" class="btn-action btn-renew" title="Renouveler abonnement +30j" onclick="return confirm('Renouveler l\'abonnement de ce client (+30 jours) ?')">
-                                                                <i class="fas fa-rotate-right"></i> Renouveler
-                                                            </button>
-                                                        </form>
-                                                    <?php endif; ?>
-                                                    
-                                                    <?php if ($is_expired): ?>
-                                                        <form method="POST" style="display: inline;">
-                                                            <input type="hidden" name="action" value="renew_subscription">
-                                                            <input type="hidden" name="client_id" value="<?= $c['id'] ?>">
-                                                            <button type="submit" class="btn-action btn-renew" title="Relancer abonnement" onclick="return confirm('Relancer l\'abonnement de ce client ?')">
-                                                                <i class="fas fa-play"></i> Relancer
+                                                            <button type="submit" class="btn-action btn-renew" title="<?= $is_expired ? 'Relancer abonnement +30j' : 'Renouveler abonnement +30j' ?>" onclick="return confirm('<?= $is_expired ? 'Relancer cet abonnement expire (+30 jours a partir d\\\'aujourd\\\'hui) ?' : 'Renouveler l\\\'abonnement de ce client (+30 jours) ?' ?>')">
+                                                                <i class="fas <?= $is_expired ? 'fa-play' : 'fa-rotate-right' ?>"></i> <?= $is_expired ? 'Relancer' : 'Renouveler' ?>
                                                             </button>
                                                         </form>
                                                     <?php endif; ?>
