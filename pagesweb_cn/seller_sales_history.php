@@ -18,6 +18,18 @@ if(!$agent || $agent['status'] !== 'active'){
 
 $house_id = (int)$_SESSION['house_id'];
 $agent_id = (int)$_SESSION['user_id'];
+$house_usd_rate = 2500.0;
+
+try {
+  $stmt_rate = $pdo->prepare("SELECT usd_rate FROM exchange_rate WHERE house_id = ? LIMIT 1");
+  $stmt_rate->execute([$house_id]);
+  $rate = (float)$stmt_rate->fetchColumn();
+  if ($rate > 0) {
+    $house_usd_rate = $rate;
+  }
+} catch (Throwable $e) {
+  error_log('USD rate lookup error in seller_sales_history: ' . $e->getMessage());
+}
 
 /* ===============================
    FILTRE DE DATES (PAR DEFAUT: AUJOURD'HUI)
@@ -72,6 +84,7 @@ SELECT
   pm.is_kit,
   pm.kit_id,
   pm.sell_currency,
+  pm.usd_rate,
   p.name AS product_name
 FROM product_movements pm
 LEFT JOIN products p ON p.id = pm.product_id
@@ -100,6 +113,61 @@ function getKitTotalsByCurrency($pdo, $kit_id) {
   ");
   $stmt->execute([$kit_id]);
   return $stmt->fetchAll(PDO::FETCH_ASSOC);
+}
+
+function convertAmountToCDF($amount, $currency, $usd_rate) {
+  $cur = strtoupper((string)$currency);
+  if ($cur === 'USD') {
+    return (float)$amount * (float)$usd_rate;
+  }
+  return (float)$amount;
+}
+
+function buildKitDisplayData($pdo, $kit_row, $fallback_usd_rate) {
+  $has_discount = (float)($kit_row['discount'] ?? 0) > 0;
+  $kit_currency = (string)($kit_row['sell_currency'] ?? 'CDF');
+  $is_multi_currency = strpos($kit_currency, '/') !== false;
+  $usd_rate = (float)($kit_row['usd_rate'] ?? 0);
+  if ($usd_rate <= 0) {
+    $usd_rate = (float)$fallback_usd_rate;
+  }
+
+  $kit_totals_raw = getKitTotalsByCurrency($pdo, $kit_row['id']);
+  $kit_totals_map = [];
+
+  foreach ($kit_totals_raw as $kt) {
+    $cur = (string)$kt['sell_currency'];
+    $subtotal = (float)$kt['subtotal'];
+    if ($has_discount && count($kit_totals_raw) === 1) {
+      $subtotal -= (float)$kit_row['discount'];
+      if ($subtotal < 0) {
+        $subtotal = 0;
+      }
+    }
+    $kit_totals_map[$cur] = $subtotal;
+  }
+
+  if ($has_discount && $is_multi_currency) {
+    $total_label = number_format((float)$kit_row['unit_sell_price'], 2) . ' CDF';
+    $converted_total_cdf = (float)$kit_row['unit_sell_price'];
+  } else {
+    $parts = [];
+    $converted_total_cdf = 0.0;
+    foreach ($kit_totals_map as $cur => $subtotal) {
+      $parts[] = number_format($subtotal, 2) . ' ' . $cur;
+      $converted_total_cdf += convertAmountToCDF($subtotal, $cur, $usd_rate);
+    }
+    $total_label = implode(' + ', $parts);
+  }
+
+  $contains_usd = stripos($kit_currency, 'USD') !== false || array_key_exists('USD', $kit_totals_map);
+
+  return [
+    'total_label' => $total_label,
+    'converted_total_cdf' => $converted_total_cdf,
+    'show_converted' => $contains_usd,
+    'usd_rate' => $usd_rate
+  ];
 }
 
 
@@ -655,6 +723,13 @@ body {
                 }
               ?>
             </strong>
+            <?php $kit_display = buildKitDisplayData($pdo, $s, $house_usd_rate); ?>
+            <?php if ($kit_display['show_converted']): ?>
+              <div class="small" style="color: var(--pp-blue-dark); font-weight: 600; margin-top: 4px;">
+                Converti: <?= number_format($kit_display['converted_total_cdf'], 0) ?> CDF
+                (1 USD = <?= number_format($kit_display['usd_rate'], 0) ?> CDF)
+              </div>
+            <?php endif; ?>
           </td>
         </tr>
 
@@ -797,6 +872,18 @@ body {
           ?>
         </span>
       </div>
+      <?php $kit_display_mobile = buildKitDisplayData($pdo, $s, $house_usd_rate); ?>
+      <?php if ($kit_display_mobile['show_converted']): ?>
+        <div class="sales-row">
+          <span class="sales-label">Total converti</span>
+          <span class="sales-value price-high">
+            <?= number_format($kit_display_mobile['converted_total_cdf'], 0) ?> CDF
+            <small style="display:block;color:#6b7280;font-weight:500;">
+              1 USD = <?= number_format($kit_display_mobile['usd_rate'], 0) ?> CDF
+            </small>
+          </span>
+        </div>
+      <?php endif; ?>
     </div>
   <?php continue; endif; ?>
 
