@@ -706,6 +706,7 @@
                 <a href="<?= HOUSES_MANAGE; ?>" class="btn-pp btn-pp-primary">Gérer les maisons</a>
                 <a href="<?= MARGE_PAR_MAISON; ?>" class="btn-pp btn-pp-accent">Marge par maison</a>
                 <a href="<?= REPORTS_INVENTORY; ?>" class="btn-pp btn-pp-secondary">Rapports / Inventaire</a>
+                <a href="tickets_printed.php" class="btn-pp btn-pp-secondary">Tickets imprimés du jour</a>
                 <a href="<?= EXPENSES_MANAGE; ?>" class="btn-pp btn-pp-secondary">Mes dépenses</a>
             </div>
         </div>

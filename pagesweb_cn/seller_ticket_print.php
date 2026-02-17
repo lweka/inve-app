@@ -577,8 +577,43 @@ $pdfUrl = 'seller_ticket_pdf.php?sale_id=' . urlencode((string)$saleId);
   <script>
     (function () {
       const autoPrint = <?= $autoPrint ? 'true' : 'false' ?>;
-      if (!autoPrint) return;
+      const saleId = <?= (int)$saleId ?>;
+      const receiptId = <?= json_encode((string)$receiptId) ?>;
+      const printMode = autoPrint ? 'autoprint' : 'manual';
+      const logUrl = 'ticket_print_log.php';
+
       let notified = false;
+      let printLogged = false;
+
+      function logPrintEvent() {
+        if (printLogged) return;
+        printLogged = true;
+
+        const body = JSON.stringify({
+          sale_id: saleId,
+          receipt_id: receiptId,
+          mode: printMode
+        });
+
+        try {
+          if (navigator.sendBeacon) {
+            const blob = new Blob([body], { type: 'application/json' });
+            navigator.sendBeacon(logUrl, blob);
+            return;
+          }
+        } catch (e) {
+          console.error('sendBeacon error:', e);
+        }
+
+        fetch(logUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: body,
+          keepalive: true
+        }).catch(function (err) {
+          console.error('Print log fetch error:', err);
+        });
+      }
 
       function notifyPrintDone() {
         if (notified) return;
@@ -602,6 +637,21 @@ $pdfUrl = 'seller_ticket_pdf.php?sale_id=' . urlencode((string)$saleId);
         }
       }
 
+      window.addEventListener('afterprint', function () {
+        logPrintEvent();
+
+        if (autoPrint) {
+          notifyPrintDone();
+          try {
+            window.close();
+          } catch (e) {
+            console.error('Close error:', e);
+          }
+        }
+      });
+
+      if (!autoPrint) return;
+
       window.addEventListener('load', function () {
         setTimeout(function () {
           try {
@@ -610,15 +660,6 @@ $pdfUrl = 'seller_ticket_pdf.php?sale_id=' . urlencode((string)$saleId);
             console.error('Print error:', e);
           }
         }, 350);
-      });
-
-      window.addEventListener('afterprint', function () {
-        notifyPrintDone();
-        try {
-          window.close();
-        } catch (e) {
-          console.error('Close error:', e);
-        }
       });
 
       window.addEventListener('pagehide', function () {

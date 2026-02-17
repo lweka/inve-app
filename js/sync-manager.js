@@ -23,6 +23,7 @@ class SyncManager {
      */
     async init() {
         console.log('[SyncManager] Initialisation...');
+        await this.ensureOfflineDbReady();
 
         // Écouter les changements de connexion
         window.addEventListener('online', () => this.handleOnline());
@@ -49,6 +50,18 @@ class SyncManager {
     /**
      * Gestionnaire connexion rétablie
      */
+    async ensureOfflineDbReady() {
+        if (typeof offlineDB === 'undefined') {
+            throw new Error('offlineDB non disponible');
+        }
+
+        if (offlineDB.db) {
+            return;
+        }
+
+        await offlineDB.init();
+    }
+
     async handleOnline() {
         console.log('[SyncManager] 🌐 Connexion rétablie');
         this.isOnline = true;
@@ -90,6 +103,7 @@ class SyncManager {
      * Synchronisation complète
      */
     async sync() {
+        await this.ensureOfflineDbReady();
         if (this.isSyncing) {
             console.log('[SyncManager] Synchronisation déjà en cours');
             return;
@@ -189,6 +203,13 @@ class SyncManager {
 
         for (const item of queue) {
             try {
+                if (item.type === 'pos_sale') {
+                    await this.syncPosSaleQueueItem(item);
+                    await offlineDB.markQueueItemProcessed(item.id);
+                    console.log(`[SyncManager] Queue POS ${item.id} traitee`);
+                    continue;
+                }
+
                 const response = await fetch('/inve-app/pagesweb_cn/sync_api.php', {
                     method: 'POST',
                     headers: {
@@ -219,24 +240,59 @@ class SyncManager {
     /**
      * Met à jour les caches locaux
      */
+    async syncPosSaleQueueItem(item) {
+        const data = item && item.data ? item.data : {};
+        const endpoint = (data.endpoint || 'create_sale.php').replace(/^\/+/, '');
+        const payload = data.payload || null;
+
+        if (!payload || typeof payload !== 'object') {
+            throw new Error('Payload POS manquant');
+        }
+
+        const form = new URLSearchParams();
+        Object.keys(payload).forEach((key) => {
+            const value = payload[key];
+            form.append(key, value == null ? '' : String(value));
+        });
+
+        const response = await fetch(`/inve-app/pagesweb_cn/${endpoint}`, {
+            method: 'POST',
+            body: form,
+            credentials: 'same-origin'
+        });
+
+        let result = null;
+        try {
+            result = await response.json();
+        } catch (e) {
+            throw new Error('Reponse POS invalide');
+        }
+
+        if (!result || result.ok !== true) {
+            throw new Error(result && result.message ? result.message : 'Echec sync POS');
+        }
+    }
+
     async updateCaches() {
         try {
             // Mettre à jour le cache des produits
             const productsResponse = await fetch('/inve-app/pagesweb_cn/sync_api.php?action=get_products');
-            const productsData = await productsResponse.json();
-            
-            if (productsData.success && productsData.products) {
-                await offlineDB.cacheProducts(productsData.products);
-                console.log('[SyncManager] Cache produits mis à jour');
+            if (productsResponse.ok) {
+                const productsData = await productsResponse.json();
+                if (productsData.success && productsData.products) {
+                    await offlineDB.cacheProducts(productsData.products);
+                    console.log('[SyncManager] Cache produits mis à jour');
+                }
             }
 
             // Mettre à jour le cache des clients
             const clientsResponse = await fetch('/inve-app/pagesweb_cn/sync_api.php?action=get_clients');
-            const clientsData = await clientsResponse.json();
-            
-            if (clientsData.success && clientsData.clients) {
-                await offlineDB.cacheClients(clientsData.clients);
-                console.log('[SyncManager] Cache clients mis à jour');
+            if (clientsResponse.ok) {
+                const clientsData = await clientsResponse.json();
+                if (clientsData.success && clientsData.clients) {
+                    await offlineDB.cacheClients(clientsData.clients);
+                    console.log('[SyncManager] Cache clients mis à jour');
+                }
             }
 
         } catch (error) {
@@ -271,6 +327,8 @@ class SyncManager {
      * Synchronise seulement si nécessaire
      */
     async syncIfNeeded() {
+        await this.ensureOfflineDbReady();
+
         const stats = await offlineDB.getStats();
         
         if (stats.unsynced_sales > 0 || stats.queue_length > 0) {
@@ -334,7 +392,9 @@ class SyncManager {
         `;
 
         // Mettre à jour le compteur de données en attente
-        this.updatePendingCounter();
+        this.updatePendingCounter().catch((error) => {
+            console.error('[SyncManager] Erreur compteur pending:', error);
+        });
     }
 
     /**
@@ -343,6 +403,8 @@ class SyncManager {
     async updatePendingCounter() {
         const counterElement = document.getElementById('pending-count');
         if (!counterElement) return;
+
+        await this.ensureOfflineDbReady();
 
         const stats = await offlineDB.getStats();
         const total = stats.unsynced_sales + stats.queue_length;

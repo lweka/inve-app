@@ -736,9 +736,30 @@ body {
 
 
 
+<script src="../js/offline-db.js"></script>
+<script src="../js/sync-manager.js"></script>
+<script src="../js/offline-status.js"></script>
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', function () {
+    navigator.serviceWorker.register('/inve-app/js/service-worker.js', { scope: '/inve-app/' })
+      .then(function () {
+        console.log('[PWA] Service Worker enregistre');
+      })
+      .catch(function (err) {
+        console.error('[PWA] Echec Service Worker:', err);
+      });
+  });
+}
+</script>
+
 <script>
   let products=[], cart=[];
-  const USD_RATE = <?= $usd_rate ?>; // Taux de change USD → CDF
+  let offlineProductsNoticeShown = false;
+  const USD_RATE = <?= (float)$usd_rate ?>; // Taux de change USD -> CDF
+  const HOUSE_ID = <?= (int)$house_id ?>;
+  const AGENT_ID = <?= (int)$_SESSION['user_id'] ?>;
+  const PRODUCTS_CACHE_KEY = `seller_products_cache_house_${HOUSE_ID}`;
 
   function hasUsdCurrency(totals){
     return !!(totals && Object.prototype.hasOwnProperty.call(totals, 'USD'));
@@ -773,14 +794,164 @@ body {
     return `${Number(amount || 0).toFixed(0)} CDF`;
   }
 
+  function getCurrentSearchQuery(){
+    const searchInput = document.getElementById('searchProd');
+    if(!searchInput) return '';
+    return (searchInput.value || '').toLowerCase().trim();
+  }
+
+  function renderProductsByCurrentFilter(){
+    const query = getCurrentSearchQuery();
+    if(!query){
+      renderProducts(products);
+      return;
+    }
+    renderProducts(products.filter(p => String(p.name || '').toLowerCase().includes(query)));
+  }
+
+  function cacheProductsSnapshot(list){
+    try {
+      localStorage.setItem(PRODUCTS_CACHE_KEY, JSON.stringify({
+        saved_at: Date.now(),
+        products: Array.isArray(list) ? list : []
+      }));
+    } catch (e) {
+      console.error('Erreur cache produits local:', e);
+    }
+  }
+
+  function readCachedProductsSnapshot(){
+    try {
+      const raw = localStorage.getItem(PRODUCTS_CACHE_KEY);
+      if(!raw) return [];
+      const parsed = JSON.parse(raw);
+      if(!parsed || !Array.isArray(parsed.products)) return [];
+      return parsed.products;
+    } catch (e) {
+      console.error('Erreur lecture cache produits local:', e);
+      return [];
+    }
+  }
+
+  async function ensureOfflineDbReady(){
+    if(typeof offlineDB === 'undefined'){
+      return false;
+    }
+    if(offlineDB.db){
+      return true;
+    }
+    try {
+      await offlineDB.init();
+      return true;
+    } catch (e) {
+      console.error('OfflineDB indisponible:', e);
+      return false;
+    }
+  }
+
+  function generateOfflineSaleId(){
+    const agentPart = Number(AGENT_ID || 0).toString(36).toUpperCase();
+    const housePart = Number(HOUSE_ID || 0).toString(36).toUpperCase();
+    const timePart = Date.now().toString(36).toUpperCase();
+    const randomPart = Math.random().toString(36).slice(2, 7).toUpperCase();
+    return `OF-${agentPart}-${housePart}-${timePart}-${randomPart}`.slice(0, 36);
+  }
+
+  function buildSalePayload(cartSnapshot, offlineId = ''){
+    return {
+      house_id: String(HOUSE_ID),
+      items: JSON.stringify(cartSnapshot),
+      discount: String(document.getElementById('discount').value || 0),
+      payment_method: String(document.getElementById('payment_method').value || 'cash'),
+      customer_name: String(document.getElementById('customer_name').value || ''),
+      offline_id: String(offlineId || '')
+    };
+  }
+
+  function payloadToFormData(payloadObj){
+    const payload = new URLSearchParams();
+    Object.keys(payloadObj).forEach((key) => {
+      payload.append(key, payloadObj[key] == null ? '' : String(payloadObj[key]));
+    });
+    return payload;
+  }
+
+  async function queueOfflineSale(payloadObj){
+    const ready = await ensureOfflineDbReady();
+    if(!ready){
+      return false;
+    }
+
+    await offlineDB.addToSyncQueue('pos_sale', {
+      endpoint: 'create_sale.php',
+      payload: payloadObj,
+      queued_at: Date.now(),
+      source: 'seller_dashboard'
+    });
+
+    if(typeof syncManager !== 'undefined' && typeof syncManager.updateUI === 'function'){
+      syncManager.updateUI('offline-request');
+    }
+
+    if(typeof syncManager !== 'undefined' && typeof syncManager.updatePendingCounter === 'function'){
+      try {
+        await syncManager.updatePendingCounter();
+      } catch (e) {
+        console.error('Erreur mise a jour compteur sync:', e);
+      }
+    }
+
+    return true;
+  }
+
+  function applyOfflineStockChanges(cartSnapshot){
+    const decreaseStock = function(productId, qty){
+      const idx = products.findIndex(p => Number(p.id) === Number(productId));
+      if(idx === -1) return;
+      const current = Number(products[idx].stock || 0);
+      products[idx].stock = Math.max(0, current - Number(qty || 0));
+    };
+
+    (cartSnapshot || []).forEach((item) => {
+      if(item && item.is_kit && Array.isArray(item.items)){
+        item.items.forEach((kitItem) => decreaseStock(kitItem.product_id, kitItem.qty));
+      } else if(item && item.product_id){
+        decreaseStock(item.product_id, item.qty);
+      }
+    });
+
+    cacheProductsSnapshot(products);
+    renderProductsByCurrentFilter();
+  }
+
   /* ===== PRODUITS ===== */
   function loadProducts(){
     fetch('seller_products.php?house_id=<?= $house_id ?>')
-      .then(r=>r.json())
-      .then(j=>{
-        if(!j.ok){ return; }
-        products=j.products;
-        renderProducts(products);
+      .then(r => r.json())
+      .then(j => {
+        if(!j.ok){
+          throw new Error(j.message || 'Chargement produits impossible');
+        }
+        products = Array.isArray(j.products) ? j.products : [];
+        cacheProductsSnapshot(products);
+        offlineProductsNoticeShown = false;
+        renderProductsByCurrentFilter();
+      })
+      .catch(err => {
+        console.error('Chargement produits online erreur:', err);
+        const cachedProducts = readCachedProductsSnapshot();
+        if(cachedProducts.length > 0){
+          products = cachedProducts;
+          renderProductsByCurrentFilter();
+          if(!offlineProductsNoticeShown && !navigator.onLine){
+            showPosMsg(
+              'Mode hors ligne : produits charges depuis le cache local.',
+              'error',
+              8000
+            );
+            offlineProductsNoticeShown = true;
+          }
+        }
       });
   }
 
@@ -1358,13 +1529,68 @@ function resetSaleForm(){
 
 
 
-document.getElementById('confirmSaleBtn').onclick = ()=>{
-  const payload = new URLSearchParams();
-  payload.append('house_id', <?= $house_id ?>);
-  payload.append('items', JSON.stringify(cart));
-  payload.append('discount', document.getElementById('discount').value);
-  payload.append('payment_method', document.getElementById('payment_method').value);
-  payload.append('customer_name', document.getElementById('customer_name').value);
+document.getElementById('confirmSaleBtn').onclick = async ()=>{
+  const cartSnapshot = JSON.parse(JSON.stringify(cart));
+
+  if(!Array.isArray(cartSnapshot) || cartSnapshot.length === 0){
+    showMsg("Panier vide", "Ajoutez au moins un produit avant de valider.");
+    return;
+  }
+
+  const confirmModal = bootstrap.Modal.getInstance(document.getElementById('confirmModal'));
+  if(confirmModal){
+    confirmModal.hide();
+  }
+
+  const submitOnlineSale = async (payloadObj, printWindowRef) => {
+    const response = await fetch('create_sale.php', {
+      method: 'POST',
+      body: payloadToFormData(payloadObj)
+    });
+    const result = await response.json();
+
+    if(!result.ok){
+      if(printWindowRef && !printWindowRef.closed){
+        printWindowRef.close();
+      }
+      showMsg("Erreur", result.message || "Echec enregistrement vente");
+      return false;
+    }
+
+    clearCart();
+    resetSaleForm();
+    loadProducts();
+
+    if(result.sale_id){
+      showPosMsg(
+        "Vente enregistree avec succes. Le ticket est en cours d'ouverture pour impression."
+      );
+      openTicket(result.sale_id, printWindowRef);
+    }
+
+    return true;
+  };
+
+  if(!navigator.onLine){
+    const offlineId = generateOfflineSaleId();
+    const offlinePayload = buildSalePayload(cartSnapshot, offlineId);
+    const queued = await queueOfflineSale(offlinePayload);
+
+    if(!queued){
+      showMsg("Erreur", "Impossible de sauvegarder cette vente hors ligne.");
+      return;
+    }
+
+    clearCart();
+    resetSaleForm();
+    applyOfflineStockChanges(cartSnapshot);
+    showPosMsg(
+      "Vente sauvegardee hors ligne. Synchronisation automatique des que la connexion revient.",
+      'success',
+      10000
+    );
+    return;
+  }
 
   let printWindow = null;
   try {
@@ -1380,49 +1606,55 @@ document.getElementById('confirmSaleBtn').onclick = ()=>{
     console.error('Erreur ouverture fenetre impression:', e);
   }
 
-  fetch('create_sale.php',{method:'POST',body:payload})
-    .then(r=>r.json())
-    .then(j=>{
-      bootstrap.Modal.getInstance(
-        document.getElementById('confirmModal')
-      ).hide();
+  const onlinePayload = buildSalePayload(cartSnapshot, '');
 
-      if(!j.ok){
-        if(printWindow && !printWindow.closed){
-          printWindow.close();
-        }
-        showMsg("Erreur", j.message);
-        return;
-      }
+  try {
+    await submitOnlineSale(onlinePayload, printWindow);
+  } catch (err) {
+    if(printWindow && !printWindow.closed){
+      printWindow.close();
+    }
 
-      clearCart();
-      resetSaleForm();
-      loadProducts();
+    console.error('Erreur creation vente online:', err);
 
-      if(j.ok && j.sale_id){
-        showPosMsg(
-          "Vente enregistree avec succes. Le ticket est en cours d'ouverture pour impression."
-        );
-        openTicket(j.sale_id, printWindow);
-      }
+    if(navigator.onLine){
+      showMsg(
+        "Erreur",
+        "Le serveur a retourne une erreur. La vente n'a pas ete envoyee en mode hors ligne."
+      );
+      return;
+    }
 
-    })
-    .catch(err => {
-      if(printWindow && !printWindow.closed){
-        printWindow.close();
-      }
-      console.error('Erreur creation vente:', err);
-      showMsg("Erreur", "Une erreur est survenue pendant l'enregistrement de la vente.");
-    });
+    const offlineId = generateOfflineSaleId();
+    const offlinePayload = buildSalePayload(cartSnapshot, offlineId);
+    const queued = await queueOfflineSale(offlinePayload);
+
+    if(!queued){
+      showMsg("Erreur", "Connexion perdue et sauvegarde hors ligne indisponible.");
+      return;
+    }
+
+    clearCart();
+    resetSaleForm();
+    applyOfflineStockChanges(cartSnapshot);
+    showPosMsg(
+      "Connexion perdue. Vente sauvegardee hors ligne et en attente de synchronisation.",
+      'error',
+      12000
+    );
+  }
 };
 
   searchProd.oninput=e=>{
-    const q=e.target.value.toLowerCase();
-    renderProducts(products.filter(p=>p.name.toLowerCase().includes(q)));
+    renderProductsByCurrentFilter();
   };
 
   loadProducts();
-  setInterval(loadProducts,3000);
+  setInterval(() => {
+    if(navigator.onLine){
+      loadProducts();
+    }
+  }, 3000);
 </script>
 
 <script>
@@ -1640,3 +1872,4 @@ document.head.appendChild(style);
 
 </body>
 </html>
+

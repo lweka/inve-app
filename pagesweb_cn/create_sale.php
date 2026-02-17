@@ -18,7 +18,14 @@ if($agent_status !== 'active'){
 }
 
 $lastSaleId = null;
-$receipt_id = uniqid('RCP-', true); // Générer un ID unique pour cette transaction
+$offline_id = trim((string)($_POST['offline_id'] ?? ''));
+if ($offline_id !== '') {
+    $offline_id = preg_replace('/[^A-Za-z0-9._-]/', '', $offline_id);
+    if (strlen($offline_id) > 36) {
+        $offline_id = substr($offline_id, 0, 36);
+    }
+}
+$receipt_id = ($offline_id !== '') ? $offline_id : uniqid('RCP-', true); // ID unique transaction
 $agent_id = (int)$_SESSION['user_id'];
 $house_id = (int)($_POST['house_id'] ?? 0);
 $items    = json_decode($_POST['items'] ?? '[]', true);
@@ -45,6 +52,31 @@ $client_code = $stmt->fetchColumn();
 if (!$client_code) {
     echo json_encode(['ok' => false, 'message' => 'Client invalide']);
     exit;
+}
+
+// Idempotence pour synchronisation offline (relecture de la même vente)
+if ($offline_id !== '') {
+    $stmt = $pdo->prepare("
+        SELECT id
+        FROM product_movements
+        WHERE client_code = ?
+          AND agent_id = ?
+          AND house_id = ?
+          AND receipt_id = ?
+        ORDER BY id DESC
+        LIMIT 1
+    ");
+    $stmt->execute([$client_code, $agent_id, $house_id, $offline_id]);
+    $existingSaleId = (int)$stmt->fetchColumn();
+
+    if ($existingSaleId > 0) {
+        echo json_encode([
+            'ok' => true,
+            'sale_id' => $existingSaleId,
+            'duplicate' => true
+        ]);
+        exit;
+    }
 }
 
 // Récupérer le taux de change USD de cette maison

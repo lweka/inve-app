@@ -4,7 +4,7 @@
  * Version: 1.0.0
  */
 
-const CACHE_VERSION = 'cartelplus-v1.0.0';
+const CACHE_VERSION = 'cartelplus-v1.0.1';
 const STATIC_CACHE = `${CACHE_VERSION}-static`;
 const DYNAMIC_CACHE = `${CACHE_VERSION}-dynamic`;
 const API_CACHE = `${CACHE_VERSION}-api`;
@@ -14,6 +14,7 @@ const STATIC_ASSETS = [
     '/inve-app/',
     '/inve-app/index.php',
     '/inve-app/pagesweb_cn/admin_login_form.php',
+    '/inve-app/pagesweb_cn/seller_dashboard.php',
     '/inve-app/css/bootstrap.min.css',
     '/inve-app/css/bootstrap-icons.css',
     '/inve-app/js/bootstrap.min.js',
@@ -21,7 +22,7 @@ const STATIC_ASSETS = [
     '/inve-app/js/offline-db.js',
     '/inve-app/js/sync-manager.js',
     '/inve-app/js/offline-status.js',
-    '/inve-app/images/logos/logo.png',
+    '/inve-app/images/Logo12.png',
     'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css'
 ];
 
@@ -47,9 +48,15 @@ self.addEventListener('install', event => {
     
     event.waitUntil(
         caches.open(STATIC_CACHE)
-            .then(cache => {
+            .then(async cache => {
                 console.log('[Service Worker] Mise en cache des assets statiques');
-                return cache.addAll(STATIC_ASSETS);
+                const results = await Promise.allSettled(
+                    STATIC_ASSETS.map(asset => cache.add(asset))
+                );
+                const failed = results.filter(r => r.status === 'rejected').length;
+                if (failed > 0) {
+                    console.warn('[Service Worker] Assets non caches:', failed);
+                }
             })
             .then(() => self.skipWaiting())
             .catch(err => console.error('[Service Worker] Erreur installation:', err))
