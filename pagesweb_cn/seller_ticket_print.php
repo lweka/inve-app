@@ -642,11 +642,6 @@ $pdfUrl = 'seller_ticket_pdf.php?sale_id=' . urlencode((string)$saleId);
 
         if (autoPrint) {
           notifyPrintDone();
-          try {
-            window.close();
-          } catch (e) {
-            console.error('Close error:', e);
-          }
         }
       });
 
