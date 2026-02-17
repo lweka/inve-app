@@ -539,6 +539,29 @@ $pdfUrl = 'seller_ticket_pdf.php?sale_id=' . urlencode((string)$saleId);
     (function () {
       const autoPrint = <?= $autoPrint ? 'true' : 'false' ?>;
       if (!autoPrint) return;
+      let notified = false;
+
+      function notifyPrintDone() {
+        if (notified) return;
+        notified = true;
+        const payload = { type: 'ticket_print_done' };
+
+        try {
+          if (window.opener && !window.opener.closed) {
+            window.opener.postMessage(payload, window.location.origin);
+          }
+        } catch (e) {
+          console.error('Opener message error:', e);
+        }
+
+        try {
+          if (window.parent && window.parent !== window) {
+            window.parent.postMessage(payload, window.location.origin);
+          }
+        } catch (e) {
+          console.error('Parent message error:', e);
+        }
+      }
 
       window.addEventListener('load', function () {
         setTimeout(function () {
@@ -551,11 +574,16 @@ $pdfUrl = 'seller_ticket_pdf.php?sale_id=' . urlencode((string)$saleId);
       });
 
       window.addEventListener('afterprint', function () {
+        notifyPrintDone();
         try {
           window.close();
         } catch (e) {
           console.error('Close error:', e);
         }
+      });
+
+      window.addEventListener('pagehide', function () {
+        notifyPrintDone();
       });
     })();
   </script>

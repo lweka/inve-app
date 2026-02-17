@@ -806,13 +806,57 @@ function showMsg(title, message){
   msgModal.show();
 }
 
-function showPosMsg(message, type = 'success'){
+let posMsgTimer = null;
+let ticketPrintPending = false;
+
+function clearPosMsg(){
   const posMsg = document.getElementById('posMsg');
   if(!posMsg) return;
+  if(posMsgTimer){
+    clearTimeout(posMsgTimer);
+    posMsgTimer = null;
+  }
+  posMsg.className = 'mt-3';
+  posMsg.innerHTML = '';
+}
+
+function showPosMsg(message, type = 'success', autoHideMs = 0){
+  const posMsg = document.getElementById('posMsg');
+  if(!posMsg) return;
+
+  if(posMsgTimer){
+    clearTimeout(posMsgTimer);
+    posMsgTimer = null;
+  }
 
   const alertClass = (type === 'error') ? 'alert alert-danger' : 'alert alert-success';
   posMsg.className = `mt-3 ${alertClass}`;
   posMsg.innerHTML = message;
+
+  if(autoHideMs > 0){
+    posMsgTimer = setTimeout(() => {
+      clearPosMsg();
+    }, autoHideMs);
+  }
+}
+
+function finalizeSaleUiAfterPrint(){
+  ticketPrintPending = false;
+  clearPosMsg();
+
+  const printModalEl = document.getElementById('printModal');
+  const printModal = bootstrap.Modal.getInstance(printModalEl);
+  if(printModal){
+    printModal.hide();
+  }
+
+  const frame = document.getElementById('printFrame');
+  if(frame){
+    frame.src = '';
+    delete frame.dataset.ticketPreviewUrl;
+    delete frame.dataset.ticketPrintUrl;
+    delete frame.dataset.ticketPdfUrl;
+  }
 }
 
 /* ===== PANIER ===== */
@@ -1346,6 +1390,7 @@ function openTicket(saleId, printWindow = null){
   frame.dataset.ticketPrintUrl = autoPrintUrl;
   frame.dataset.ticketPdfUrl = pdfUrl;
   frame.src = previewUrl;
+  ticketPrintPending = true;
 
   const printModal = bootstrap.Modal.getOrCreateInstance(document.getElementById('printModal'));
   printModal.show();
@@ -1359,7 +1404,8 @@ function openTicket(saleId, printWindow = null){
   if(!popup){
     showPosMsg(
       'Popup bloquee par Chrome. Autorisez les popups puis relancez l\'impression.',
-      'error'
+      'error',
+      12000
     );
   }
 }
@@ -1392,6 +1438,24 @@ function downloadTicketPdf(){
     window.open(pdfUrl, '_blank');
   }
 }
+
+window.addEventListener('message', (event) => {
+  if(event.origin !== window.location.origin) return;
+  if(!event.data || event.data.type !== 'ticket_print_done') return;
+  finalizeSaleUiAfterPrint();
+});
+
+window.addEventListener('afterprint', () => {
+  if(ticketPrintPending){
+    finalizeSaleUiAfterPrint();
+  }
+});
+
+document.getElementById('printModal')?.addEventListener('hidden.bs.modal', () => {
+  if(!ticketPrintPending){
+    clearPosMsg();
+  }
+});
   /* //Script impression 
   let currentSaleId = null;
 
