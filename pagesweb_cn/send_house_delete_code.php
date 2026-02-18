@@ -65,12 +65,12 @@ try {
     $mail->isSMTP();
     $mail->Host       = 'smtp.titan.email';
     $mail->SMTPAuth   = true;
-    $mail->Username   = 'cartelplus-congo@cartelplus.tech';
+    $mail->Username   = 'cartelplus-congo@cartelplus.site';
     $mail->Password   = 'Jo@Kin243'; 
     $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
     $mail->Port       = 587;
 
-    $mail->setFrom('cartelplus-congo@cartelplus.tech', 'CartelPlus Congo');
+    $mail->setFrom('cartelplus-congo@cartelplus.site', 'CartelPlus Congo');
     $mail->addAddress($email);
 
     $mail->isHTML(true);

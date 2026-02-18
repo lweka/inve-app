@@ -62,13 +62,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $mail->isSMTP();
             $mail->Host       = 'smtp.titan.email';
             $mail->SMTPAuth   = true;
-            $mail->Username   = 'cartelplus-congo@cartelplus.tech';
+            $mail->Username   = 'cartelplus-congo@cartelplus.site';
             $mail->Password   = 'Jo@Kin243';
             $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
             $mail->Port       = 587;
 
-            $mail->setFrom('cartelplus-congo@cartelplus.tech', 'CartelPlus Congo - Besoin site web');
-            $mail->addAddress('cartelplus-congo@cartelplus.tech', 'CartelPlus Congo Entreprise');
+            $mail->setFrom('cartelplus-congo@cartelplus.site', 'CartelPlus Congo - Besoin site web');
+            $mail->addAddress('cartelplus-congo@cartelplus.site', 'CartelPlus Congo Entreprise');
 
             $mail->isHTML(true);
             $mail->Subject = 'Nouvelle demande de création de site web';

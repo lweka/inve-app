@@ -34,7 +34,7 @@
     $stmt->execute([$client_code]);
     $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    // Profit d'aujourd'hui pour ce client (CDF)
+    // Marge d'aujourd'hui pour ce client (CDF)
     $stmt = $pdo->prepare("
         SELECT SUM((pm.unit_sell_price - p.buy_price) * pm.qty)
         FROM product_movements pm
@@ -44,7 +44,7 @@
     $stmt->execute([$client_code]);
     $todayProfitCDF = (float)($stmt->fetchColumn() ?? 0);
 
-    // Profit d'aujourd'hui pour ce client (USD)
+    // Marge d'aujourd'hui pour ce client (USD)
     $stmt = $pdo->prepare("
         SELECT SUM((pm.unit_sell_price - p.buy_price) * pm.qty)
         FROM product_movements pm
@@ -54,7 +54,7 @@
     $stmt->execute([$client_code]);
     $todayProfitUSD = (float)($stmt->fetchColumn() ?? 0);
 
-    // Profit global pour ce client (CDF)
+    // Marge globale pour ce client (CDF)
     $stmt = $pdo->prepare("
         SELECT SUM((pm.unit_sell_price - p.buy_price) * pm.qty)
         FROM product_movements pm
@@ -64,7 +64,7 @@
     $stmt->execute([$client_code]);
     $globalCDF = (float)($stmt->fetchColumn() ?? 0);
 
-    // Profit global pour ce client (USD)
+    // Marge globale pour ce client (USD)
     $stmt = $pdo->prepare("
         SELECT SUM((pm.unit_sell_price - p.buy_price) * pm.qty)
         FROM product_movements pm
@@ -685,16 +685,16 @@
             <div class="kpi-trend">Stock sous contrôle</div>
         </div>
         <div class="kpi-card" style="animation-delay: 0.2s;">
-            <div class="kpi-title">Profit du jour</div>
+            <div class="kpi-title">Marge du jour</div>
             <div class="kpi-value"><?= number_format($todayProfitCDF, 0) ?> CDF</div>
             <div class="kpi-value" style="font-size: 18px; color: var(--pp-muted); margin-top: 4px;"><?= number_format($todayProfitUSD, 2) ?> USD</div>
             <div class="kpi-trend">Mise à jour automatique</div>
         </div>
         <div class="kpi-card" style="animation-delay: 0.25s;">
-            <div class="kpi-title">Profit global</div>
+            <div class="kpi-title">Marge globale</div>
             <div class="kpi-value"><?= number_format($globalCDF, 0) ?> CDF</div>
             <div class="kpi-value" style="font-size: 18px; color: var(--pp-muted); margin-top: 4px;"><?= number_format($globalUSD, 2) ?> USD</div>
-            <div class="kpi-trend">Cumul des ventes</div>
+            <div class="kpi-trend">Cumul des marges</div>
         </div>
     </div>
 
@@ -716,11 +716,11 @@
             <p>Indicateurs rapides pour suivre l’activité et prioriser les actions.</p>
             <ul class="insight-list">
                 <li class="insight-item">
-                    Ventes aujourd'hui (CDF)
+                    Marge aujourd'hui (CDF)
                     <span class="insight-badge"><?= number_format($todayProfitCDF, 0) ?> CDF</span>
                 </li>
                 <li class="insight-item">
-                    Ventes aujourd'hui (USD)
+                    Marge aujourd'hui (USD)
                     <span class="insight-badge"><?= number_format($todayProfitUSD, 2) ?> USD</span>
                 </li>
                 <li class="insight-item">
