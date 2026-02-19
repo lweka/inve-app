@@ -3,67 +3,120 @@
 require_once __DIR__ . '/connectDb.php';
 require_once __DIR__ . '/require_admin_auth.php'; // charge $client_code
 
-
-if (ob_get_length()) ob_end_clean();
+if (ob_get_length()) {
+    ob_end_clean();
+}
 header('Content-Type: application/json; charset=utf-8');
 
+function tableExists(PDO $pdo, string $tableName): bool
+{
+    static $cache = [];
+    if (array_key_exists($tableName, $cache)) {
+        return $cache[$tableName];
+    }
 
+    $stmt = $pdo->prepare("\n        SELECT 1\n        FROM information_schema.tables\n        WHERE table_schema = DATABASE() AND table_name = ?\n        LIMIT 1\n    ");
+    $stmt->execute([$tableName]);
+    $cache[$tableName] = (bool)$stmt->fetchColumn();
+    return $cache[$tableName];
+}
 
-
-
-$request_id = intval($_POST['request_id'] ?? 0);
+$request_id = (int)($_POST['request_id'] ?? 0);
 $code = trim($_POST['code'] ?? '');
 
-if($request_id <= 0 || $code === ''){
-    echo json_encode(['ok'=>false,'message'=>'Paramètres requis']); exit;
+if ($request_id <= 0 || $code === '') {
+    echo json_encode(['ok' => false, 'message' => 'Parametres requis']);
+    exit;
 }
 
 $stmt = $pdo->prepare("SELECT * FROM house_delete_requests WHERE id = ?");
 $stmt->execute([$request_id]);
 $req = $stmt->fetch();
-if(!$req){ echo json_encode(['ok'=>false,'message'=>'Demande introuvable']); exit; }
-if(time() > intval($req['expires_at'])){ echo json_encode(['ok'=>false,'message'=>'Code expiré']); exit; }
-if($req['code'] !== $code){ echo json_encode(['ok'=>false,'message'=>'Code incorrect']); exit; }
 
-// ready to delete house
-$house_id = intval($req['house_id']);
+if (!$req) {
+    echo json_encode(['ok' => false, 'message' => 'Demande introuvable']);
+    exit;
+}
+if (time() > (int)$req['expires_at']) {
+    echo json_encode(['ok' => false, 'message' => 'Code expire']);
+    exit;
+}
+if ((string)$req['code'] !== $code) {
+    echo json_encode(['ok' => false, 'message' => 'Code incorrect']);
+    exit;
+}
 
-// vérifier que la maison appartient au client connecté
-$stmt = $pdo->prepare("SELECT id FROM houses WHERE id = ? AND client_code = ?");
+$house_id = (int)$req['house_id'];
+
+// Verifier que la maison appartient au client connecte
+$stmt = $pdo->prepare("SELECT id FROM houses WHERE id = ? AND client_code = ? LIMIT 1");
 $stmt->execute([$house_id, $client_code]);
-if(!$stmt->fetch()){
-    echo json_encode(['ok'=>false,'message'=>'Maison non autorisée']);
+if (!$stmt->fetch()) {
+    echo json_encode(['ok' => false, 'message' => 'Maison non autorisee']);
     exit;
 }
 
 try {
     $pdo->beginTransaction();
 
-    // delete sale items and sales for the house (if present)
-    $sales = $pdo->prepare("SELECT id FROM sales WHERE house_id = ?");
-    $sales->execute([$house_id]);
-    $saleIds = $sales->fetchAll(PDO::FETCH_COLUMN);
-    if($saleIds){
-        $in = str_repeat('?,', count($saleIds)-1).'?';
-        $pdo->prepare("DELETE FROM sale_items WHERE sale_id IN ($in)")->execute($saleIds);
-        $pdo->prepare("DELETE FROM sales WHERE id IN ($in)")->execute($saleIds);
+    // Legacy sales tables (si presentes)
+    if (tableExists($pdo, 'sales')) {
+        $sales = $pdo->prepare("SELECT id FROM sales WHERE house_id = ?");
+        $sales->execute([$house_id]);
+        $saleIds = $sales->fetchAll(PDO::FETCH_COLUMN);
+
+        if (!empty($saleIds) && tableExists($pdo, 'sale_items')) {
+            $in = implode(',', array_fill(0, count($saleIds), '?'));
+            $pdo->prepare("DELETE FROM sale_items WHERE sale_id IN ($in)")->execute($saleIds);
+        }
+        if (!empty($saleIds)) {
+            $in = implode(',', array_fill(0, count($saleIds), '?'));
+            $pdo->prepare("DELETE FROM sales WHERE id IN ($in)")->execute($saleIds);
+        }
     }
 
-    // delete stock movements and house_stock
-    $pdo->prepare("DELETE FROM stock_movements WHERE house_id = ?")->execute([$house_id]);
-    $pdo->prepare("DELETE FROM house_stock WHERE house_id = ?")->execute([$house_id]);
+    // Tables liees a house_id
+    $houseScopedTables = [
+        'ticket_print_logs',
+        'product_movements',
+        'stock_movements',
+        'agent_stock',
+        'seller_stock',
+        'house_stock',
+        'exchange_rate',
+    ];
 
-    // finally delete the house
-    $pdo->prepare("DELETE FROM houses WHERE id = ?")->execute([$house_id]);
+    foreach ($houseScopedTables as $table) {
+        if (tableExists($pdo, $table)) {
+            $pdo->prepare("DELETE FROM {$table} WHERE house_id = ?")->execute([$house_id]);
+        }
+    }
 
-    // remove the request
-    $pdo->prepare("DELETE FROM house_delete_requests WHERE id = ?")->execute([$request_id]);
+    // Entites principales de la maison
+    if (tableExists($pdo, 'products')) {
+        $pdo->prepare("DELETE FROM products WHERE house_id = ?")->execute([$house_id]);
+    }
+    if (tableExists($pdo, 'agents')) {
+        $pdo->prepare("DELETE FROM agents WHERE house_id = ?")->execute([$house_id]);
+    }
+
+    $delHouse = $pdo->prepare("DELETE FROM houses WHERE id = ? AND client_code = ?");
+    $delHouse->execute([$house_id, $client_code]);
+    if ($delHouse->rowCount() !== 1) {
+        throw new RuntimeException('Suppression maison non effectuee');
+    }
+
+    if (tableExists($pdo, 'house_delete_requests')) {
+        $pdo->prepare("DELETE FROM house_delete_requests WHERE house_id = ?")->execute([$house_id]);
+    }
 
     $pdo->commit();
-    echo json_encode(['ok'=>true]);
+    echo json_encode(['ok' => true]);
     exit;
-} catch(Exception $e){
-    $pdo->rollBack();
-    echo json_encode(['ok'=>false,'message'=>'Erreur suppression: '.$e->getMessage()]);
+} catch (Throwable $e) {
+    if ($pdo->inTransaction()) {
+        $pdo->rollBack();
+    }
+    echo json_encode(['ok' => false, 'message' => 'Erreur suppression: ' . $e->getMessage()]);
     exit;
 }

@@ -11,13 +11,23 @@
     $stmt->execute([$client_code]);
     $housesCount = (int)$stmt->fetchColumn();
 
-    // Compter les vendeurs du client
-    $stmt = $pdo->prepare("SELECT COUNT(*) FROM agents WHERE client_code = ?");
+    // Compter les vendeurs du client lies a des maisons existantes
+    $stmt = $pdo->prepare("
+        SELECT COUNT(*)
+        FROM agents a
+        JOIN houses h ON h.id = a.house_id
+        WHERE h.client_code = ?
+    ");
     $stmt->execute([$client_code]);
     $agentsCount = (int)$stmt->fetchColumn();
 
-    // Compter les produits du client
-    $stmt = $pdo->prepare("SELECT COUNT(*) FROM products WHERE client_code = ?");
+    // Compter les produits du client lies a des maisons existantes
+    $stmt = $pdo->prepare("
+        SELECT COUNT(*)
+        FROM products p
+        JOIN houses h ON h.id = p.house_id
+        WHERE h.client_code = ?
+    ");
     $stmt->execute([$client_code]);
     $productsCount = (int)$stmt->fetchColumn();
 
