@@ -10,6 +10,17 @@ $stmt = $pdo->prepare("SELECT * FROM houses WHERE client_code = ? ORDER BY id DE
 $stmt->execute([$client_code]);
 $houses = $stmt->fetchAll();
 
+$serverErrors = [];
+if (isset($_GET['err'])) {
+    $decodedErrors = json_decode(urldecode((string)$_GET['err']), true);
+    if (!is_array($decodedErrors) || !$decodedErrors) {
+        $decodedErrors = [(string)$_GET['err']];
+    }
+    foreach ($decodedErrors as $oneError) {
+        $serverErrors[] = (string)$oneError;
+    }
+}
+
 // optional header include
 if(isset($headerPath) && is_file($headerPath)){
     require_once $headerPath;
@@ -245,14 +256,11 @@ body {
       </div>
     <?php endif; ?>
 
-    <?php if(isset($_GET['err'])):
-        $errors = json_decode(urldecode($_GET['err']), true);
-        if(!$errors) $errors = [htmlspecialchars($_GET['err'])];
-    ?>
+    <?php if(!empty($serverErrors)): ?>
       <div class="alert alert-danger alert-dismissible fade show" id="app-alert">
         <strong>Erreur :</strong>
         <ul class="mb-0">
-          <?php foreach($errors as $e): ?>
+          <?php foreach($serverErrors as $e): ?>
             <li><?= htmlspecialchars($e) ?></li>
           <?php endforeach; ?>
         </ul>
@@ -375,6 +383,24 @@ body {
   </div>
 </div>
 
+<!-- Modal erreur -->
+<div class="modal fade" id="errorModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header bg-danger text-white">
+        <h5 class="modal-title">Erreur</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fermer"></button>
+      </div>
+      <div class="modal-body">
+        <div id="errorModalBody"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-pp btn-pp-secondary" data-bs-dismiss="modal">Fermer</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 
 
 
@@ -464,6 +490,12 @@ const addressFeedback = document.getElementById('addressFeedback');
 const createForm = document.getElementById('createHouseForm');
 const openConfirmBtn = document.getElementById('openConfirmBtn');
 const submitFinalBtn = document.getElementById('submitFinalBtn');
+const errorModalEl = document.getElementById('errorModal');
+const errorModalBody = document.getElementById('errorModalBody');
+
+const MAX_LOGO_BYTES = 2 * 1024 * 1024;
+const LOGO_SIZE_ERROR = "Le logo depasse la taille maximale autorisee (2 Mo).";
+const serverErrors = <?= json_encode($serverErrors, JSON_UNESCAPED_UNICODE) ?>;
 
 let codeUnique = false;
 let checkingCode = false;
@@ -477,6 +509,29 @@ function showInvalid(input, box, msg){
 function showValid(input, box){
   input.classList.remove('is-invalid'); input.classList.add('is-valid');
   box.textContent = '';
+}
+
+function showErrorModal(messages){
+  const list = Array.isArray(messages) ? messages.filter(Boolean) : [messages];
+  if(!list.length || !errorModalEl || !errorModalBody) return;
+  if(list.length === 1){
+    errorModalBody.innerHTML = `<p class="mb-0"><strong>Erreur :</strong><br>${escapeHtml(String(list[0]))}</p>`;
+  } else {
+    errorModalBody.innerHTML = '<p class="mb-2"><strong>Erreur :</strong></p><ul class="mb-0">' + list.map((msg) => `<li>${escapeHtml(String(msg))}</li>`).join('') + '</ul>';
+  }
+  const modal = new bootstrap.Modal(errorModalEl);
+  modal.show();
+}
+
+function validateLogoSize(){
+  const logoFile = logoInput.files && logoInput.files[0] ? logoInput.files[0] : null;
+  if(!logoFile) return true;
+  if(Number(logoFile.size || 0) > MAX_LOGO_BYTES){
+    logoInput.value = '';
+    showErrorModal([LOGO_SIZE_ERROR]);
+    return false;
+  }
+  return true;
 }
 
 /* live validation */
@@ -493,6 +548,9 @@ addressInput.addEventListener('input', () => {
 typeInput.addEventListener('input', () => {
   if(typeInput.value.length > 100) showInvalid(typeInput, typeFeedback, 'Le type est trop long.');
   else showValid(typeInput, typeFeedback);
+});
+logoInput.addEventListener('change', () => {
+  validateLogoSize();
 });
 
 /* API URL from PHP constant or fallback relative */
@@ -553,6 +611,7 @@ openConfirmBtn.addEventListener('click', () => {
   if(nameV.length < 3){ showInvalid(nameInput, nameFeedback, 'Le nom doit contenir au moins 3 caractères.'); return; }
   if(addrV.length < 5){ showInvalid(addressInput, addressFeedback, "L'adresse doit contenir au moins 5 caractères."); return; }
   if(!/^[A-Za-z0-9_\-]+$/.test(codeV)){ showInvalid(codeInput, codeFeedback, 'Code invalide.'); return; }
+  if(!validateLogoSize()) return;
 
   if(checkingCode){
     alert('La vérification du code est en cours. Patientez un instant.');
@@ -585,15 +644,20 @@ function escapeHtml(s){
 
 /* auto clear alert */
 window.addEventListener('load', () => {
+  if(Array.isArray(serverErrors) && serverErrors.length){
+    showErrorModal(serverErrors);
+  }
+
   const alertEl = document.getElementById('app-alert');
-  if(!alertEl) return;
-  setTimeout(()=> {
-    try{ alertEl.classList.remove('show'); }catch(e){}
-    if(window.history && window.history.replaceState){
-      const cleanUrl = window.location.protocol + '//' + window.location.host + window.location.pathname;
-      window.history.replaceState({}, document.title, cleanUrl);
-    }
-  }, 5000);
+  if(alertEl){
+    setTimeout(()=> {
+      try{ alertEl.classList.remove('show'); }catch(e){}
+      if(window.history && window.history.replaceState){
+        const cleanUrl = window.location.protocol + '//' + window.location.host + window.location.pathname;
+        window.history.replaceState({}, document.title, cleanUrl);
+      }
+    }, 5000);
+  }
 });
 
 

@@ -72,8 +72,13 @@ $logoExtension = null;
 $logoRelativePath = null;
 
 if ($uploadedLogo && ($uploadedLogo['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_NO_FILE) {
-    if (($uploadedLogo['error'] ?? UPLOAD_ERR_CANT_WRITE) !== UPLOAD_ERR_OK) {
-        $errors[] = 'Le logo n\'a pas pu etre telecharge.';
+    $uploadErrorCode = (int)($uploadedLogo['error'] ?? UPLOAD_ERR_CANT_WRITE);
+    if ($uploadErrorCode !== UPLOAD_ERR_OK) {
+        if (in_array($uploadErrorCode, [UPLOAD_ERR_INI_SIZE, UPLOAD_ERR_FORM_SIZE], true)) {
+            $errors[] = 'Le logo depasse la taille maximale autorisee (2 Mo).';
+        } else {
+            $errors[] = 'Le logo n\'a pas pu etre telecharge.';
+        }
     } else {
         $maxBytes = 2 * 1024 * 1024;
         if ((int)$uploadedLogo['size'] > $maxBytes) {
