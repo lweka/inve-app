@@ -36,8 +36,9 @@
         SELECT p.name,
         SUM((pm.unit_sell_price - p.buy_price) * pm.qty) AS marge_cdf
         FROM product_movements pm
+        JOIN houses h ON h.id = pm.house_id
         JOIN products p ON p.id = pm.product_id
-        WHERE (pm.type = 'out' OR pm.type = 'sale') AND pm.client_code = ? AND pm.sell_currency = 'CDF'
+        WHERE (pm.type = 'out' OR pm.type = 'sale') AND h.client_code = ? AND pm.sell_currency = 'CDF'
         GROUP BY pm.product_id
         ORDER BY marge_cdf DESC
     ");
@@ -48,8 +49,9 @@
     $stmt = $pdo->prepare("
         SELECT SUM((pm.unit_sell_price - p.buy_price) * pm.qty)
         FROM product_movements pm
+        JOIN houses h ON h.id = pm.house_id
         LEFT JOIN products p ON p.id = pm.product_id
-        WHERE (pm.type = 'out' OR pm.type = 'sale') AND DATE(pm.created_at) = CURDATE() AND pm.client_code = ? AND pm.sell_currency = 'CDF'
+        WHERE (pm.type = 'out' OR pm.type = 'sale') AND DATE(pm.created_at) = CURDATE() AND h.client_code = ? AND pm.sell_currency = 'CDF'
     ");
     $stmt->execute([$client_code]);
     $todayProfitCDF = (float)($stmt->fetchColumn() ?? 0);
@@ -58,8 +60,9 @@
     $stmt = $pdo->prepare("
         SELECT SUM((pm.unit_sell_price - p.buy_price) * pm.qty)
         FROM product_movements pm
+        JOIN houses h ON h.id = pm.house_id
         LEFT JOIN products p ON p.id = pm.product_id
-        WHERE (pm.type = 'out' OR pm.type = 'sale') AND pm.sell_currency = 'USD' AND DATE(pm.created_at) = CURDATE() AND pm.client_code = ?
+        WHERE (pm.type = 'out' OR pm.type = 'sale') AND pm.sell_currency = 'USD' AND DATE(pm.created_at) = CURDATE() AND h.client_code = ?
     ");
     $stmt->execute([$client_code]);
     $todayProfitUSD = (float)($stmt->fetchColumn() ?? 0);
@@ -68,8 +71,9 @@
     $stmt = $pdo->prepare("
         SELECT SUM((pm.unit_sell_price - p.buy_price) * pm.qty)
         FROM product_movements pm
+        JOIN houses h ON h.id = pm.house_id
         LEFT JOIN products p ON p.id = pm.product_id
-        WHERE (pm.type = 'out' OR pm.type = 'sale') AND pm.client_code = ? AND pm.sell_currency = 'CDF'
+        WHERE (pm.type = 'out' OR pm.type = 'sale') AND h.client_code = ? AND pm.sell_currency = 'CDF'
     ");
     $stmt->execute([$client_code]);
     $globalCDF = (float)($stmt->fetchColumn() ?? 0);
@@ -78,17 +82,19 @@
     $stmt = $pdo->prepare("
         SELECT SUM((pm.unit_sell_price - p.buy_price) * pm.qty)
         FROM product_movements pm
+        JOIN houses h ON h.id = pm.house_id
         LEFT JOIN products p ON p.id = pm.product_id
-        WHERE (pm.type = 'out' OR pm.type = 'sale') AND pm.client_code = ? AND pm.sell_currency = 'USD'
+        WHERE (pm.type = 'out' OR pm.type = 'sale') AND h.client_code = ? AND pm.sell_currency = 'USD'
     ");
     $stmt->execute([$client_code]);
     $globalUSD = (float)($stmt->fetchColumn() ?? 0);
 
     // Ventes en KIT aujourd'hui
     $stmt = $pdo->prepare("
-        SELECT SUM(qty)
-        FROM product_movements
-        WHERE (type = 'out' OR type = 'sale') AND is_kit = 1 AND DATE(created_at) = CURDATE() AND client_code = ?
+        SELECT SUM(pm.qty)
+        FROM product_movements pm
+        JOIN houses h ON h.id = pm.house_id
+        WHERE (pm.type = 'out' OR pm.type = 'sale') AND pm.is_kit = 1 AND DATE(pm.created_at) = CURDATE() AND h.client_code = ?
     ");
     $stmt->execute([$client_code]);
     $todayKitQty = (int)($stmt->fetchColumn() ?? 0);
