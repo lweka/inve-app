@@ -257,6 +257,9 @@ if ($saleDiscount > 0 && (int)($sale['is_kit'] ?? 0) === 0) {
     }
 }
 
+$showConvertedTotal = isset($totalsByCurrency['USD']) && abs((float)$totalsByCurrency['USD']) > 0.000001;
+$convertedTotalCdf = $showConvertedTotal ? convertTotalsToCdf($totalsByCurrency, $usdRate) : 0.0;
+
 $paymentMethods = [
     'cash' => 'Especes',
     'mobile' => 'Mobile Money',
@@ -464,6 +467,22 @@ $pdfUrl = 'seller_ticket_pdf.php?sale_id=' . urlencode((string)$saleId);
       gap: 8px;
     }
 
+    .total-converted {
+      margin-top: 4px;
+      padding-top: 4px;
+      border-top: 1px dashed #777;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 8px;
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    .total-converted span:last-child {
+      white-space: nowrap;
+    }
+
     .footer {
       border-top: 1px solid #555;
       margin-top: 8px;
@@ -566,6 +585,12 @@ $pdfUrl = 'seller_ticket_pdf.php?sale_id=' . urlencode((string)$saleId);
           <span><?= safeText(formatAmount($amt, $cur)) ?></span>
         </div>
       <?php endforeach; ?>
+      <?php if ($showConvertedTotal): ?>
+        <div class="total-converted">
+          <span><?= safeText('Total converti (1$=' . number_format($usdRate, 0) . ' CDF)') ?></span>
+          <span><?= safeText(formatAmount($convertedTotalCdf, 'CDF')) ?></span>
+        </div>
+      <?php endif; ?>
     </div>
 
     <div class="footer">

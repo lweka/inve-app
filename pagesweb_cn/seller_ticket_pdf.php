@@ -302,6 +302,9 @@ if ($saleDiscount > 0 && (int)($sale['is_kit'] ?? 0) === 0) {
     }
 }
 
+$showConvertedTotal = isset($totalsByCurrency['USD']) && abs((float)$totalsByCurrency['USD']) > 0.000001;
+$convertedTotalCdf = $showConvertedTotal ? convertTotalsToCdf($totalsByCurrency, $usdRate) : 0.0;
+
 $pdf->SetDrawColor(0, 0, 0);
 $pdf->SetLineWidth(0.4);
 $pdf->Line(3, $pdf->GetY(), 77, $pdf->GetY());
@@ -317,6 +320,13 @@ foreach ($totalsByCurrency as $cur => $amt) {
     $pdf->Cell(41, 4.5, '', 0, 0, 'L');
     $pdf->Cell(9, 4.5, '', 0, 0, 'C');
     $pdf->Cell(24, 4.5, cutText(formatAmount($amt, $cur), 20), 0, 1, 'R');
+}
+
+if ($showConvertedTotal) {
+    $pdf->SetFont('helvetica', 'B', 6.5);
+    $pdf->Cell(41, 4, cutText('Total converti (1$=' . number_format($usdRate, 0) . ' CDF)', 34), 0, 0, 'L');
+    $pdf->Cell(9, 4, '', 0, 0, 'C');
+    $pdf->Cell(24, 4, cutText(formatAmount($convertedTotalCdf, 'CDF'), 20), 0, 1, 'R');
 }
 
 $pdf->SetLineWidth(0.15);
