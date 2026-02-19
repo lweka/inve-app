@@ -2,24 +2,12 @@
 // pagesweb_cn/verify_house_delete_code.php
 require_once __DIR__ . '/connectDb.php';
 require_once __DIR__ . '/require_admin_auth.php'; // charge $client_code
+require_once __DIR__ . '/data_integrity.php';
 
 if (ob_get_length()) {
     ob_end_clean();
 }
 header('Content-Type: application/json; charset=utf-8');
-
-function tableExists(PDO $pdo, string $tableName): bool
-{
-    static $cache = [];
-    if (array_key_exists($tableName, $cache)) {
-        return $cache[$tableName];
-    }
-
-    $stmt = $pdo->prepare("\n        SELECT 1\n        FROM information_schema.tables\n        WHERE table_schema = DATABASE() AND table_name = ?\n        LIMIT 1\n    ");
-    $stmt->execute([$tableName]);
-    $cache[$tableName] = (bool)$stmt->fetchColumn();
-    return $cache[$tableName];
-}
 
 $request_id = (int)($_POST['request_id'] ?? 0);
 $code = trim($_POST['code'] ?? '');
@@ -60,12 +48,12 @@ try {
     $pdo->beginTransaction();
 
     // Legacy sales tables (si presentes)
-    if (tableExists($pdo, 'sales')) {
+    if (di_table_exists($pdo, 'sales')) {
         $sales = $pdo->prepare("SELECT id FROM sales WHERE house_id = ?");
         $sales->execute([$house_id]);
         $saleIds = $sales->fetchAll(PDO::FETCH_COLUMN);
 
-        if (!empty($saleIds) && tableExists($pdo, 'sale_items')) {
+        if (!empty($saleIds) && di_table_exists($pdo, 'sale_items')) {
             $in = implode(',', array_fill(0, count($saleIds), '?'));
             $pdo->prepare("DELETE FROM sale_items WHERE sale_id IN ($in)")->execute($saleIds);
         }
@@ -87,16 +75,16 @@ try {
     ];
 
     foreach ($houseScopedTables as $table) {
-        if (tableExists($pdo, $table)) {
+        if (di_table_exists($pdo, $table)) {
             $pdo->prepare("DELETE FROM {$table} WHERE house_id = ?")->execute([$house_id]);
         }
     }
 
     // Entites principales de la maison
-    if (tableExists($pdo, 'products')) {
+    if (di_table_exists($pdo, 'products')) {
         $pdo->prepare("DELETE FROM products WHERE house_id = ?")->execute([$house_id]);
     }
-    if (tableExists($pdo, 'agents')) {
+    if (di_table_exists($pdo, 'agents')) {
         $pdo->prepare("DELETE FROM agents WHERE house_id = ?")->execute([$house_id]);
     }
 
@@ -106,9 +94,12 @@ try {
         throw new RuntimeException('Suppression maison non effectuee');
     }
 
-    if (tableExists($pdo, 'house_delete_requests')) {
+    if (di_table_exists($pdo, 'house_delete_requests')) {
         $pdo->prepare("DELETE FROM house_delete_requests WHERE house_id = ?")->execute([$house_id]);
     }
+
+    // Sweep any legacy leftovers in the same transaction.
+    di_cleanup_orphans($pdo);
 
     $pdo->commit();
     echo json_encode(['ok' => true]);

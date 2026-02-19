@@ -9,27 +9,13 @@ if(!isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'admin'){
     exit;
 }
 
-// récupération des maisons du client connecté
+// Recuperation des maisons du client connecte
 $stmt = $pdo->prepare("SELECT * FROM houses WHERE client_code = ? ORDER BY id DESC");
 $stmt->execute([$client_code]);
 $houses = $stmt->fetchAll();
 
-if($_SERVER['REQUEST_METHOD']==='POST'){
-    $rate = floatval($_POST['usd_rate']);
-    if($rate>0){
-        $stmt = $pdo->prepare("
-        INSERT INTO exchange_rate (id, usd_rate)
-        VALUES (1,?)
-        ON DUPLICATE KEY UPDATE usd_rate=VALUES(usd_rate)
-        ");
-        $stmt->execute([$rate]);
-        header("Location: exchange_rate_manage.php?ok=1");
-        exit;
-    }
-}
-
 /* =========================
-   PARAMÈTRES
+   PARAMETRES
 ========================= */
 $page   = max(1, (int)($_GET['page'] ?? 1));
 $limit  = max(1, (int)($_GET['limit'] ?? 10));
@@ -42,10 +28,15 @@ $type       = $_GET['movement_type'] ?? '';
 $start_date = $_GET['start_date'] ?? '';
 $end_date   = $_GET['end_date'] ?? '';
 
+$allowedHouseIds = array_map('intval', array_column($houses, 'id'));
+if($house_id > 0 && !in_array($house_id, $allowedHouseIds, true)){
+    $house_id = 0;
+}
+
 /* =========================
    FILTRES
 ========================= */
-$where = " WHERE pm.client_code = ? ";
+$where = " WHERE h.client_code = ? ";
 $params = [$client_code];
 
 if($house_id > 0){
@@ -84,11 +75,17 @@ if($end_date !== ''){
 $stmt = $pdo->prepare("
     SELECT COUNT(*)
     FROM product_movements pm
+    JOIN houses h ON h.id = pm.house_id
+    JOIN products p ON p.id = pm.product_id
     $where
 ");
 $stmt->execute($params);
 $totalRows = (int)$stmt->fetchColumn();
 $totalPages = max(1, ceil($totalRows / $limit));
+if ($page > $totalPages) {
+    $page = $totalPages;
+    $offset = ($page - 1) * $limit;
+}
 
 /* =========================
    HISTORIQUE
@@ -140,21 +137,51 @@ $stmt->execute($params);
 $rows = $stmt->fetchAll();
 
 /* =========================
-   DONNÉES FILTRES
+   DONNEES FILTRES
 ========================= */
 if($house_id > 0){
-    $stmt = $pdo->prepare("SELECT DISTINCT p.id, p.name FROM products p JOIN house_stock hs ON hs.product_id = p.id WHERE p.client_code = ? AND hs.house_id = ? ORDER BY p.name");
+    $stmt = $pdo->prepare("
+        SELECT p.id, p.name
+        FROM products p
+        JOIN houses h ON h.id = p.house_id
+        WHERE h.client_code = ? AND p.house_id = ?
+        ORDER BY p.name
+    ");
     $stmt->execute([$client_code, $house_id]);
     $products = $stmt->fetchAll();
 } else {
-    $stmt = $pdo->prepare("SELECT id, name FROM products WHERE client_code = ? ORDER BY name");
+    $stmt = $pdo->prepare("
+        SELECT p.id, p.name
+        FROM products p
+        JOIN houses h ON h.id = p.house_id
+        WHERE h.client_code = ?
+        ORDER BY p.name
+    ");
     $stmt->execute([$client_code]);
     $products = $stmt->fetchAll();
 }
 
-$stmt = $pdo->prepare("SELECT id, fullname FROM agents WHERE client_code = ? ORDER BY fullname");
-$stmt->execute([$client_code]);
-$agents = $stmt->fetchAll();
+if($house_id > 0){
+    $stmt = $pdo->prepare("
+        SELECT a.id, a.fullname
+        FROM agents a
+        JOIN houses h ON h.id = a.house_id
+        WHERE h.client_code = ? AND a.house_id = ?
+        ORDER BY a.fullname
+    ");
+    $stmt->execute([$client_code, $house_id]);
+    $agents = $stmt->fetchAll();
+} else {
+    $stmt = $pdo->prepare("
+        SELECT a.id, a.fullname
+        FROM agents a
+        JOIN houses h ON h.id = a.house_id
+        WHERE h.client_code = ?
+        ORDER BY a.fullname
+    ");
+    $stmt->execute([$client_code]);
+    $agents = $stmt->fetchAll();
+}
 
 
 
@@ -165,7 +192,7 @@ if(isset($headerPath) && is_file($headerPath)) require_once $headerPath;
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
-<title>Historique Global – Cartelplus Congo</title>
+<title>Historique Global - Cartelplus Congo</title>
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
 <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
 <style>
@@ -241,9 +268,16 @@ body {
 
 <div class="filter-card">
 <form method="GET" class="row g-3">
-<?php if($house_id > 0): ?>
-  <input type="hidden" name="house_id" value="<?= (int)$house_id ?>">
-<?php endif; ?>
+<div class="col-md-2">
+<select name="house_id" class="form-select">
+<option value="">Toutes maisons</option>
+<?php foreach($houses as $h): ?>
+<option value="<?= (int)$h['id'] ?>" <?= $house_id==(int)$h['id']?'selected':'' ?>>
+<?= htmlspecialchars($h['name']) ?>
+</option>
+<?php endforeach; ?>
+</select>
+</div>
 <div class="col-md-2">
 <select name="product_id" class="form-select">
 <option value="">Tous produits</option>
@@ -269,14 +303,14 @@ body {
 <div class="col-md-2">
 <select name="movement_type" class="form-select">
 <option value="">Tous types</option>
-<option value="in">Entrée</option>
-<option value="sale">Vente</option>
-<option value="out">Sortie</option>
+<option value="in" <?= $type==='in'?'selected':'' ?>>Entree</option>
+<option value="sale" <?= $type==='sale'?'selected':'' ?>>Vente</option>
+<option value="out" <?= $type==='out'?'selected':'' ?>>Sortie</option>
 </select>
 </div>
 
-<div class="col-md-2"><input type="date" name="start_date" class="form-control"></div>
-<div class="col-md-2"><input type="date" name="end_date" class="form-control"></div>
+<div class="col-md-2"><input type="date" name="start_date" value="<?= htmlspecialchars($start_date) ?>" class="form-control"></div>
+<div class="col-md-2"><input type="date" name="end_date" value="<?= htmlspecialchars($end_date) ?>" class="form-control"></div>
 <div class="col-md-2"><button class="btn-pp btn-pp-primary w-100" style="justify-content: center;"><i class="fa-solid fa-filter"></i> Filtrer</button></div>
 </form>
 </div>
@@ -290,7 +324,7 @@ body {
 <th>Maison</th>
 <th>Type</th>
 <th>Vendeur</th>
-<th>Qté</th>
+<th>Qte</th>
 <th>Marge unitaire</th>
 <th>Marge totale</th>
 <th>Note</th>
@@ -299,7 +333,7 @@ body {
 <tbody>
 
 <?php if(!$rows): ?>
-<tr><td colspan="9">Aucune donnée</td></tr>
+<tr><td colspan="9">Aucune donnee</td></tr>
 <?php endif; ?>
 
 <?php foreach($rows as $r): ?>
@@ -315,7 +349,7 @@ body {
     $marginDecimals = ($marginCurrency === 'USD') ? 2 : 0;
 ?>
 <td><?= number_format((float)$r['margin_unit'], $marginDecimals) ?> <?= htmlspecialchars($marginCurrency) ?></td>
-<td><?= htmlspecialchars($r['margin_total'] ?? 0) ?> <?= htmlspecialchars($marginCurrency) ?></strong></td>
+<td><?= number_format((float)($r['margin_total'] ?? 0), $marginDecimals) ?> <?= htmlspecialchars($marginCurrency) ?></td>
 <td><?= htmlspecialchars($r['note'] ?? '-') ?></td>
 </tr>
 <?php endforeach; ?>
@@ -352,3 +386,4 @@ body {
 <?php 
 if(isset($footerPath) && is_file($footerPath)) require_once $footerPath;
 ?>
+
