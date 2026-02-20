@@ -826,7 +826,16 @@ $contacts = mergeContacts([$priorityContact], $parsed['rows'], $extra);
 $seg = buildSeg($contacts);
 $emailReachableCount = count($seg['email_marketing']['rows'] ?? []);
 
-$previewSegment = isset($_GET['preview_segment'], $seg[(string)$_GET['preview_segment']]) ? (string)$_GET['preview_segment'] : 'email_marketing';
+$activeModelKey = '';
+if (isset($_GET['model'], $seg[(string)$_GET['model']])) {
+    $activeModelKey = (string)$_GET['model'];
+}
+$isModelView = ($activeModelKey !== '');
+$defaultPreviewSegment = $isModelView ? $activeModelKey : 'email_marketing';
+$previewSegment = isset($_GET['preview_segment'], $seg[(string)$_GET['preview_segment']]) ? (string)$_GET['preview_segment'] : $defaultPreviewSegment;
+if ($isModelView) {
+    $previewSegment = $activeModelKey;
+}
 $previewDay = isset($_GET['preview_day'], $daysFr[(string)$_GET['preview_day']]) ? (string)$_GET['preview_day'] : $today;
 $previewTheme = normalizeTheme((string)($_GET['preview_theme'] ?? $theme));
 $previewRows = $seg[$previewSegment]['rows'] ?? [];
@@ -834,6 +843,9 @@ $previewMail = null;
 if ($previewSegment === 'email_marketing') {
     $previewMail = buildMail($previewDay, $previewTheme, 'Prospect Apercu');
 }
+$segmentsToDisplay = $isModelView ? [$activeModelKey => $seg[$activeModelKey]] : $seg;
+$isEmailModelView = $isModelView && $activeModelKey === 'email_marketing';
+$prospectionManagerUrl = BASE_URL . 'pagesweb_cn/prospection_manager';
 
 $scheduleRuns = ['count' => 0, 'runs' => []];
 $schedules = [];
@@ -1011,7 +1023,13 @@ $scheduleDayLabels = array_merge(['daily' => 'Tous les jours'], $daysFr);
 <div class="wrap">
   <div class="head">
     <div><h3 style="margin:0;"><i class="fa-solid fa-bullhorn"></i> Prospections commerciales</h3><div style="opacity:.9;font-size:13px;">Objectif: 100 utilisateurs en 3 semaines</div></div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap;"><a class="hbtn" href="<?= BASE_URL ?>pagesweb_cn/admin_subscription_manager">Retour abonnements</a><a class="hbtn" href="<?= BASE_URL ?>pagesweb_cn/logout.php">Deconnexion</a></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+      <?php if ($isModelView): ?>
+        <a class="hbtn" href="<?= htmlspecialchars($prospectionManagerUrl) ?>"><i class="fa-solid fa-arrow-left"></i> Retour modeles</a>
+      <?php endif; ?>
+      <a class="hbtn" href="<?= BASE_URL ?>pagesweb_cn/admin_subscription_manager">Retour abonnements</a>
+      <a class="hbtn" href="<?= BASE_URL ?>pagesweb_cn/logout.php">Deconnexion</a>
+    </div>
   </div>
 
   <div class="grid">
@@ -1026,58 +1044,75 @@ $scheduleDayLabels = array_merge(['daily' => 'Tous les jours'], $daysFr);
 
   <?php if ($alert['msg'] !== ''): ?><div class="alert alert-<?= htmlspecialchars($alert['type'] !== '' ? $alert['type'] : 'info') ?> mt-3"><?= htmlspecialchars($alert['msg']) ?></div><?php endif; ?>
 
-  <h5 class="mt-3 mb-2"><i class="fa-solid fa-file-import"></i> Ajouter des emails depuis Excel/CSV</h5>
-  <div class="cardx">
-    <form method="POST" enctype="multipart/form-data">
-      <input type="hidden" name="action" value="import_contacts">
-      <div class="row g-2">
-        <div class="col-md-5">
-          <label class="form-label">Fichier contacts</label>
-          <input class="form-control" type="file" name="prospection_file" accept=".xlsx,.csv" required>
-          <div class="form-text">Formats supportes: Excel `.xlsx` et CSV. Colonnes reconnues: nom, prenom, email, telephone, qualite.</div>
+  <?php if ($isModelView): ?>
+    <div class="cardx mt-3">
+      <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <div>
+          <strong><i class="<?= htmlspecialchars((string)($seg[$activeModelKey]['icon'] ?? 'fa-solid fa-bullhorn')) ?>"></i> Espace modele: <?= htmlspecialchars((string)($seg[$activeModelKey]['title'] ?? $activeModelKey)) ?></strong>
+          <div class="mini-note"><?= htmlspecialchars((string)($seg[$activeModelKey]['desc'] ?? '')) ?></div>
         </div>
-        <div class="col-md-4">
-          <label class="form-label">Source import</label>
-          <input class="form-control" type="text" name="source_label" placeholder="Ex: Campagne universite semaine 1">
-        </div>
-        <div class="col-md-3 d-flex align-items-end">
-          <button type="submit" class="btn btn-primary w-100"><i class="fa-solid fa-upload"></i> Importer et fusionner</button>
-        </div>
+        <a class="btn btn-outline-primary btn-sm" href="<?= htmlspecialchars($prospectionManagerUrl) ?>"><i class="fa-solid fa-arrow-left"></i> Retour a l accueil principal</a>
       </div>
-    </form>
-    <div class="form-text mt-2">Les emails importes sont ajoutes directement au lot de prospection et pris en compte dans les envois automatiques du jour.</div>
-  </div>
+    </div>
+  <?php endif; ?>
 
-  <h5 class="mt-3 mb-2"><i class="fa-solid fa-layer-group"></i> 9 systemes de prospection</h5>
+  <?php if (!$isModelView): ?>
+    <h5 class="mt-3 mb-2"><i class="fa-solid fa-file-import"></i> Ajouter des emails depuis Excel/CSV</h5>
+    <div class="cardx">
+      <form method="POST" enctype="multipart/form-data">
+        <input type="hidden" name="action" value="import_contacts">
+        <div class="row g-2">
+          <div class="col-md-5">
+            <label class="form-label">Fichier contacts</label>
+            <input class="form-control" type="file" name="prospection_file" accept=".xlsx,.csv" required>
+            <div class="form-text">Formats supportes: Excel `.xlsx` et CSV. Colonnes reconnues: nom, prenom, email, telephone, qualite.</div>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Source import</label>
+            <input class="form-control" type="text" name="source_label" placeholder="Ex: Campagne universite semaine 1">
+          </div>
+          <div class="col-md-3 d-flex align-items-end">
+            <button type="submit" class="btn btn-primary w-100"><i class="fa-solid fa-upload"></i> Importer et fusionner</button>
+          </div>
+        </div>
+      </form>
+      <div class="form-text mt-2">Les emails importes sont ajoutes directement au lot de prospection et pris en compte dans les envois automatiques du jour.</div>
+    </div>
+  <?php endif; ?>
+
+  <h5 class="mt-3 mb-2"><i class="fa-solid fa-layer-group"></i> <?= $isModelView ? 'Modele de prospection actif' : '9 systemes de prospection' ?></h5>
   <div class="seg">
-    <?php foreach ($seg as $k => $s): $pv = array_slice($s['rows'], 0, 4); ?>
+    <?php foreach ($segmentsToDisplay as $k => $s): $pv = array_slice($s['rows'], 0, 4); ?>
       <div class="cardx">
         <div class="shead"><div><strong><i class="<?= htmlspecialchars($s['icon']) ?>"></i> <?= htmlspecialchars($s['title']) ?></strong><div class="sdesc"><?= htmlspecialchars($s['desc']) ?></div></div><div class="sc"><?= number_format(count($s['rows'])) ?></div></div>
         <div class="prev"><?php if ($pv) { foreach ($pv as $i => $c) echo htmlspecialchars($c['full']) . ($i < count($pv) - 1 ? ' | ' : ''); } else { echo 'Aucun contact'; } ?></div>
         <div class="act">
           <a class="btn-sm2" href="?export=<?= urlencode($k) ?>">Export CSV</a>
-          <button type="button" class="btn-sm2 cp" data-t="<?= htmlspecialchars($s['tpl']) ?>">Copier modele</button>
-          <a class="btn-sm2" href="?preview_segment=<?= urlencode($k) ?>&preview_day=<?= urlencode($previewDay) ?>&preview_theme=<?= urlencode($previewTheme) ?>#preview-zone">Apercu</a>
-          <?php if ($k === 'email_marketing'): ?><a class="btn-sm2" href="#campagne">Aller aux envois</a><?php endif; ?>
+          <?php if ($isModelView): ?>
+            <button type="button" class="btn-sm2 cp" data-t="<?= htmlspecialchars($s['tpl']) ?>">Copier modele</button>
+            <a class="btn-sm2" href="?model=<?= urlencode($k) ?>&preview_segment=<?= urlencode($k) ?>&preview_day=<?= urlencode($previewDay) ?>&preview_theme=<?= urlencode($previewTheme) ?>#preview-zone">Apercu</a>
+            <?php if ($k === 'email_marketing'): ?><a class="btn-sm2" href="#campagne">Aller aux envois</a><?php endif; ?>
+          <?php else: ?>
+            <a class="btn-sm2" href="?model=<?= urlencode($k) ?>&preview_segment=<?= urlencode($k) ?>#preview-zone">Ouvrir espace</a>
+          <?php endif; ?>
         </div>
       </div>
     <?php endforeach; ?>
   </div>
 
+  <?php if ($isModelView): ?>
   <h5 id="preview-zone" class="mt-3 mb-2"><i class="fa-solid fa-eye"></i> Apercu + liste des destinataires</h5>
   <div class="cardx">
-    <form method="GET" class="row g-2 align-items-end">
+    <form method="GET" action="<?= htmlspecialchars($prospectionManagerUrl) ?>" class="row g-2 align-items-end">
+      <input type="hidden" name="model" value="<?= htmlspecialchars($activeModelKey) ?>">
+      <input type="hidden" name="preview_segment" value="<?= htmlspecialchars($activeModelKey) ?>">
       <div class="col-md-4">
-        <label class="form-label">Type de prospection</label>
-        <select class="form-select" name="preview_segment">
-          <?php foreach ($seg as $k => $s): ?>
-            <option value="<?= htmlspecialchars($k) ?>" <?= $previewSegment === $k ? 'selected' : '' ?>><?= htmlspecialchars($s['title']) ?></option>
-          <?php endforeach; ?>
-        </select>
+        <label class="form-label">Modele actif</label>
+        <input type="text" class="form-control" value="<?= htmlspecialchars((string)($seg[$activeModelKey]['title'] ?? $activeModelKey)) ?>" disabled>
       </div>
       <div class="col-md-3">
         <label class="form-label">Jour (apercu email)</label>
-        <select class="form-select" name="preview_day">
+        <select class="form-select" name="preview_day" <?= $isEmailModelView ? '' : 'disabled' ?>>
           <?php foreach ($daysFr as $k => $lab): ?>
             <option value="<?= htmlspecialchars($k) ?>" <?= $previewDay === $k ? 'selected' : '' ?>><?= htmlspecialchars($lab) ?></option>
           <?php endforeach; ?>
@@ -1085,14 +1120,14 @@ $scheduleDayLabels = array_merge(['daily' => 'Tous les jours'], $daysFr);
       </div>
       <div class="col-md-3">
         <label class="form-label">Theme (apercu email)</label>
-        <select class="form-select" name="preview_theme">
+        <select class="form-select" name="preview_theme" <?= $isEmailModelView ? '' : 'disabled' ?>>
           <option value="conversion" <?= $previewTheme === 'conversion' ? 'selected' : '' ?>>Offre conversion</option>
           <option value="social_proof" <?= $previewTheme === 'social_proof' ? 'selected' : '' ?>>Preuve sociale</option>
           <option value="urgency" <?= $previewTheme === 'urgency' ? 'selected' : '' ?>>Urgence commerciale</option>
         </select>
       </div>
       <div class="col-md-2">
-        <button class="btn btn-outline-primary w-100" type="submit">Voir</button>
+        <button class="btn btn-outline-primary w-100" type="submit">Actualiser</button>
       </div>
     </form>
     <div class="preview-grid mt-3">
@@ -1158,7 +1193,9 @@ $scheduleDayLabels = array_merge(['daily' => 'Tous les jours'], $daysFr);
       </div>
     </div>
   </div>
+  <?php endif; ?>
 
+  <?php if ($isEmailModelView): ?>
   <h5 id="campagne" class="mt-3 mb-2"><i class="fa-solid fa-envelope-open-text"></i> Campagne email automatique</h5>
   <div class="cardx">
     <form method="POST">
@@ -1255,7 +1292,7 @@ $scheduleDayLabels = array_merge(['daily' => 'Tous les jours'], $daysFr);
         <input type="hidden" name="action" value="run_due_schedules">
         <button type="submit" class="btn btn-outline-primary btn-sm"><i class="fa-solid fa-play"></i> Executer les programmations dues</button>
       </form>
-      <span class="mini-note">Astuce: pour l execution sans presence, configurez un cron vers <code>pagesweb_cn/prospection_scheduler_runner.php</code> toutes les 5 minutes.</span>
+      <span class="mini-note">Astuce: pour l execution sans presence, configurez un cron vers <code>pagesweb_cn/prospection_scheduler_runner.php?token=VOTRE_TOKEN</code> toutes les 5 minutes (token = variable serveur <code>PROSPECTION_RUNNER_TOKEN</code>).</span>
     </div>
 
     <?php if (($scheduleRuns['count'] ?? 0) > 0): ?>
@@ -1339,6 +1376,12 @@ $scheduleDayLabels = array_merge(['daily' => 'Tous les jours'], $daysFr);
       </tbody></table>
     <?php endif; ?>
   </div>
+  <?php elseif ($isModelView): ?>
+    <div class="cardx mt-3">
+      <strong>Actions automatiques</strong>
+      <div class="mini-note mt-1">Ce canal n utilise pas l envoi email automatique. Utilisez l apercu, la liste des destinataires et le modele de message pour votre prospection.</div>
+    </div>
+  <?php endif; ?>
 </div>
 
 <script>
