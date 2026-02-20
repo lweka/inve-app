@@ -312,4 +312,47 @@ function getUpgradeProEmailTemplate($name) {
 </html>
 HTML;
 }
+
+/**
+ * Envoi email commercial pour la prospection.
+ *
+ * @param string $to_email
+ * @param string $to_name
+ * @param string $subject
+ * @param string $htmlBody
+ * @param string $altBody
+ * @return bool
+ */
+function sendProspectionEmail($to_email, $to_name, $subject, $htmlBody, $altBody = '') {
+    try {
+        $mail = new PHPMailer(true);
+
+        // Configuration SMTP Hostinger
+        $mail->isSMTP();
+        $mail->Host       = 'smtp.titan.email';
+        $mail->SMTPAuth   = true;
+        $mail->Username   = 'cartelplus-congo@cartelplus.site';
+        $mail->Password   = 'Jo@Kin243';
+        $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
+        $mail->Port       = 587;
+        $mail->CharSet    = 'UTF-8';
+
+        // Expediteur
+        $mail->setFrom('cartelplus-congo@cartelplus.site', 'Cartelplus Congo');
+        $mail->addAddress($to_email, $to_name);
+        $mail->addReplyTo('support@cartelplus.cd', 'Support Cartelplus Congo');
+
+        $mail->isHTML(true);
+        $mail->Subject = $subject;
+        $mail->Body = $htmlBody;
+        $mail->AltBody = $altBody !== '' ? $altBody : strip_tags($htmlBody);
+
+        $mail->send();
+        error_log("Prospection email sent successfully to: $to_email");
+        return true;
+    } catch (Exception $e) {
+        error_log("Prospection email send failed for: $to_email - Error: {$mail->ErrorInfo}");
+        return false;
+    }
+}
 ?>

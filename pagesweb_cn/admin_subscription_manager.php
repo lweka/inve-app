@@ -328,6 +328,33 @@ $active_clients = $stmt_clients->fetchAll(PDO::FETCH_ASSOC);
             box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
         }
 
+        .admin-header .header-actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: flex-end;
+        }
+
+        .admin-header .btn-prospection {
+            background: rgba(0, 168, 255, 0.25);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.35);
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-weight: 600;
+            transition: all 0.3s;
+            cursor: pointer;
+            text-decoration: none;
+        }
+
+        .admin-header .btn-prospection:hover {
+            background: rgba(0, 168, 255, 0.4);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+            color: #fff;
+        }
+
         /* ===== CONTENT ===== */
         .admin-content {
             padding: 40px 20px;
@@ -775,7 +802,10 @@ $active_clients = $stmt_clients->fetchAll(PDO::FETCH_ASSOC);
                     <h1><span class="header-icon">⚙️</span>Gestion des Abonnements</h1>
                     <div class="header-info">Bienvenue, <?= htmlspecialchars($_SESSION['admin_username'] ?? 'Admin') ?> • CartelPlus Congo</div>
                 </div>
-                <a href="<?= BASE_URL ?>pagesweb_cn/logout.php" class="btn-logout">🚪 Déconnexion</a>
+                <div class="header-actions">
+                    <a href="<?= defined('PROSPECTION_MANAGER') ? PROSPECTION_MANAGER : (BASE_URL . 'pagesweb_cn/prospection_manager') ?>" class="btn-prospection">📣 Prospections</a>
+                    <a href="<?= BASE_URL ?>pagesweb_cn/logout.php" class="btn-logout">🚪 Déconnexion</a>
+                </div>
             </div>
         </div>
     </div>

@@ -85,6 +85,7 @@ define('EXCHANGE_RATE_MANAGER', BASE_URL. 'pagesweb_cn/exchange_rate_manage');
 define('PRODUCTS_ALL_STORY', BASE_URL. 'pagesweb_cn/products_history_global');
 define('PRODUCTS_LOW_STOCK', BASE_URL. 'pagesweb_cn/products_low_stock');
 define('MARGE_PAR_MAISON', BASE_URL. 'pagesweb_cn/house_marge');
+define('PROSPECTION_MANAGER', BASE_URL . 'pagesweb_cn/prospection_manager');
 
 
 
