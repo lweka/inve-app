@@ -57,6 +57,89 @@ function em(string $raw): string
     return filter_var($raw, FILTER_VALIDATE_EMAIL) ? $raw : '';
 }
 
+function emailDomain(string $email): string
+{
+    $at = strrpos($email, '@');
+    if ($at === false) return '';
+    $domain = strtolower(trim(substr($email, $at + 1)));
+    $domain = trim($domain, " \t\n\r\0\x0B.");
+    if ($domain === '') return '';
+    if (function_exists('idn_to_ascii')) {
+        $ascii = @idn_to_ascii($domain);
+        if (is_string($ascii) && $ascii !== '') {
+            $domain = strtolower($ascii);
+        }
+    }
+    return $domain;
+}
+
+function hasMxRecord(string $domain): bool
+{
+    static $cache = [];
+    $domain = strtolower(trim($domain));
+    if ($domain === '') return false;
+    if (array_key_exists($domain, $cache)) {
+        return $cache[$domain];
+    }
+
+    $ok = false;
+    if (function_exists('checkdnsrr')) {
+        $ok = (bool)@checkdnsrr($domain, 'MX');
+    }
+    if (!$ok && function_exists('dns_get_record')) {
+        $mx = @dns_get_record($domain, DNS_MX);
+        $ok = is_array($mx) && count($mx) > 0;
+    }
+    $cache[$domain] = $ok;
+    return $ok;
+}
+
+function isSendableEmail(string $email, ?string &$reason = null): bool
+{
+    $email = em($email);
+    if ($email === '') {
+        $reason = 'Format email invalide';
+        return false;
+    }
+    $domain = emailDomain($email);
+    if ($domain === '') {
+        $reason = 'Domaine email invalide';
+        return false;
+    }
+    if (!hasMxRecord($domain)) {
+        $reason = 'Domaine sans MX (boite mail non recevable)';
+        return false;
+    }
+    return true;
+}
+
+function splitSendableEmailRows(array $rows): array
+{
+    $valid = [];
+    $invalid = [];
+    $emailCache = [];
+
+    foreach ($rows as $row) {
+        $email = strtolower((string)($row['email'] ?? ''));
+        if ($email === '') continue;
+
+        if (!isset($emailCache[$email])) {
+            $reason = '';
+            $ok = isSendableEmail($email, $reason);
+            $emailCache[$email] = ['ok' => $ok, 'reason' => $reason];
+        }
+
+        if ($emailCache[$email]['ok']) {
+            $valid[] = $row;
+        } else {
+            $row['validation_reason'] = (string)($emailCache[$email]['reason'] ?? 'Adresse exclue');
+            $invalid[] = $row;
+        }
+    }
+
+    return ['valid' => $valid, 'invalid' => $invalid];
+}
+
 function ph(string $raw): string
 {
     $parts = preg_split('/[;,|\/]+/', $raw) ?: [$raw];
@@ -824,6 +907,10 @@ $priorityContact = [
 
 $contacts = mergeContacts([$priorityContact], $parsed['rows'], $extra);
 $seg = buildSeg($contacts);
+$emailSplit = splitSendableEmailRows($seg['email_marketing']['rows'] ?? []);
+$seg['email_marketing']['rows'] = $emailSplit['valid'];
+$invalidEmailRows = $emailSplit['invalid'];
+$invalidEmailCount = count($invalidEmailRows);
 $emailReachableCount = count($seg['email_marketing']['rows'] ?? []);
 
 $activeModelKey = '';
@@ -906,6 +993,24 @@ if ($runnerMode) {
         'runs' => $scheduleRuns['runs'] ?? [],
         'run_at' => date('Y-m-d H:i:s'),
     ], JSON_UNESCAPED_UNICODE);
+    exit;
+}
+
+if (isset($_GET['export_invalid']) && (string)$_GET['export_invalid'] === 'email_marketing') {
+    header('Content-Type: text/csv; charset=utf-8');
+    header('Content-Disposition: attachment; filename="prospection_invalid_email_' . date('Ymd_His') . '.csv"');
+    $out = fopen('php://output', 'w');
+    if ($out !== false) {
+        fputcsv($out, ['Nom complet', 'Email', 'Raison exclusion']);
+        foreach ($invalidEmailRows as $c) {
+            fputcsv($out, [
+                (string)($c['full'] ?? ''),
+                (string)($c['email'] ?? ''),
+                (string)($c['validation_reason'] ?? 'Adresse exclue'),
+            ]);
+        }
+        fclose($out);
+    }
     exit;
 }
 
@@ -1037,12 +1142,14 @@ $scheduleDayLabels = array_merge(['daily' => 'Tous les jours'], $daysFr);
     <div class="cardx"><div class="m">Contacts importes (Excel/CSV)</div><div class="v"><?= number_format($extraCount) ?></div></div>
     <div class="cardx"><div class="m">Contacts uniques</div><div class="v"><?= number_format(count($contacts)) ?></div></div>
     <div class="cardx"><div class="m">Emails valides (lot envoi)</div><div class="v"><?= number_format($emailReachableCount) ?></div></div>
+    <div class="cardx"><div class="m">Emails exclus (non recevables)</div><div class="v"><?= number_format($invalidEmailCount) ?></div></div>
     <div class="cardx"><div class="m">Emails envoyes aujourd hui</div><div class="v"><?= number_format($sentToday) ?></div></div>
     <div class="cardx"><div class="m">Emails envoyes derniere heure</div><div class="v"><?= number_format($sentLastHour) ?></div></div>
     <div class="cardx"><div class="m">Progression 21 jours</div><div class="v"><?= number_format($sent21) ?>/<?= number_format($goal) ?></div><div class="progress mt-2"><div class="progress-bar" style="width:<?= (int)$pct ?>%"></div></div></div>
   </div>
 
   <?php if ($alert['msg'] !== ''): ?><div class="alert alert-<?= htmlspecialchars($alert['type'] !== '' ? $alert['type'] : 'info') ?> mt-3"><?= htmlspecialchars($alert['msg']) ?></div><?php endif; ?>
+  <?php if ($invalidEmailCount > 0): ?><div class="alert alert-warning mt-3">Filtrage qualite actif: <?= number_format($invalidEmailCount) ?> adresse(s) email exclue(s) automatiquement (domaine sans service mail/MX).</div><?php endif; ?>
 
   <?php if ($isModelView): ?>
     <div class="cardx mt-3">
@@ -1092,6 +1199,7 @@ $scheduleDayLabels = array_merge(['daily' => 'Tous les jours'], $daysFr);
             <button type="button" class="btn-sm2 cp" data-t="<?= htmlspecialchars($s['tpl']) ?>">Copier modele</button>
             <a class="btn-sm2" href="?model=<?= urlencode($k) ?>&preview_segment=<?= urlencode($k) ?>&preview_day=<?= urlencode($previewDay) ?>&preview_theme=<?= urlencode($previewTheme) ?>#preview-zone">Apercu</a>
             <?php if ($k === 'email_marketing'): ?><a class="btn-sm2" href="#campagne">Aller aux envois</a><?php endif; ?>
+            <?php if ($k === 'email_marketing' && $invalidEmailCount > 0): ?><a class="btn-sm2" href="?export_invalid=email_marketing">Export emails exclus</a><?php endif; ?>
           <?php else: ?>
             <a class="btn-sm2" href="?model=<?= urlencode($k) ?>&preview_segment=<?= urlencode($k) ?>#preview-zone">Ouvrir espace</a>
           <?php endif; ?>
@@ -1193,6 +1301,38 @@ $scheduleDayLabels = array_merge(['daily' => 'Tous les jours'], $daysFr);
       </div>
     </div>
   </div>
+  <?php if ($isEmailModelView && $invalidEmailCount > 0): ?>
+    <div class="cardx mt-3">
+      <div class="d-flex justify-content-between align-items-center mb-2">
+        <strong>Adresses exclues automatiquement</strong>
+        <span class="mini-note"><?= number_format($invalidEmailCount) ?> adresse(s)</span>
+      </div>
+      <div class="form-text">Ces adresses ne seront pas envoyees: domaine sans service mail (MX) ou format invalide.</div>
+      <div class="tb mt-2" style="max-height:280px;">
+        <table>
+          <thead>
+            <tr>
+              <th>N&deg;</th>
+              <th>Email</th>
+              <th>Nom</th>
+              <th>Raison</th>
+            </tr>
+          </thead>
+          <tbody>
+            <?php foreach (array_slice($invalidEmailRows, 0, 200) as $idx => $bad): ?>
+              <tr>
+                <td><?= (int)$idx + 1 ?></td>
+                <td><?= htmlspecialchars((string)($bad['email'] ?? '')) ?></td>
+                <td><?= htmlspecialchars((string)($bad['full'] ?? '')) ?></td>
+                <td><?= htmlspecialchars((string)($bad['validation_reason'] ?? 'Adresse exclue')) ?></td>
+              </tr>
+            <?php endforeach; ?>
+          </tbody>
+        </table>
+      </div>
+      <?php if ($invalidEmailCount > 200): ?><div class="mini-note mt-2">Affichage limite aux 200 premieres adresses. Utilisez "Export emails exclus" pour la liste complete.</div><?php endif; ?>
+    </div>
+  <?php endif; ?>
   <?php endif; ?>
 
   <?php if ($isEmailModelView): ?>
