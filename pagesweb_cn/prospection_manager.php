@@ -1110,32 +1110,45 @@ $scheduleDayLabels = array_merge(['daily' => 'Tous les jours'], $daysFr);
         <?php endif; ?>
       </div>
       <div class="preview-box">
+        <?php $emailOnlyView = ($previewSegment === 'email_marketing'); ?>
         <div class="d-flex justify-content-between align-items-center mb-2">
           <strong>Destinataires de ce message</strong>
           <span class="mini-note"><?= number_format(count($previewRows)) ?> contact(s)</span>
         </div>
-        <input type="text" id="recipientFilter" class="form-control form-control-sm recipient-search mb-2" placeholder="Filtrer nom, email, telephone">
+        <input type="text" id="recipientFilter" class="form-control form-control-sm recipient-search mb-2" placeholder="<?= $emailOnlyView ? 'Filtrer numero, email, nom' : 'Filtrer nom, email, telephone' ?>">
         <div class="tb" style="max-height:460px;">
           <table>
             <thead>
               <tr>
-                <th>Nom</th>
-                <th>Email</th>
-                <th>Telephone</th>
-                <th>Qualite</th>
+                <th>N°</th>
+                <?php if ($emailOnlyView): ?>
+                  <th>Email</th>
+                  <th>Nom</th>
+                <?php else: ?>
+                  <th>Nom</th>
+                  <th>Email</th>
+                  <th>Telephone</th>
+                  <th>Qualite</th>
+                <?php endif; ?>
               </tr>
             </thead>
             <tbody id="recipientTbody">
               <?php if (!$previewRows): ?>
-                <tr><td colspan="4" class="text-muted">Aucun contact pour ce type de prospection.</td></tr>
+                <tr><td colspan="<?= $emailOnlyView ? '3' : '5' ?>" class="text-muted">Aucun contact pour ce type de prospection.</td></tr>
               <?php else: ?>
-                <?php foreach ($previewRows as $c): ?>
+                <?php foreach ($previewRows as $i => $c): ?>
                   <?php $searchRow = strtolower((string)($c['full'] ?? '') . ' ' . (string)($c['email'] ?? '') . ' ' . (string)($c['phone'] ?? '') . ' ' . (string)($c['qualite'] ?? '')); ?>
                   <tr class="recipient-row" data-search="<?= htmlspecialchars($searchRow) ?>">
-                    <td><?= htmlspecialchars((string)($c['full'] ?? '')) ?></td>
-                    <td><?= htmlspecialchars((string)($c['email'] ?? '-')) ?></td>
-                    <td><?= htmlspecialchars((string)($c['phone'] ?? '-')) ?></td>
-                    <td><?= htmlspecialchars((string)($c['qualite'] ?? '-')) ?></td>
+                    <td><?= (int)$i + 1 ?></td>
+                    <?php if ($emailOnlyView): ?>
+                      <td><?= htmlspecialchars((string)($c['email'] ?? '-')) ?></td>
+                      <td><?= htmlspecialchars((string)($c['full'] ?? '')) ?></td>
+                    <?php else: ?>
+                      <td><?= htmlspecialchars((string)($c['full'] ?? '')) ?></td>
+                      <td><?= htmlspecialchars((string)($c['email'] ?? '-')) ?></td>
+                      <td><?= htmlspecialchars((string)($c['phone'] ?? '-')) ?></td>
+                      <td><?= htmlspecialchars((string)($c['qualite'] ?? '-')) ?></td>
+                    <?php endif; ?>
                   </tr>
                 <?php endforeach; ?>
               <?php endif; ?>
