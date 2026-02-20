@@ -321,9 +321,10 @@ HTML;
  * @param string $subject
  * @param string $htmlBody
  * @param string $altBody
+ * @param string|null $errorInfo Message d'erreur SMTP retourne en cas d'echec
  * @return bool
  */
-function sendProspectionEmail($to_email, $to_name, $subject, $htmlBody, $altBody = '') {
+function sendProspectionEmail($to_email, $to_name, $subject, $htmlBody, $altBody = '', &$errorInfo = null) {
     try {
         $mail = new PHPMailer(true);
 
@@ -349,9 +350,15 @@ function sendProspectionEmail($to_email, $to_name, $subject, $htmlBody, $altBody
 
         $mail->send();
         error_log("Prospection email sent successfully to: $to_email");
+        $errorInfo = null;
         return true;
     } catch (Exception $e) {
-        error_log("Prospection email send failed for: $to_email - Error: {$mail->ErrorInfo}");
+        $smtpError = (string)($mail->ErrorInfo ?? '');
+        $errorInfo = trim($smtpError !== '' ? $smtpError : $e->getMessage());
+        if ($errorInfo === '') {
+            $errorInfo = 'Erreur SMTP inconnue';
+        }
+        error_log("Prospection email send failed for: $to_email - Error: {$errorInfo}");
         return false;
     }
 }

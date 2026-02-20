@@ -184,10 +184,30 @@ function buildMail(string $day, string $theme, string $name): array
     return ['subject' => $subject, 'html' => $html, 'alt' => $alt];
 }
 
+function isHourlyLimitError(string $message): bool
+{
+    $m = strtolower(trim($message));
+    if ($m === '') return false;
+    $needles = [
+        'hourly sending limit',
+        'hourly limit',
+        'sending limit',
+        'you have reached your account',
+        "you've reached your hourly sending limit",
+        'too many messages',
+        'rate limit'
+    ];
+    foreach ($needles as $n) {
+        if (str_contains($m, $n)) return true;
+    }
+    return false;
+}
+
 $daysFr = ['monday' => 'Lundi', 'tuesday' => 'Mardi', 'wednesday' => 'Mercredi', 'thursday' => 'Jeudi', 'friday' => 'Vendredi', 'saturday' => 'Samedi', 'sunday' => 'Dimanche'];
 $today = dayKey();
 $theme = 'conversion';
-$limit = 50;
+$limit = 1000;
+$hourlySoftLimit = 35;
 $alert = ['type' => '', 'msg' => ''];
 
 function nh(string $label): string
@@ -543,8 +563,22 @@ try {
 }
 $extraCount = count($extra);
 
-$contacts = mergeContacts($parsed['rows'], $extra);
+$priorityEmail = 'lwekajonathan@gmail.com';
+$priorityContact = [
+    'id' => 0,
+    'nom' => 'Lweka',
+    'prenom' => 'Jonathan',
+    'full' => 'Jonathan Lweka',
+    'qualite' => 'Pilotage prospection',
+    'email' => $priorityEmail,
+    'phone' => '',
+    'date' => date('Y-m-d H:i:s'),
+    'key' => 'e:' . strtolower($priorityEmail),
+];
+
+$contacts = mergeContacts([$priorityContact], $parsed['rows'], $extra);
 $seg = buildSeg($contacts);
+$emailReachableCount = count($seg['email_marketing']['rows'] ?? []);
 
 if (isset($_GET['export']) && isset($seg[(string)$_GET['export']])) {
     $k = (string)$_GET['export'];
@@ -564,49 +598,89 @@ try { ensureLogTable($pdo); } catch (Throwable $e) { if ($alert['msg'] === '') $
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'send_daily_email') {
     $theme = (string)($_POST['campaign_theme'] ?? 'conversion');
     if (!in_array($theme, ['conversion', 'social_proof', 'urgency'], true)) $theme = 'conversion';
-    $limit = (int)($_POST['daily_limit'] ?? 50);
+    $limit = (int)($_POST['daily_limit'] ?? 1000);
     if ($limit < 1) $limit = 1;
-    if ($limit > 300) $limit = 300;
+    if ($limit > 10000) $limit = 10000;
+    $hourlySoftLimit = (int)($_POST['hourly_soft_limit'] ?? $hourlySoftLimit);
+    if ($hourlySoftLimit < 1) $hourlySoftLimit = 1;
+    if ($hourlySoftLimit > 500) $hourlySoftLimit = 500;
     $dayReq = (string)($_POST['day_key'] ?? '');
     if (!isset($daysFr[$dayReq])) {
         $alert = ['type' => 'danger', 'msg' => 'Jour invalide.'];
     } elseif ($dayReq !== $today) {
         $alert = ['type' => 'danger', 'msg' => 'Seul le bouton du jour est autorise (1 mail/jour/contact).'];
     } else {
+        $todayDate = date('Y-m-d');
         $already = [];
         $st = $pdo->prepare("SELECT DISTINCT target_email FROM prospection_email_logs WHERE campaign_date = ? AND status = 'sent'");
-        $st->execute([date('Y-m-d')]);
+        $st->execute([$todayDate]);
         foreach ($st->fetchAll(PDO::FETCH_COLUMN) as $e) $already[strtolower((string)$e)] = true;
-        $queue = [];
-        foreach ($seg['email_marketing']['rows'] as $c) {
-            $e = strtolower((string)$c['email']);
-            if ($e === '' || isset($already[$e])) continue;
-            $queue[] = $c;
-            if (count($queue) >= $limit) break;
-        }
-        if (!$queue) {
-            $alert = ['type' => 'warning', 'msg' => 'Aucun nouveau contact email a traiter aujourd hui.'];
+
+        $qHour = $pdo->query("SELECT COUNT(DISTINCT target_email) FROM prospection_email_logs WHERE status='sent' AND created_at >= DATE_SUB(NOW(), INTERVAL 1 HOUR)");
+        $sentLastHour = (int)$qHour->fetchColumn();
+        $availableHourly = max(0, $hourlySoftLimit - $sentLastHour);
+
+        if ($availableHourly <= 0) {
+            $alert = ['type' => 'warning', 'msg' => 'Limite horaire locale atteinte (' . $sentLastHour . '/' . $hourlySoftLimit . '). Attendez 1 heure avant un nouvel envoi.'];
         } else {
-            @set_time_limit(300);
-            $okN = 0; $koN = 0;
-            $ins = $pdo->prepare("INSERT INTO prospection_email_logs (campaign_date,campaign_day,campaign_theme,target_name,target_email,subject_line,status,error_text,created_at) VALUES (?,?,?,?,?,?,?,?,NOW())");
-            foreach ($queue as $c) {
-                $mail = buildMail($dayReq, $theme, (string)$c['full']);
-                $ok = sendProspectionEmail((string)$c['email'], (string)$c['full'], (string)$mail['subject'], (string)$mail['html'], (string)$mail['alt']);
-                if ($ok) { $okN++; $ins->execute([date('Y-m-d'), $dayReq, $theme, (string)$c['full'], (string)$c['email'], (string)$mail['subject'], 'sent', null]); }
-                else { $koN++; $ins->execute([date('Y-m-d'), $dayReq, $theme, (string)$c['full'], (string)$c['email'], (string)$mail['subject'], 'failed', 'Erreur SMTP']); }
+            $effectiveLimit = min($limit, $availableHourly);
+            $queue = [];
+            foreach ($seg['email_marketing']['rows'] as $c) {
+                $e = strtolower((string)$c['email']);
+                if ($e === '' || isset($already[$e])) continue;
+                $queue[] = $c;
+                if (count($queue) >= $effectiveLimit) break;
             }
-            $alert = ['type' => $koN > 0 ? 'warning' : 'success', 'msg' => 'Campagne ' . $daysFr[$dayReq] . ': ' . $okN . ' envoye(s), ' . $koN . ' echec(s).'];
+            if (!$queue) {
+                $alert = ['type' => 'warning', 'msg' => 'Aucun nouveau contact email a traiter aujourd hui.'];
+            } else {
+                @set_time_limit(300);
+                $okN = 0; $koN = 0; $hourlyBlocked = false; $hourlyBlockMsg = '';
+                $ins = $pdo->prepare("INSERT INTO prospection_email_logs (campaign_date,campaign_day,campaign_theme,target_name,target_email,subject_line,status,error_text,created_at) VALUES (?,?,?,?,?,?,?,?,NOW())");
+                foreach ($queue as $c) {
+                    $mail = buildMail($dayReq, $theme, (string)$c['full']);
+                    $smtpErr = null;
+                    $ok = sendProspectionEmail((string)$c['email'], (string)$c['full'], (string)$mail['subject'], (string)$mail['html'], (string)$mail['alt'], $smtpErr);
+                    if ($ok) {
+                        $okN++;
+                        $ins->execute([$todayDate, $dayReq, $theme, (string)$c['full'], (string)$c['email'], (string)$mail['subject'], 'sent', null]);
+                    } else {
+                        $koN++;
+                        $errText = trim((string)$smtpErr);
+                        if ($errText === '') $errText = 'Erreur SMTP';
+                        $ins->execute([$todayDate, $dayReq, $theme, (string)$c['full'], (string)$c['email'], (string)$mail['subject'], 'failed', $errText]);
+                        if (isHourlyLimitError($errText)) {
+                            $hourlyBlocked = true;
+                            $hourlyBlockMsg = $errText;
+                            break;
+                        }
+                    }
+                }
+
+                if ($hourlyBlocked) {
+                    $alert = [
+                        'type' => 'warning',
+                        'msg' => 'Campagne interrompue: limite horaire SMTP detectee. Envoyes: ' . $okN . ', echecs: ' . $koN . '. Detail: ' . $hourlyBlockMsg
+                    ];
+                } else {
+                    $msg = 'Campagne ' . $daysFr[$dayReq] . ': ' . $okN . ' envoye(s), ' . $koN . ' echec(s).';
+                    if ($effectiveLimit < $limit) {
+                        $msg .= ' Envoi limite a ' . $effectiveLimit . ' pour respecter le plafond horaire (' . $hourlySoftLimit . '/h).';
+                    }
+                    $alert = ['type' => $koN > 0 ? 'warning' : 'success', 'msg' => $msg];
+                }
+            }
         }
     }
 }
 
 $goal = 100;
-$sent21 = 0; $sentToday = 0; $logs = [];
+$sent21 = 0; $sentToday = 0; $sentLastHour = 0; $logs = [];
 try {
     $sent21 = (int)$pdo->query("SELECT COUNT(DISTINCT target_email) FROM prospection_email_logs WHERE status='sent' AND campaign_date >= DATE_SUB(CURDATE(), INTERVAL 21 DAY)")->fetchColumn();
     $q = $pdo->prepare("SELECT COUNT(DISTINCT target_email) FROM prospection_email_logs WHERE status='sent' AND campaign_date = CURDATE()");
     $q->execute(); $sentToday = (int)$q->fetchColumn();
+    $sentLastHour = (int)$pdo->query("SELECT COUNT(DISTINCT target_email) FROM prospection_email_logs WHERE status='sent' AND created_at >= DATE_SUB(NOW(), INTERVAL 1 HOUR)")->fetchColumn();
     $logs = $pdo->query("SELECT campaign_day,campaign_theme,target_name,target_email,status,created_at FROM prospection_email_logs ORDER BY id DESC LIMIT 20")->fetchAll(PDO::FETCH_ASSOC);
 } catch (Throwable $e) {}
 $pct = $goal > 0 ? min(100, (int)round(($sent21 / $goal) * 100)) : 0;
@@ -649,7 +723,9 @@ foreach ($ord as $i => $k) $wk[$k] = ['l' => $daysFr[$k], 'd' => $w0->modify('+'
     <div class="cardx"><div class="m">Contacts bruts (adhesion.sql)</div><div class="v"><?= number_format($rawCount) ?></div></div>
     <div class="cardx"><div class="m">Contacts importes (Excel/CSV)</div><div class="v"><?= number_format($extraCount) ?></div></div>
     <div class="cardx"><div class="m">Contacts uniques</div><div class="v"><?= number_format(count($contacts)) ?></div></div>
+    <div class="cardx"><div class="m">Emails valides (lot envoi)</div><div class="v"><?= number_format($emailReachableCount) ?></div></div>
     <div class="cardx"><div class="m">Emails envoyes aujourd hui</div><div class="v"><?= number_format($sentToday) ?></div></div>
+    <div class="cardx"><div class="m">Emails envoyes derniere heure</div><div class="v"><?= number_format($sentLastHour) ?></div></div>
     <div class="cardx"><div class="m">Progression 21 jours</div><div class="v"><?= number_format($sent21) ?>/<?= number_format($goal) ?></div><div class="progress mt-2"><div class="progress-bar" style="width:<?= (int)$pct ?>%"></div></div></div>
   </div>
 
@@ -693,7 +769,7 @@ foreach ($ord as $i => $k) $wk[$k] = ['l' => $daysFr[$k], 'd' => $w0->modify('+'
     <form method="POST">
       <input type="hidden" name="action" value="send_daily_email">
       <div class="row g-2">
-        <div class="col-md-8">
+        <div class="col-md-6">
           <label class="form-label">Type de mail commercial</label>
           <select class="form-select" name="campaign_theme">
             <option value="conversion" <?= $theme === 'conversion' ? 'selected' : '' ?>>Offre conversion</option>
@@ -701,12 +777,17 @@ foreach ($ord as $i => $k) $wk[$k] = ['l' => $daysFr[$k], 'd' => $w0->modify('+'
             <option value="urgency" <?= $theme === 'urgency' ? 'selected' : '' ?>>Urgence commerciale</option>
           </select>
         </div>
-        <div class="col-md-4">
+        <div class="col-md-3">
           <label class="form-label">Volume du jour</label>
-          <input class="form-control" type="number" min="1" max="300" name="daily_limit" value="<?= (int)$limit ?>">
+          <input class="form-control" type="number" min="1" max="10000" name="daily_limit" value="<?= (int)$limit ?>">
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">Plafond horaire (soft)</label>
+          <input class="form-control" type="number" min="1" max="500" name="hourly_soft_limit" value="<?= (int)$hourlySoftLimit ?>">
         </div>
       </div>
-      <div class="form-text mt-2">Frequence forcee: 1 email maximum par jour et par contact. Seul le bouton du jour est actif.</div>
+      <div class="form-text mt-2">Frequence forcee: 1 email maximum par jour et par contact. Le systeme bloque aussi au plafond horaire pour eviter l'erreur Titan.</div>
+      <div class="form-text">Adresse prioritaire en tete de lot: <?= htmlspecialchars($priorityEmail) ?>.</div>
       <div class="day mt-2">
         <?php foreach ($wk as $k => $b): $on = ($k === $today); ?>
           <button type="submit" name="day_key" value="<?= htmlspecialchars($k) ?>" class="<?= $on ? 'on' : '' ?>" <?= $on ? '' : 'disabled' ?>><?= htmlspecialchars($b['l']) ?><br><small><?= htmlspecialchars($b['d']) ?></small></button>
