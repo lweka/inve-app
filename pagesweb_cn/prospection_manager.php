@@ -208,6 +208,9 @@ $today = dayKey();
 $theme = 'conversion';
 $limit = 1000;
 $hourlySoftLimit = 35;
+$sequenceBatchSize = 20;
+$sequenceModeActive = false;
+$sequenceSlot = 0;
 $alert = ['type' => '', 'msg' => ''];
 
 function nh(string $label): string
@@ -601,10 +604,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'send_
     $limit = (int)($_POST['daily_limit'] ?? 1000);
     if ($limit < 1) $limit = 1;
     if ($limit > 10000) $limit = 10000;
+    $sequenceModeActive = isset($_POST['sequence_mode']) && trim((string)$_POST['sequence_mode']) !== '';
+    if ($sequenceModeActive) {
+        $sequenceSlot = (int)$_POST['sequence_mode'];
+        if ($sequenceSlot < 1) $sequenceSlot = 1;
+        if ($sequenceSlot > 50) $sequenceSlot = 50;
+        $limit = $sequenceBatchSize;
+    }
     $hourlySoftLimit = (int)($_POST['hourly_soft_limit'] ?? $hourlySoftLimit);
     if ($hourlySoftLimit < 1) $hourlySoftLimit = 1;
     if ($hourlySoftLimit > 500) $hourlySoftLimit = 500;
     $dayReq = (string)($_POST['day_key'] ?? '');
+    if ($dayReq === '' && $sequenceModeActive) {
+        $dayReq = $today;
+    }
     if (!isset($daysFr[$dayReq])) {
         $alert = ['type' => 'danger', 'msg' => 'Jour invalide.'];
     } elseif ($dayReq !== $today) {
@@ -663,7 +676,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'send_
                         'msg' => 'Campagne interrompue: limite horaire SMTP detectee. Envoyes: ' . $okN . ', echecs: ' . $koN . '. Detail: ' . $hourlyBlockMsg
                     ];
                 } else {
-                    $msg = 'Campagne ' . $daysFr[$dayReq] . ': ' . $okN . ' envoye(s), ' . $koN . ' echec(s).';
+                    if ($sequenceModeActive) {
+                        $msg = 'Sequence ' . $sequenceSlot . ' (' . $sequenceBatchSize . '/clic): ' . $okN . ' envoye(s), ' . $koN . ' echec(s).';
+                    } else {
+                        $msg = 'Campagne ' . $daysFr[$dayReq] . ': ' . $okN . ' envoye(s), ' . $koN . ' echec(s).';
+                    }
                     if ($effectiveLimit < $limit) {
                         $msg .= ' Envoi limite a ' . $effectiveLimit . ' pour respecter le plafond horaire (' . $hourlySoftLimit . '/h).';
                     }
@@ -684,6 +701,7 @@ try {
     $logs = $pdo->query("SELECT campaign_day,campaign_theme,target_name,target_email,status,created_at FROM prospection_email_logs ORDER BY id DESC LIMIT 20")->fetchAll(PDO::FETCH_ASSOC);
 } catch (Throwable $e) {}
 $pct = $goal > 0 ? min(100, (int)round(($sent21 / $goal) * 100)) : 0;
+$nextSequence = (int)floor($sentToday / max(1, $sequenceBatchSize)) + 1;
 
 $w0 = new DateTimeImmutable('monday this week');
 $wk = []; $ord = ['monday','tuesday','wednesday','thursday','friday','saturday','sunday'];
@@ -792,6 +810,24 @@ foreach ($ord as $i => $k) $wk[$k] = ['l' => $daysFr[$k], 'd' => $w0->modify('+'
         <?php foreach ($wk as $k => $b): $on = ($k === $today); ?>
           <button type="submit" name="day_key" value="<?= htmlspecialchars($k) ?>" class="<?= $on ? 'on' : '' ?>" <?= $on ? '' : 'disabled' ?>><?= htmlspecialchars($b['l']) ?><br><small><?= htmlspecialchars($b['d']) ?></small></button>
         <?php endforeach; ?>
+      </div>
+
+      <div class="form-text mt-3">Mode sequence: 20 emails par bouton (envoi progressif sans doublons sur la journee).</div>
+      <div class="d-flex flex-wrap gap-2 mt-2">
+        <?php for ($i = 1; $i <= 10; $i++): ?>
+          <button
+            type="submit"
+            name="sequence_mode"
+            value="<?= $i ?>"
+            class="btn btn-outline-primary btn-sm"
+            title="Envoie la prochaine tranche de <?= (int)$sequenceBatchSize ?> emails"
+          >
+            Sequence <?= $i ?> (<?= (int)$sequenceBatchSize ?>)
+          </button>
+        <?php endfor; ?>
+      </div>
+      <div class="form-text mt-2">
+        Prochaine sequence recommandee: <?= (int)$nextSequence ?>.
       </div>
     </form>
   </div>
