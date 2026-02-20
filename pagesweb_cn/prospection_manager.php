@@ -1,6 +1,7 @@
 <?php
 session_start();
-if (!isset($_SESSION['admin_logged_in']) || $_SESSION['admin_logged_in'] !== true) {
+$runnerMode = defined('PROSPECTION_RUNNER_MODE') && PROSPECTION_RUNNER_MODE === true;
+if (!$runnerMode && (!isset($_SESSION['admin_logged_in']) || $_SESSION['admin_logged_in'] !== true)) {
     header('Location: admin_login_form');
     exit;
 }
@@ -11,6 +12,35 @@ require_once __DIR__ . '/send_email.php';
 
 if (!defined('BASE_URL')) {
     define('BASE_URL', '/');
+}
+
+if (!function_exists('str_contains')) {
+    function str_contains($haystack, $needle)
+    {
+        $haystack = (string)$haystack;
+        $needle = (string)$needle;
+        if ($needle === '') return true;
+        return mb_strpos($haystack, $needle) !== false;
+    }
+}
+if (!function_exists('str_starts_with')) {
+    function str_starts_with($haystack, $needle)
+    {
+        $haystack = (string)$haystack;
+        $needle = (string)$needle;
+        if ($needle === '') return true;
+        return substr($haystack, 0, strlen($needle)) === $needle;
+    }
+}
+if (!function_exists('str_ends_with')) {
+    function str_ends_with($haystack, $needle)
+    {
+        $haystack = (string)$haystack;
+        $needle = (string)$needle;
+        if ($needle === '') return true;
+        $len = strlen($needle);
+        return substr($haystack, -$len) === $needle;
+    }
 }
 
 $adhesionSqlPath = dirname(__DIR__) . '/prospection/adhesion.sql';
@@ -203,8 +233,221 @@ function isHourlyLimitError(string $message): bool
     return false;
 }
 
+function normalizeTheme(string $theme): string
+{
+    $allowed = ['conversion', 'social_proof', 'urgency'];
+    return in_array($theme, $allowed, true) ? $theme : 'conversion';
+}
+
+function normalizeScheduleDay(string $day): string
+{
+    $allowed = ['daily', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+    $day = strtolower(trim($day));
+    return in_array($day, $allowed, true) ? $day : 'daily';
+}
+
+function scheduleMatchesToday(string $scheduleDay, string $today): bool
+{
+    $scheduleDay = normalizeScheduleDay($scheduleDay);
+    return $scheduleDay === 'daily' || $scheduleDay === $today;
+}
+
+function sendEmailCampaign(
+    PDO $pdo,
+    array $emailRows,
+    array $daysFr,
+    string $dayReq,
+    string $theme,
+    int $limit,
+    int $hourlySoftLimit,
+    bool $sequenceModeActive = false,
+    int $sequenceSlot = 0,
+    int $sequenceBatchSize = 20
+): array {
+    $theme = normalizeTheme($theme);
+    if ($limit < 1) $limit = 1;
+    if ($limit > 10000) $limit = 10000;
+    if ($hourlySoftLimit < 1) $hourlySoftLimit = 1;
+    if ($hourlySoftLimit > 500) $hourlySoftLimit = 500;
+
+    $todayDate = date('Y-m-d');
+    $already = [];
+    $st = $pdo->prepare("SELECT DISTINCT target_email FROM prospection_email_logs WHERE campaign_date = ? AND status = 'sent'");
+    $st->execute([$todayDate]);
+    foreach ($st->fetchAll(PDO::FETCH_COLUMN) as $e) {
+        $already[strtolower((string)$e)] = true;
+    }
+
+    $qHour = $pdo->query("SELECT COUNT(DISTINCT target_email) FROM prospection_email_logs WHERE status='sent' AND created_at >= DATE_SUB(NOW(), INTERVAL 1 HOUR)");
+    $sentLastHour = (int)$qHour->fetchColumn();
+    $availableHourly = max(0, $hourlySoftLimit - $sentLastHour);
+    if ($availableHourly <= 0) {
+        return [
+            'ok' => 0,
+            'ko' => 0,
+            'sent_last_hour' => $sentLastHour,
+            'effective_limit' => 0,
+            'alert' => [
+                'type' => 'warning',
+                'msg' => 'Limite horaire locale atteinte (' . $sentLastHour . '/' . $hourlySoftLimit . '). Attendez 1 heure avant un nouvel envoi.'
+            ],
+        ];
+    }
+
+    $effectiveLimit = min($limit, $availableHourly);
+    $queue = [];
+    foreach ($emailRows as $c) {
+        $e = strtolower((string)($c['email'] ?? ''));
+        if ($e === '' || isset($already[$e])) continue;
+        $queue[] = $c;
+        if (count($queue) >= $effectiveLimit) break;
+    }
+    if (!$queue) {
+        return [
+            'ok' => 0,
+            'ko' => 0,
+            'sent_last_hour' => $sentLastHour,
+            'effective_limit' => $effectiveLimit,
+            'alert' => ['type' => 'warning', 'msg' => 'Aucun nouveau contact email a traiter aujourd hui.'],
+        ];
+    }
+
+    @set_time_limit(300);
+    $okN = 0;
+    $koN = 0;
+    $hourlyBlocked = false;
+    $hourlyBlockMsg = '';
+    $ins = $pdo->prepare("INSERT INTO prospection_email_logs (campaign_date,campaign_day,campaign_theme,target_name,target_email,subject_line,status,error_text,created_at) VALUES (?,?,?,?,?,?,?,?,NOW())");
+    foreach ($queue as $c) {
+        $mail = buildMail($dayReq, $theme, (string)($c['full'] ?? ''));
+        $smtpErr = null;
+        $ok = sendProspectionEmail((string)$c['email'], (string)($c['full'] ?? ''), (string)$mail['subject'], (string)$mail['html'], (string)$mail['alt'], $smtpErr);
+        if ($ok) {
+            $okN++;
+            $ins->execute([$todayDate, $dayReq, $theme, (string)($c['full'] ?? ''), (string)$c['email'], (string)$mail['subject'], 'sent', null]);
+        } else {
+            $koN++;
+            $errText = trim((string)$smtpErr);
+            if ($errText === '') $errText = 'Erreur SMTP';
+            $ins->execute([$todayDate, $dayReq, $theme, (string)($c['full'] ?? ''), (string)$c['email'], (string)$mail['subject'], 'failed', $errText]);
+            if (isHourlyLimitError($errText)) {
+                $hourlyBlocked = true;
+                $hourlyBlockMsg = $errText;
+                break;
+            }
+        }
+    }
+
+    if ($hourlyBlocked) {
+        $alert = [
+            'type' => 'warning',
+            'msg' => 'Campagne interrompue: limite horaire SMTP detectee. Envoyes: ' . $okN . ', echecs: ' . $koN . '. Detail: ' . $hourlyBlockMsg
+        ];
+    } else {
+        if ($sequenceModeActive) {
+            $msg = 'Sequence ' . $sequenceSlot . ' (' . $sequenceBatchSize . '/clic): ' . $okN . ' envoye(s), ' . $koN . ' echec(s).';
+        } else {
+            $msg = 'Campagne ' . ($daysFr[$dayReq] ?? ucfirst($dayReq)) . ': ' . $okN . ' envoye(s), ' . $koN . ' echec(s).';
+        }
+        if ($effectiveLimit < $limit) {
+            $msg .= ' Envoi limite a ' . $effectiveLimit . ' pour respecter le plafond horaire (' . $hourlySoftLimit . '/h).';
+        }
+        $alert = ['type' => $koN > 0 ? 'warning' : 'success', 'msg' => $msg];
+    }
+
+    return [
+        'ok' => $okN,
+        'ko' => $koN,
+        'sent_last_hour' => $sentLastHour,
+        'effective_limit' => $effectiveLimit,
+        'alert' => $alert,
+    ];
+}
+
+function ensureScheduleTable(PDO $pdo): void
+{
+    $pdo->exec("
+        CREATE TABLE IF NOT EXISTS prospection_email_schedules (
+            id INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+            label VARCHAR(120) NOT NULL DEFAULT '',
+            day_key VARCHAR(20) NOT NULL DEFAULT 'daily',
+            send_time TIME NOT NULL,
+            campaign_theme VARCHAR(30) NOT NULL DEFAULT 'conversion',
+            daily_limit INT NOT NULL DEFAULT 20,
+            hourly_soft_limit INT NOT NULL DEFAULT 35,
+            is_active TINYINT(1) NOT NULL DEFAULT 1,
+            last_run_date DATE NULL,
+            last_run_at DATETIME NULL,
+            last_run_status VARCHAR(20) NULL,
+            last_run_summary VARCHAR(255) NULL,
+            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            INDEX idx_active_time (is_active, send_time),
+            INDEX idx_last_run_date (last_run_date)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    ");
+}
+
+function scheduleRows(PDO $pdo): array
+{
+    return $pdo->query("SELECT * FROM prospection_email_schedules ORDER BY is_active DESC, send_time ASC, id ASC")->fetchAll(PDO::FETCH_ASSOC);
+}
+
+function runDueSchedules(PDO $pdo, array $emailRows, array $daysFr, string $today): array
+{
+    $runs = [];
+    $due = $pdo->query("
+        SELECT * FROM prospection_email_schedules
+        WHERE is_active = 1
+          AND send_time <= CURTIME()
+          AND (last_run_date IS NULL OR last_run_date < CURDATE())
+        ORDER BY send_time ASC, id ASC
+    ")->fetchAll(PDO::FETCH_ASSOC);
+
+    if (!$due) {
+        return ['count' => 0, 'runs' => []];
+    }
+
+    $upd = $pdo->prepare("
+        UPDATE prospection_email_schedules
+        SET last_run_date = CURDATE(),
+            last_run_at = NOW(),
+            last_run_status = ?,
+            last_run_summary = ?
+        WHERE id = ?
+    ");
+
+    foreach ($due as $s) {
+        $dayKey = normalizeScheduleDay((string)($s['day_key'] ?? 'daily'));
+        if (!scheduleMatchesToday($dayKey, $today)) {
+            continue;
+        }
+        $theme = normalizeTheme((string)($s['campaign_theme'] ?? 'conversion'));
+        $limit = max(1, min(10000, (int)($s['daily_limit'] ?? 20)));
+        $hourly = max(1, min(500, (int)($s['hourly_soft_limit'] ?? 35)));
+        $label = trim((string)($s['label'] ?? 'Programmation'));
+        if ($label === '') $label = 'Programmation #' . (int)($s['id'] ?? 0);
+
+        $result = sendEmailCampaign($pdo, $emailRows, $daysFr, $today, $theme, $limit, $hourly, false, 0, 20);
+        $status = (string)($result['alert']['type'] ?? 'info');
+        $summary = '[' . $label . '] ' . (string)($result['alert']['msg'] ?? '');
+        $upd->execute([$status, mb_substr($summary, 0, 250), (int)$s['id']]);
+        $runs[] = [
+            'id' => (int)$s['id'],
+            'label' => $label,
+            'status' => $status,
+            'summary' => $summary,
+            'ok' => (int)($result['ok'] ?? 0),
+            'ko' => (int)($result['ko'] ?? 0),
+        ];
+    }
+
+    return ['count' => count($runs), 'runs' => $runs];
+}
+
 $daysFr = ['monday' => 'Lundi', 'tuesday' => 'Mardi', 'wednesday' => 'Mercredi', 'thursday' => 'Jeudi', 'friday' => 'Vendredi', 'saturday' => 'Samedi', 'sunday' => 'Dimanche'];
 $today = dayKey();
+$requestMethod = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 $theme = 'conversion';
 $limit = 1000;
 $hourlySoftLimit = 35;
@@ -517,7 +760,7 @@ try {
     $alert = ['type' => 'danger', 'msg' => 'Impossible de preparer la table des imports.'];
 }
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'import_contacts') {
+if ($requestMethod === 'POST' && ($_POST['action'] ?? '') === 'import_contacts') {
     $source = trim((string)($_POST['source_label'] ?? 'Import manuel'));
     if ($source === '') $source = 'Import manuel';
     $file = $_FILES['prospection_file'] ?? null;
@@ -583,6 +826,77 @@ $contacts = mergeContacts([$priorityContact], $parsed['rows'], $extra);
 $seg = buildSeg($contacts);
 $emailReachableCount = count($seg['email_marketing']['rows'] ?? []);
 
+$previewSegment = isset($_GET['preview_segment'], $seg[(string)$_GET['preview_segment']]) ? (string)$_GET['preview_segment'] : 'email_marketing';
+$previewDay = isset($_GET['preview_day'], $daysFr[(string)$_GET['preview_day']]) ? (string)$_GET['preview_day'] : $today;
+$previewTheme = normalizeTheme((string)($_GET['preview_theme'] ?? $theme));
+$previewRows = $seg[$previewSegment]['rows'] ?? [];
+$previewMail = null;
+if ($previewSegment === 'email_marketing') {
+    $previewMail = buildMail($previewDay, $previewTheme, 'Prospect Apercu');
+}
+
+$scheduleRuns = ['count' => 0, 'runs' => []];
+$schedules = [];
+
+try { ensureLogTable($pdo); } catch (Throwable $e) { if ($alert['msg'] === '') $alert = ['type' => 'danger', 'msg' => 'Erreur table log prospection.']; }
+try { ensureScheduleTable($pdo); } catch (Throwable $e) { if ($alert['msg'] === '') $alert = ['type' => 'danger', 'msg' => 'Erreur table programmation automatique.']; }
+
+if ($requestMethod === 'POST' && ($_POST['action'] ?? '') === 'add_schedule') {
+    $label = trim((string)($_POST['schedule_label'] ?? ''));
+    if ($label === '') $label = 'Programmation auto';
+    $dayKey = normalizeScheduleDay((string)($_POST['schedule_day'] ?? 'daily'));
+    $sendTime = trim((string)($_POST['schedule_time'] ?? ''));
+    if (!preg_match('/^\d{2}:\d{2}$/', $sendTime)) {
+        $alert = ['type' => 'danger', 'msg' => 'Heure de programmation invalide. Format attendu: HH:MM.'];
+    } else {
+        $sendTime = $sendTime . ':00';
+        $sTheme = normalizeTheme((string)($_POST['schedule_theme'] ?? 'conversion'));
+        $sLimit = max(1, min(10000, (int)($_POST['schedule_limit'] ?? 20)));
+        $sHourly = max(1, min(500, (int)($_POST['schedule_hourly'] ?? 35)));
+        $insSc = $pdo->prepare("INSERT INTO prospection_email_schedules (label, day_key, send_time, campaign_theme, daily_limit, hourly_soft_limit, is_active, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, 1, NOW(), NOW())");
+        $insSc->execute([$label, $dayKey, $sendTime, $sTheme, $sLimit, $sHourly]);
+        $alert = ['type' => 'success', 'msg' => 'Programmation ajoutee: ' . $label . ' (' . $dayKey . ' a ' . $sendTime . ').'];
+    }
+}
+
+if ($requestMethod === 'POST' && ($_POST['action'] ?? '') === 'toggle_schedule') {
+    $id = (int)($_POST['schedule_id'] ?? 0);
+    if ($id > 0) {
+        $pdo->prepare("UPDATE prospection_email_schedules SET is_active = IF(is_active=1,0,1), updated_at = NOW() WHERE id = ?")->execute([$id]);
+        $alert = ['type' => 'success', 'msg' => 'Statut de la programmation mis a jour.'];
+    }
+}
+
+if ($requestMethod === 'POST' && ($_POST['action'] ?? '') === 'delete_schedule') {
+    $id = (int)($_POST['schedule_id'] ?? 0);
+    if ($id > 0) {
+        $pdo->prepare("DELETE FROM prospection_email_schedules WHERE id = ?")->execute([$id]);
+        $alert = ['type' => 'success', 'msg' => 'Programmation supprimee.'];
+    }
+}
+
+if ($requestMethod === 'POST' && ($_POST['action'] ?? '') === 'run_due_schedules') {
+    $scheduleRuns = runDueSchedules($pdo, $seg['email_marketing']['rows'] ?? [], $daysFr, $today);
+    if ($scheduleRuns['count'] > 0) {
+        $alert = ['type' => 'success', 'msg' => 'Executions automatiques lancees: ' . $scheduleRuns['count'] . '.'];
+    } else {
+        $alert = ['type' => 'info', 'msg' => 'Aucune programmation due pour le moment.'];
+    }
+}
+
+if ($runnerMode) {
+    $scheduleRuns = runDueSchedules($pdo, $seg['email_marketing']['rows'] ?? [], $daysFr, $today);
+    header('Content-Type: application/json; charset=utf-8');
+    echo json_encode([
+        'ok' => true,
+        'runner' => true,
+        'executed_count' => (int)($scheduleRuns['count'] ?? 0),
+        'runs' => $scheduleRuns['runs'] ?? [],
+        'run_at' => date('Y-m-d H:i:s'),
+    ], JSON_UNESCAPED_UNICODE);
+    exit;
+}
+
 if (isset($_GET['export']) && isset($seg[(string)$_GET['export']])) {
     $k = (string)$_GET['export'];
     header('Content-Type: text/csv; charset=utf-8');
@@ -596,11 +910,9 @@ if (isset($_GET['export']) && isset($seg[(string)$_GET['export']])) {
     exit;
 }
 
-try { ensureLogTable($pdo); } catch (Throwable $e) { if ($alert['msg'] === '') $alert = ['type' => 'danger', 'msg' => 'Erreur table log prospection.']; }
-
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'send_daily_email') {
+if ($requestMethod === 'POST' && ($_POST['action'] ?? '') === 'send_daily_email') {
     $theme = (string)($_POST['campaign_theme'] ?? 'conversion');
-    if (!in_array($theme, ['conversion', 'social_proof', 'urgency'], true)) $theme = 'conversion';
+    $theme = normalizeTheme($theme);
     $limit = (int)($_POST['daily_limit'] ?? 1000);
     if ($limit < 1) $limit = 1;
     if ($limit > 10000) $limit = 10000;
@@ -623,72 +935,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'send_
     } elseif ($dayReq !== $today) {
         $alert = ['type' => 'danger', 'msg' => 'Seul le bouton du jour est autorise (1 mail/jour/contact).'];
     } else {
-        $todayDate = date('Y-m-d');
-        $already = [];
-        $st = $pdo->prepare("SELECT DISTINCT target_email FROM prospection_email_logs WHERE campaign_date = ? AND status = 'sent'");
-        $st->execute([$todayDate]);
-        foreach ($st->fetchAll(PDO::FETCH_COLUMN) as $e) $already[strtolower((string)$e)] = true;
-
-        $qHour = $pdo->query("SELECT COUNT(DISTINCT target_email) FROM prospection_email_logs WHERE status='sent' AND created_at >= DATE_SUB(NOW(), INTERVAL 1 HOUR)");
-        $sentLastHour = (int)$qHour->fetchColumn();
-        $availableHourly = max(0, $hourlySoftLimit - $sentLastHour);
-
-        if ($availableHourly <= 0) {
-            $alert = ['type' => 'warning', 'msg' => 'Limite horaire locale atteinte (' . $sentLastHour . '/' . $hourlySoftLimit . '). Attendez 1 heure avant un nouvel envoi.'];
-        } else {
-            $effectiveLimit = min($limit, $availableHourly);
-            $queue = [];
-            foreach ($seg['email_marketing']['rows'] as $c) {
-                $e = strtolower((string)$c['email']);
-                if ($e === '' || isset($already[$e])) continue;
-                $queue[] = $c;
-                if (count($queue) >= $effectiveLimit) break;
-            }
-            if (!$queue) {
-                $alert = ['type' => 'warning', 'msg' => 'Aucun nouveau contact email a traiter aujourd hui.'];
-            } else {
-                @set_time_limit(300);
-                $okN = 0; $koN = 0; $hourlyBlocked = false; $hourlyBlockMsg = '';
-                $ins = $pdo->prepare("INSERT INTO prospection_email_logs (campaign_date,campaign_day,campaign_theme,target_name,target_email,subject_line,status,error_text,created_at) VALUES (?,?,?,?,?,?,?,?,NOW())");
-                foreach ($queue as $c) {
-                    $mail = buildMail($dayReq, $theme, (string)$c['full']);
-                    $smtpErr = null;
-                    $ok = sendProspectionEmail((string)$c['email'], (string)$c['full'], (string)$mail['subject'], (string)$mail['html'], (string)$mail['alt'], $smtpErr);
-                    if ($ok) {
-                        $okN++;
-                        $ins->execute([$todayDate, $dayReq, $theme, (string)$c['full'], (string)$c['email'], (string)$mail['subject'], 'sent', null]);
-                    } else {
-                        $koN++;
-                        $errText = trim((string)$smtpErr);
-                        if ($errText === '') $errText = 'Erreur SMTP';
-                        $ins->execute([$todayDate, $dayReq, $theme, (string)$c['full'], (string)$c['email'], (string)$mail['subject'], 'failed', $errText]);
-                        if (isHourlyLimitError($errText)) {
-                            $hourlyBlocked = true;
-                            $hourlyBlockMsg = $errText;
-                            break;
-                        }
-                    }
-                }
-
-                if ($hourlyBlocked) {
-                    $alert = [
-                        'type' => 'warning',
-                        'msg' => 'Campagne interrompue: limite horaire SMTP detectee. Envoyes: ' . $okN . ', echecs: ' . $koN . '. Detail: ' . $hourlyBlockMsg
-                    ];
-                } else {
-                    if ($sequenceModeActive) {
-                        $msg = 'Sequence ' . $sequenceSlot . ' (' . $sequenceBatchSize . '/clic): ' . $okN . ' envoye(s), ' . $koN . ' echec(s).';
-                    } else {
-                        $msg = 'Campagne ' . $daysFr[$dayReq] . ': ' . $okN . ' envoye(s), ' . $koN . ' echec(s).';
-                    }
-                    if ($effectiveLimit < $limit) {
-                        $msg .= ' Envoi limite a ' . $effectiveLimit . ' pour respecter le plafond horaire (' . $hourlySoftLimit . '/h).';
-                    }
-                    $alert = ['type' => $koN > 0 ? 'warning' : 'success', 'msg' => $msg];
-                }
-            }
-        }
+        $result = sendEmailCampaign(
+            $pdo,
+            $seg['email_marketing']['rows'] ?? [],
+            $daysFr,
+            $dayReq,
+            $theme,
+            $limit,
+            $hourlySoftLimit,
+            $sequenceModeActive,
+            $sequenceSlot,
+            $sequenceBatchSize
+        );
+        $alert = $result['alert'] ?? ['type' => 'info', 'msg' => 'Execution terminee.'];
     }
+}
+
+try {
+    $schedules = scheduleRows($pdo);
+} catch (Throwable $e) {
+    if ($alert['msg'] === '') {
+        $alert = ['type' => 'warning', 'msg' => 'Lecture des programmations indisponible.'];
+    }
+    $schedules = [];
 }
 
 $goal = 100;
@@ -706,6 +975,7 @@ $nextSequence = (int)floor($sentToday / max(1, $sequenceBatchSize)) + 1;
 $w0 = new DateTimeImmutable('monday this week');
 $wk = []; $ord = ['monday','tuesday','wednesday','thursday','friday','saturday','sunday'];
 foreach ($ord as $i => $k) $wk[$k] = ['l' => $daysFr[$k], 'd' => $w0->modify('+' . $i . ' day')->format('d/m')];
+$scheduleDayLabels = array_merge(['daily' => 'Tous les jours'], $daysFr);
 ?>
 <!doctype html>
 <html lang="fr">
@@ -728,6 +998,13 @@ foreach ($ord as $i => $k) $wk[$k] = ['l' => $daysFr[$k], 'd' => $w0->modify('+'
     .act{display:flex;gap:7px;flex-wrap:wrap;margin-top:8px}.btn-sm2{font-size:12px;border:1px solid #d4e1ef;background:#fff;padding:6px 9px;border-radius:8px;font-weight:600}
     .day{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:8px}.day button{border:1px solid #cfe0f5;background:#fff;padding:9px;border-radius:9px;font-weight:700}
     .day .on{background:#eef6ff;border-color:#0a67ca}.tb{overflow:auto}.tb table{width:100%;min-width:760px;border-collapse:collapse;font-size:13px}.tb th,.tb td{padding:8px;border-bottom:1px solid #ecf2fa}
+    .preview-grid{display:grid;grid-template-columns:1.15fr .85fr;gap:12px}
+    .preview-box{background:#f8fbff;border:1px solid #dce8f7;border-radius:10px;padding:10px}
+    .preview-box iframe{width:100%;height:420px;border:1px solid #d6e3f5;border-radius:8px;background:#fff}
+    .mini-note{font-size:12px;color:#5f6e86}
+    .recipient-search{max-width:360px}
+    .sched-actions{display:flex;gap:8px;flex-wrap:wrap}
+    @media (max-width: 992px){.preview-grid{grid-template-columns:1fr}}
   </style>
 </head>
 <body>
@@ -777,9 +1054,96 @@ foreach ($ord as $i => $k) $wk[$k] = ['l' => $daysFr[$k], 'd' => $w0->modify('+'
       <div class="cardx">
         <div class="shead"><div><strong><i class="<?= htmlspecialchars($s['icon']) ?>"></i> <?= htmlspecialchars($s['title']) ?></strong><div class="sdesc"><?= htmlspecialchars($s['desc']) ?></div></div><div class="sc"><?= number_format(count($s['rows'])) ?></div></div>
         <div class="prev"><?php if ($pv) { foreach ($pv as $i => $c) echo htmlspecialchars($c['full']) . ($i < count($pv) - 1 ? ' | ' : ''); } else { echo 'Aucun contact'; } ?></div>
-        <div class="act"><a class="btn-sm2" href="?export=<?= urlencode($k) ?>">Export CSV</a><button type="button" class="btn-sm2 cp" data-t="<?= htmlspecialchars($s['tpl']) ?>">Copier modele</button><?php if ($k === 'email_marketing'): ?><a class="btn-sm2" href="#campagne">Aller aux envois</a><?php endif; ?></div>
+        <div class="act">
+          <a class="btn-sm2" href="?export=<?= urlencode($k) ?>">Export CSV</a>
+          <button type="button" class="btn-sm2 cp" data-t="<?= htmlspecialchars($s['tpl']) ?>">Copier modele</button>
+          <a class="btn-sm2" href="?preview_segment=<?= urlencode($k) ?>&preview_day=<?= urlencode($previewDay) ?>&preview_theme=<?= urlencode($previewTheme) ?>#preview-zone">Apercu</a>
+          <?php if ($k === 'email_marketing'): ?><a class="btn-sm2" href="#campagne">Aller aux envois</a><?php endif; ?>
+        </div>
       </div>
     <?php endforeach; ?>
+  </div>
+
+  <h5 id="preview-zone" class="mt-3 mb-2"><i class="fa-solid fa-eye"></i> Apercu + liste des destinataires</h5>
+  <div class="cardx">
+    <form method="GET" class="row g-2 align-items-end">
+      <div class="col-md-4">
+        <label class="form-label">Type de prospection</label>
+        <select class="form-select" name="preview_segment">
+          <?php foreach ($seg as $k => $s): ?>
+            <option value="<?= htmlspecialchars($k) ?>" <?= $previewSegment === $k ? 'selected' : '' ?>><?= htmlspecialchars($s['title']) ?></option>
+          <?php endforeach; ?>
+        </select>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">Jour (apercu email)</label>
+        <select class="form-select" name="preview_day">
+          <?php foreach ($daysFr as $k => $lab): ?>
+            <option value="<?= htmlspecialchars($k) ?>" <?= $previewDay === $k ? 'selected' : '' ?>><?= htmlspecialchars($lab) ?></option>
+          <?php endforeach; ?>
+        </select>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">Theme (apercu email)</label>
+        <select class="form-select" name="preview_theme">
+          <option value="conversion" <?= $previewTheme === 'conversion' ? 'selected' : '' ?>>Offre conversion</option>
+          <option value="social_proof" <?= $previewTheme === 'social_proof' ? 'selected' : '' ?>>Preuve sociale</option>
+          <option value="urgency" <?= $previewTheme === 'urgency' ? 'selected' : '' ?>>Urgence commerciale</option>
+        </select>
+      </div>
+      <div class="col-md-2">
+        <button class="btn btn-outline-primary w-100" type="submit">Voir</button>
+      </div>
+    </form>
+    <div class="preview-grid mt-3">
+      <div class="preview-box">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <strong>Message affiche au prospect</strong>
+          <span class="mini-note"><?= htmlspecialchars($seg[$previewSegment]['title'] ?? $previewSegment) ?></span>
+        </div>
+        <?php if ($previewSegment === 'email_marketing' && $previewMail): ?>
+          <div class="mini-note mb-2"><strong>Objet:</strong> <?= htmlspecialchars((string)$previewMail['subject']) ?></div>
+          <iframe srcdoc="<?= htmlspecialchars((string)$previewMail['html']) ?>"></iframe>
+        <?php else: ?>
+          <div class="mini-note mb-2">Apercu textuel du script/canal selectionne.</div>
+          <pre class="mb-0" style="white-space:pre-wrap;word-break:break-word;background:#fff;border:1px solid #d6e3f5;border-radius:8px;padding:12px;min-height:180px;"><?= htmlspecialchars((string)($seg[$previewSegment]['tpl'] ?? 'Aucun modele.')) ?></pre>
+        <?php endif; ?>
+      </div>
+      <div class="preview-box">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <strong>Destinataires de ce message</strong>
+          <span class="mini-note"><?= number_format(count($previewRows)) ?> contact(s)</span>
+        </div>
+        <input type="text" id="recipientFilter" class="form-control form-control-sm recipient-search mb-2" placeholder="Filtrer nom, email, telephone">
+        <div class="tb" style="max-height:460px;">
+          <table>
+            <thead>
+              <tr>
+                <th>Nom</th>
+                <th>Email</th>
+                <th>Telephone</th>
+                <th>Qualite</th>
+              </tr>
+            </thead>
+            <tbody id="recipientTbody">
+              <?php if (!$previewRows): ?>
+                <tr><td colspan="4" class="text-muted">Aucun contact pour ce type de prospection.</td></tr>
+              <?php else: ?>
+                <?php foreach ($previewRows as $c): ?>
+                  <?php $searchRow = strtolower((string)($c['full'] ?? '') . ' ' . (string)($c['email'] ?? '') . ' ' . (string)($c['phone'] ?? '') . ' ' . (string)($c['qualite'] ?? '')); ?>
+                  <tr class="recipient-row" data-search="<?= htmlspecialchars($searchRow) ?>">
+                    <td><?= htmlspecialchars((string)($c['full'] ?? '')) ?></td>
+                    <td><?= htmlspecialchars((string)($c['email'] ?? '-')) ?></td>
+                    <td><?= htmlspecialchars((string)($c['phone'] ?? '-')) ?></td>
+                    <td><?= htmlspecialchars((string)($c['qualite'] ?? '-')) ?></td>
+                  </tr>
+                <?php endforeach; ?>
+              <?php endif; ?>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
   </div>
 
   <h5 id="campagne" class="mt-3 mb-2"><i class="fa-solid fa-envelope-open-text"></i> Campagne email automatique</h5>
@@ -832,6 +1196,126 @@ foreach ($ord as $i => $k) $wk[$k] = ['l' => $daysFr[$k], 'd' => $w0->modify('+'
     </form>
   </div>
 
+  <h5 class="mt-3 mb-2"><i class="fa-solid fa-calendar-check"></i> Programmation automatique des emails</h5>
+  <div class="cardx">
+    <form method="POST" class="row g-2 align-items-end">
+      <input type="hidden" name="action" value="add_schedule">
+      <div class="col-md-3">
+        <label class="form-label">Libelle</label>
+        <input class="form-control" type="text" name="schedule_label" placeholder="Ex: Relance matin" required>
+      </div>
+      <div class="col-md-2">
+        <label class="form-label">Jour</label>
+        <select class="form-select" name="schedule_day">
+          <?php foreach ($scheduleDayLabels as $k => $lab): ?>
+            <option value="<?= htmlspecialchars($k) ?>"><?= htmlspecialchars($lab) ?></option>
+          <?php endforeach; ?>
+        </select>
+      </div>
+      <div class="col-md-2">
+        <label class="form-label">Heure</label>
+        <input class="form-control" type="time" name="schedule_time" required>
+      </div>
+      <div class="col-md-2">
+        <label class="form-label">Theme</label>
+        <select class="form-select" name="schedule_theme">
+          <option value="conversion">Offre conversion</option>
+          <option value="social_proof">Preuve sociale</option>
+          <option value="urgency">Urgence commerciale</option>
+        </select>
+      </div>
+      <div class="col-md-1">
+        <label class="form-label">Volume</label>
+        <input class="form-control" type="number" min="1" max="10000" name="schedule_limit" value="20">
+      </div>
+      <div class="col-md-1">
+        <label class="form-label">/h</label>
+        <input class="form-control" type="number" min="1" max="500" name="schedule_hourly" value="35">
+      </div>
+      <div class="col-md-1">
+        <button class="btn btn-primary w-100" type="submit"><i class="fa-solid fa-plus"></i></button>
+      </div>
+    </form>
+
+    <div class="sched-actions mt-3">
+      <form method="POST">
+        <input type="hidden" name="action" value="run_due_schedules">
+        <button type="submit" class="btn btn-outline-primary btn-sm"><i class="fa-solid fa-play"></i> Executer les programmations dues</button>
+      </form>
+      <span class="mini-note">Astuce: pour l execution sans presence, configurez un cron vers <code>pagesweb_cn/prospection_scheduler_runner.php</code> toutes les 5 minutes.</span>
+    </div>
+
+    <?php if (($scheduleRuns['count'] ?? 0) > 0): ?>
+      <div class="alert alert-info mt-3 mb-2">
+        Derniere execution: <?= (int)$scheduleRuns['count'] ?> programmation(s) traitee(s).
+      </div>
+      <ul class="mb-3">
+        <?php foreach (($scheduleRuns['runs'] ?? []) as $r): ?>
+          <li><?= htmlspecialchars((string)$r['label']) ?>: <?= htmlspecialchars((string)$r['summary']) ?></li>
+        <?php endforeach; ?>
+      </ul>
+    <?php endif; ?>
+
+    <div class="tb mt-2">
+      <?php if (!$schedules): ?>
+        <div class="text-muted">Aucune programmation enregistree.</div>
+      <?php else: ?>
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Libelle</th>
+              <th>Jour</th>
+              <th>Heure</th>
+              <th>Theme</th>
+              <th>Volume</th>
+              <th>Plafond/h</th>
+              <th>Statut</th>
+              <th>Derniere execution</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <?php foreach ($schedules as $s): ?>
+              <tr>
+                <td><?= (int)($s['id'] ?? 0) ?></td>
+                <td><?= htmlspecialchars((string)($s['label'] ?? '')) ?></td>
+                <td><?= htmlspecialchars((string)($scheduleDayLabels[(string)($s['day_key'] ?? 'daily')] ?? (string)($s['day_key'] ?? 'daily'))) ?></td>
+                <td><?= htmlspecialchars(substr((string)($s['send_time'] ?? ''), 0, 5)) ?></td>
+                <td><?= htmlspecialchars((string)($s['campaign_theme'] ?? '')) ?></td>
+                <td><?= (int)($s['daily_limit'] ?? 0) ?></td>
+                <td><?= (int)($s['hourly_soft_limit'] ?? 0) ?></td>
+                <td><?= ((int)($s['is_active'] ?? 0) === 1) ? '<span class="badge bg-success">Actif</span>' : '<span class="badge bg-secondary">Pause</span>' ?></td>
+                <td>
+                  <?php if (!empty($s['last_run_at'])): ?>
+                    <?= htmlspecialchars((string)$s['last_run_at']) ?><br>
+                    <span class="mini-note"><?= htmlspecialchars((string)($s['last_run_summary'] ?? '')) ?></span>
+                  <?php else: ?>
+                    <span class="text-muted">Jamais</span>
+                  <?php endif; ?>
+                </td>
+                <td>
+                  <div class="d-flex flex-wrap gap-1">
+                    <form method="POST">
+                      <input type="hidden" name="action" value="toggle_schedule">
+                      <input type="hidden" name="schedule_id" value="<?= (int)($s['id'] ?? 0) ?>">
+                      <button type="submit" class="btn btn-outline-primary btn-sm"><?= ((int)($s['is_active'] ?? 0) === 1) ? 'Pause' : 'Activer' ?></button>
+                    </form>
+                    <form method="POST" onsubmit="return confirm('Supprimer cette programmation ?');">
+                      <input type="hidden" name="action" value="delete_schedule">
+                      <input type="hidden" name="schedule_id" value="<?= (int)($s['id'] ?? 0) ?>">
+                      <button type="submit" class="btn btn-outline-danger btn-sm">Supprimer</button>
+                    </form>
+                  </div>
+                </td>
+              </tr>
+            <?php endforeach; ?>
+          </tbody>
+        </table>
+      <?php endif; ?>
+    </div>
+  </div>
+
   <h5 class="mt-3 mb-2"><i class="fa-solid fa-clock-rotate-left"></i> Derniers envois</h5>
   <div class="cardx tb">
     <?php if (!$logs): ?><div class="text-muted">Aucun envoi enregistre.</div><?php else: ?>
@@ -846,6 +1330,16 @@ foreach ($ord as $i => $k) $wk[$k] = ['l' => $daysFr[$k], 'd' => $w0->modify('+'
 
 <script>
 document.querySelectorAll('.cp').forEach((b)=>{b.addEventListener('click',async()=>{try{await navigator.clipboard.writeText(b.dataset.t||'');const o=b.textContent;b.textContent='Copie';setTimeout(()=>b.textContent=o,1200);}catch(e){alert('Copie impossible');}});});
+const recipientFilter = document.getElementById('recipientFilter');
+if (recipientFilter) {
+  recipientFilter.addEventListener('input', function () {
+    const q = (this.value || '').toLowerCase().trim();
+    document.querySelectorAll('.recipient-row').forEach((row) => {
+      const hay = (row.getAttribute('data-search') || '').toLowerCase();
+      row.style.display = (q === '' || hay.includes(q)) ? '' : 'none';
+    });
+  });
+}
 </script>
 </body>
 </html>
