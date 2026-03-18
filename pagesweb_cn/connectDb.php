@@ -1,39 +1,84 @@
 <?php
-// DEBUG MODE (à désactiver en production)
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
+$normalizedDir = str_replace('\\', '/', __DIR__);
+$isLocalHost = in_array($_SERVER['HTTP_HOST'] ?? '', ['localhost', '127.0.0.1'], true);
+$isLocalPath = stripos($normalizedDir, '/wamp64/www/') !== false;
+$isLocalCli = PHP_SAPI === 'cli';
+$debugMode = $isLocalHost || $isLocalPath || $isLocalCli;
+
+ini_set('display_errors', $debugMode ? '1' : '0');
+ini_set('display_startup_errors', $debugMode ? '1' : '0');
 error_reporting(E_ALL);
 
-// session 
-if(session_status() === PHP_SESSION_NONE){
+if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
 date_default_timezone_set('Africa/Kinshasa');
 
-// Configuration de la base de données
-$host = 'srv996.hstgr.io';
-$db   = 'u424760992_inventeur_prod';
-$user = 'u424760992_inventeur_p_us';
-$pass = '0814926220@Kin243';
-$charset = 'utf8mb4'; // Recommandé pour une compatibilité complète
-
-// Options de PDO pour une connexion robuste
 $options = [
     PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
     PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
     PDO::ATTR_EMULATE_PREPARES   => false,
 ];
 
-// Data Source Name (DSN)
-$dsn = "mysql:host=$host;dbname=$db;charset=$charset";
+$connectionCandidates = [];
 
-try {
-    // Création de l'instance PDO
-    $pdo = new PDO($dsn, $user, $pass, $options);
-} catch (PDOException $e) {
-    // En cas d'échec de la connexion, on arrête tout et on affiche une erreur générique
-    // Il est déconseillé d'afficher $e->getMessage() en production pour des raisons de sécurité.
-    error_log("Erreur de connexion à la BDD : " . $e->getMessage()); // Log l'erreur pour le développeur
-    die("Une erreur technique est survenue. Veuillez réessayer plus tard.");
+$envHost = getenv('DB_HOST') ?: '';
+$envDb = getenv('DB_NAME') ?: '';
+$envUser = getenv('DB_USER') ?: '';
+$envPass = getenv('DB_PASS');
+
+if ($envHost !== '' && $envDb !== '' && $envUser !== '' && $envPass !== false) {
+    $connectionCandidates[] = [
+        'label' => 'env',
+        'host' => $envHost,
+        'db' => $envDb,
+        'user' => $envUser,
+        'pass' => $envPass,
+        'charset' => getenv('DB_CHARSET') ?: 'utf8mb4',
+    ];
+}
+
+if ($isLocalHost || $isLocalPath || $isLocalCli) {
+    $connectionCandidates[] = [
+        'label' => 'wamp-local',
+        'host' => '127.0.0.1',
+        'db' => 'inventeur_produits-app',
+        'user' => 'root',
+        'pass' => '',
+        'charset' => 'utf8mb4',
+    ];
+}
+
+$connectionCandidates[] = [
+    'label' => 'hostinger',
+    'host' => 'srv996.hstgr.io',
+    'db' => 'u424760992_inventeur_prod',
+    'user' => 'u424760992_inventeur_p_us',
+    'pass' => '0814926220@Kin243',
+    'charset' => 'utf8mb4',
+];
+
+$connectionErrors = [];
+$pdo = null;
+
+foreach ($connectionCandidates as $candidate) {
+    $dsn = sprintf(
+        'mysql:host=%s;dbname=%s;charset=%s',
+        $candidate['host'],
+        $candidate['db'],
+        $candidate['charset']
+    );
+
+    try {
+        $pdo = new PDO($dsn, $candidate['user'], $candidate['pass'], $options);
+        break;
+    } catch (PDOException $e) {
+        $connectionErrors[] = $candidate['label'] . ': ' . $e->getMessage();
+    }
+}
+
+if (!$pdo instanceof PDO) {
+    error_log('Erreur de connexion a la BDD : ' . implode(' | ', $connectionErrors));
+    die('Une erreur technique est survenue. Veuillez reessayer plus tard.');
 }
